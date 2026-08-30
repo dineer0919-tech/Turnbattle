@@ -1290,10 +1290,28 @@
       hitDamage:3,
       hits:2,
     },
+    vampire: {
+      id:'vampire',
+      name:'흡혈마',
+      desc:'적에게 4의 피해를 입히고, 이후 2턴동안 자신이 입히는 모든 피해의 50%만큼을 회복합니다. (소수점 버림) 상대가 방어로 막으면 이번 피해는 무효화되지만, 흡혈 효과는 그대로 얻습니다. 전투 당 1회만 사용할 수 있습니다.',
+      color:'#B22B4B',
+      price:230,
+      type:'vampire',
+      damage:4,
+      lifestealTurns:2,
+    },
+    taunt: {
+      id:'taunt',
+      name:'도발',
+      desc:'적에게 도발을 걸어 다음 1턴동안 [방어]와 [회복]을 무효화합니다. 스킬을 사용한 바로 이번 턴에 상대가 [방어]나 [회복]을 선택했다면, 그 효과와 얻은 행동력까지 즉시 무효화합니다. 전투 당 1회만 사용할 수 있습니다.',
+      color:'#FF8FA3',
+      price:190,
+      type:'taunt',
+    },
   };
 
   // 싱글플레이 AI가 랜덤으로 장착하고 오는 컴뱃스킬 풀 (캐릭터와 무관하게 매 대전마다 하나 랜덤 선택)
-  const AI_SKILL_POOL = ['steal_thrust', 'selfdestruct', 'shield', 'medkit', 'poison_dart', 'mini_ultimate', 'double_strike'];
+  const AI_SKILL_POOL = ['steal_thrust', 'selfdestruct', 'shield', 'medkit', 'poison_dart', 'mini_ultimate', 'double_strike', 'vampire', 'taunt'];
 
   /* ============== 크레이지 AI V2 전용 콘텐츠 ==============
      사고 로직(aiCrazy)은 그대로 두고, 봇의 "장비"만 강화한다:
@@ -2413,8 +2431,8 @@
     const opMaxHp = CHARACTERS[opChar].stats.hp;
     S.game = {
       turn:1,
-      me:  { hp:meMaxHp, maxHp:meMaxHp, ap:START_AP, defended:false, charKey:meChar, skillId:meSkillId||null, skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false, passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false, deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0, neurotoxinJustApplied:false },
-      op:  { hp:opMaxHp, maxHp:opMaxHp, ap:START_AP, defended:false, charKey:opChar, skillId:opSkillId||null, skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false, passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false, deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0, neurotoxinJustApplied:false },
+      me:  { hp:meMaxHp, maxHp:meMaxHp, ap:START_AP, defended:false, charKey:meChar, skillId:meSkillId||null, skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false, passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false, deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0, neurotoxinJustApplied:false, lifestealTurns:0, lifestealJustGranted:false, lastHealApplied:0, actionSealTurns:0, actionSealJustApplied:false },
+      op:  { hp:opMaxHp, maxHp:opMaxHp, ap:START_AP, defended:false, charKey:opChar, skillId:opSkillId||null, skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false, passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false, deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0, neurotoxinJustApplied:false, lifestealTurns:0, lifestealJustGranted:false, lastHealApplied:0, actionSealTurns:0, actionSealJustApplied:false },
       log:[],
       history:[],       // {who:'me'|'op', act, ap}
       locked:true,      // 인트로 연출이 끝나기 전에는 조작 불가
@@ -2607,12 +2625,20 @@
 
     document.querySelectorAll('.act-btn').forEach(btn=>{
       const act = btn.dataset.act;
+      const icEl = btn.querySelector('.ic');
+      // [도발]에 걸려 방어/회복이 봉인된 상태라면, 눌러봤자 무효화된다는 걸 미리 알 수 있도록
+      // 아이콘을 자물쇠로 바꿔서 보여주지만, 클릭 자체는 그대로 허용한다 (골라도 헛턴이 되는 걸
+      // 직접 겪어봐야 하는 페널티라, 아예 못 누르게 막는 건 아니다).
+      const sealed = (g.me.actionSealTurns > 0) && (act === 'defend' || act === 'heal');
       if(act === 'skill'){
         btn.disabled = g.locked || g.me.skillUsed || !g.me.skillId;
         document.getElementById('skill-cost').textContent = !g.me.skillId ? '장착 필요' : (g.me.skillUsed ? '사용완료' : '1회용');
       } else {
         const cost = COST[act];
         btn.disabled = g.locked || g.me.ap < cost;
+      }
+      if(act === 'defend' || act === 'heal'){
+        icEl.textContent = sealed ? '🔒' : (act === 'defend' ? '🛡️' : '✚');
       }
       btn.classList.toggle('selected', g.pendingMeAct === act);
     });
@@ -2691,7 +2717,14 @@
     if(opAct === 'skill') g.op.skillUsed = true;
 
     // 1. 회복 최우선 처리
+    g.me.lastHealApplied = 0; // [도발]이 이번 턴 회복을 되돌릴 때 참조하기 위해 매 턴 초기화
+    g.op.lastHealApplied = 0;
     if(meAct==='heal'){
+      if(g.me.actionSealTurns > 0){
+        // [도발] 효과로 이번 턴 회복이 완전히 봉인됨 (AP도 얻지 못함)
+        spawnPopup('me','봉인!','block');
+        pushLog('me-act','ㄴ 내가 <b>회복</b> 시도, 그러나 [도발] 효과로 봉인되어 완전히 무효화됐다');
+      } else {
       g.me.ap = Math.min(AP_MAX, g.me.ap+2);
       if(opAct==='attack'){
         spawnPopup('me','회복 캔슬!','block');
@@ -2699,11 +2732,17 @@
       } else {
         const healAmt = applyNeurotoxinHealPenalty(g.me, CHARACTERS[g.me.charKey].stats.heal, '내', 'me-act');
         g.me.hp = Math.min(g.me.maxHp, g.me.hp+healAmt);
+        g.me.lastHealApplied = healAmt;
         spawnPopup('me','+'+healAmt,'heal');
         pushLog('me-act',`ㄴ 내가 <b>회복</b>: HP +${healAmt}, AP +2`);
       }
+      }
     }
     if(opAct==='heal'){
+      if(g.op.actionSealTurns > 0){
+        spawnPopup('op','봉인!','block');
+        pushLog('op-act','ㄴ 상대 <b>회복</b> 시도, 그러나 [도발] 효과로 봉인되어 완전히 무효화됐다');
+      } else {
       g.op.ap = Math.min(AP_MAX, g.op.ap+2);
       if(meAct==='attack'){
         spawnPopup('op','회복 캔슬!','block');
@@ -2711,14 +2750,30 @@
       } else {
         const healAmt = applyNeurotoxinHealPenalty(g.op, CHARACTERS[g.op.charKey].stats.heal, '상대', 'op-act');
         g.op.hp = Math.min(g.op.maxHp, g.op.hp+healAmt);
+        g.op.lastHealApplied = healAmt;
         spawnPopup('op','+'+healAmt,'heal');
         pushLog('op-act',`ㄴ 상대 <b>회복</b>: HP +${healAmt}, AP +2`);
       }
+      }
     }
 
-    // 2. 방어 선언 (AP 즉시 획득, 판정용 플래그)
-    if(meAct==='defend'){ g.me.defended = true; g.me.ap = Math.min(AP_MAX, g.me.ap+1); }
-    if(opAct==='defend'){ g.op.defended = true; g.op.ap = Math.min(AP_MAX, g.op.ap+1); }
+    // 2. 방어 선언 (AP 즉시 획득, 판정용 플래그) — [도발]로 봉인된 경우 방어 자체가 무효
+    if(meAct==='defend'){
+      if(g.me.actionSealTurns > 0){
+        spawnPopup('me','봉인!','block');
+        pushLog('me-act','ㄴ 내가 <b>방어</b> 시도, 그러나 [도발] 효과로 봉인되어 완전히 무효화됐다');
+      } else {
+        g.me.defended = true; g.me.ap = Math.min(AP_MAX, g.me.ap+1);
+      }
+    }
+    if(opAct==='defend'){
+      if(g.op.actionSealTurns > 0){
+        spawnPopup('op','봉인!','block');
+        pushLog('op-act','ㄴ 상대 <b>방어</b> 시도, 그러나 [도발] 효과로 봉인되어 완전히 무효화됐다');
+      } else {
+        g.op.defended = true; g.op.ap = Math.min(AP_MAX, g.op.ap+1);
+      }
+    }
 
     // 2.5 판정에 영향을 주는 컴뱃스킬 사전 처리 (응급처치 키트의 방어 판정, 에너지 쉴드 획득)
     // 방어/회복처럼 "양쪽 다 서로의 결과와 무관하게" 먼저 세팅해야
@@ -2767,6 +2822,19 @@
       } else if(g[k].neurotoxinTurns > 0){
         g[k].neurotoxinTurns--;
         applyNeurotoxinTick(k, g);
+      }
+      // [흡혈마] 지속시간 감소 (피해는 없고 지속시간만 줄어듦 — 0이 되면 더 이상 흡혈이 발동하지 않음)
+      if(g[k].lifestealJustGranted){
+        g[k].lifestealJustGranted = false; // 스킬을 쓴 이번 턴은 건너뛰고 다음 턴부터 정상적으로 감소
+      } else if(g[k].lifestealTurns > 0){
+        g[k].lifestealTurns--;
+      }
+      // [도발] 방어/회복 봉인 지속시간 감소 (스킬을 쓴 이번 턴은 이미 즉시 무효화로 처리했으므로,
+      // 봉인 자체는 다음 1턴 동안만 유지되어야 한다)
+      if(g[k].actionSealJustApplied){
+        g[k].actionSealJustApplied = false;
+      } else if(g[k].actionSealTurns > 0){
+        g[k].actionSealTurns--;
       }
       // [결단일섬] 죽을 사 중첩은 영구 지속 — 별도의 시간 경과 처리가 필요 없음 (처형 발동 시에만 초기화됨)
       // [비상충전 프로토콜] 턴 종료 시 체력이 최대 체력의 50% 이하라면 에너지 중첩 1 획득 (최대 5)
@@ -3005,6 +3073,18 @@
         pushLog(cls, `ㄴ ${actorLabel} [${passive.name}] 발동! 추가 2 피해`);
       }
     }
+    // [흡혈마] 컴뱃스킬 버프: 활성 중이라면 지금 가하는 모든 피해의 50%만큼 회복한다 (소수점 버림).
+    // 이 함수는 공격/일격/컴뱃스킬 대부분의 피해 계산이 거치는 공통 지점이라, 여기 한 곳에서만
+    // 처리해도 "가하는 모든 피해"라는 스킬 설명과 자연스럽게 맞아떨어진다.
+    if((actor.lifestealTurns||0) > 0 && amount > 0){
+      const healAmt = Math.floor(amount * 0.5);
+      if(healAmt > 0){
+        actor.hp = Math.min(actor.maxHp, actor.hp + healAmt);
+        const actorLabel = actorKey==='me' ? '내' : '상대';
+        pushLog(cls, `ㄴ ${actorLabel} [흡혈마] 효과로 ${healAmt} 흡혈 회복 (잔여 ${actor.lifestealTurns}턴)`);
+        spawnPopup(actorKey, `+${healAmt}`, 'heal');
+      }
+    }
     return amount;
   }
 
@@ -3106,6 +3186,44 @@
           applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [결단일섬] 등 "공격 적중" 트리거 (타격마다 각각 발동)
           applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "공격 적중" 트리거 (타격마다 각각 발동)
         }
+        break;
+      }
+      case 'vampire': {
+        // 방어에 막히면 이번 피해만 무효화되고, 흡혈 버프 자체는 그대로 획득한다
+        if(target.defended){
+          spawnPopup(targetKey, 'BLOCK', 'block');
+          pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]이 상대 방어에 막혔다 (흡혈 효과는 그대로 획득)`);
+          applyBlockPassive(targetKey, g, cls);
+        } else {
+          const dmg = applyOnHitPassive(actorKey, skill.damage, g, cls);
+          dealDamage(targetKey, dmg);
+          pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]! ${dmg} 피해`);
+        }
+        // 이번 타격 자체는 흡혈 대상이 아니고("이후 2턴동안"), 지금부터 버프가 시작된다
+        actor.lifestealTurns = skill.lifestealTurns;
+        actor.lifestealJustGranted = true;
+        pushLog(cls, `ㄴ ${actorLabel} [${skill.name}] 효과 발동! 이후 ${skill.lifestealTurns}턴간 가하는 피해의 50%를 흡혈한다`);
+        break;
+      }
+      case 'taunt': {
+        // 스킬을 쓴 바로 이번 턴에 상대가 방어/회복을 선택했다면, 이미 처리된 그 효과와 얻은 행동력을 즉시 되돌린다
+        if(targetAct === 'defend' && target.defended){
+          target.defended = false;
+          target.ap = Math.max(0, target.ap - 1);
+          pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]! 상대의 이번 턴 방어와 그로 얻은 행동력을 무효화했다`);
+        } else if(targetAct === 'heal'){
+          target.hp = Math.max(0, target.hp - (target.lastHealApplied||0));
+          target.ap = Math.max(0, target.ap - 2);
+          target.lastHealApplied = 0;
+          pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]! 상대의 이번 턴 회복과 그로 얻은 행동력을 무효화했다`);
+        } else {
+          pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}] 발동!`);
+        }
+        // 다음 1턴 동안 방어/회복을 봉인 (이번 턴은 이미 위에서 즉시 처리했으므로 카운트에서 제외)
+        target.actionSealTurns = 1;
+        target.actionSealJustApplied = true;
+        spawnPopup(targetKey, '도발!', 'block');
+        pushLog(cls, `ㄴ 상대는 다음 1턴 동안 [방어]와 [회복]을 사용할 수 없다`);
         break;
       }
       case 'ai_combo': {
