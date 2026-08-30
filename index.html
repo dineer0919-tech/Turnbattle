@@ -144,6 +144,7 @@
     aspect-ratio:3/4; border-radius:13px;
     background:var(--panel); border:1px solid var(--panel-line);
     display:flex; flex-direction:column; justify-content:flex-end;
+    color:var(--text);
   }
   .char-card.equipped{ border-color:var(--accent-ap); }
   .char-card-img{
@@ -153,6 +154,8 @@
   .char-card-name{
     position:relative; z-index:2; text-align:center; font-weight:900; font-size:11px;
     padding:18px 4px 7px; background:linear-gradient(0deg, #000d 15%, transparent 100%);
+    color:#fff;
+    text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
   }
   .char-card-badge{
     position:absolute; top:5px; right:5px; z-index:3;
@@ -356,6 +359,7 @@
   .shop-card{
     background:var(--panel); border:1px solid var(--panel-line); border-radius:13px;
     padding:8px; display:flex; flex-direction:column; gap:6px;
+    color:var(--text);
   }
   .shop-card.owned{ opacity:.7; }
   .shop-card-img{
@@ -368,7 +372,10 @@
   }
   .shop-card.has-info{ cursor:pointer; }
   .shop-card.has-info:active{ filter:brightness(1.1); }
-  .shop-card-name{ font-weight:900; font-size:11px; text-align:center; line-height:1.3; }
+  .shop-card-name{
+    font-weight:900; font-size:11px; text-align:center; line-height:1.3;
+    color:#fff; text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000;
+  }
   .shop-card-desc{ font-size:11px; color:var(--text-dim); line-height:1.5; text-align:center; }
   .shop-card-btn{ width:100%; padding:7px; border-radius:9px; font-size:10.5px; margin-top:auto; }
 
@@ -1337,12 +1344,13 @@
       data.ownedCharacters.forEach(id=>{ if(CHARACTERS[id]) S.ownedCharacters.add(id); });
     }
     if(Array.isArray(data.ownedSkills)){
-      data.ownedSkills.forEach(id=>{ if(SKILLS[id]) S.ownedSkills.add(id); });
+      // aiOnly 스킬(크레이지 V2 전용 강화 콤보 등)은 유저 저장 데이터로 복원되면 안 된다.
+      data.ownedSkills.forEach(id=>{ if(SKILLS[id] && !SKILLS[id].aiOnly) S.ownedSkills.add(id); });
     }
     if(data.equippedSkill && typeof data.equippedSkill === 'object'){
       Object.keys(data.equippedSkill).forEach(charId=>{
         const skillId = data.equippedSkill[charId];
-        if(CHARACTERS[charId] && (skillId === null || SKILLS[skillId])){
+        if(CHARACTERS[charId] && (skillId === null || (SKILLS[skillId] && !SKILLS[skillId].aiOnly))){
           S.equippedSkill[charId] = skillId;
         }
       });
@@ -1603,7 +1611,8 @@
 
   function useSkillTicket(){
     if((S.inventory.skillTickets||0) <= 0) return;
-    const locked = Object.keys(SKILLS).filter(id => !S.ownedSkills.has(id));
+    // aiOnly 스킬(크레이지 V2 전용 강화 콤보 등)은 유저 풀에서 절대 나오면 안 된다.
+    const locked = Object.keys(SKILLS).filter(id => !SKILLS[id].aiOnly && !S.ownedSkills.has(id));
     S.inventory.skillTickets--;
     if(locked.length === 0){
       PP += PASS_SKILL_TICKET_FALLBACK_PP;
@@ -3543,13 +3552,24 @@
     }
   }
 
+  // ============== 점수 평가: AP를 "선형으로 많을수록 좋다"가 아니라
+  // 카운터(3)·일격(5) 문턱을 넘는 순간 가치가 계단식으로 뛰도록 만든다.
+  // 이래야 "지금 당장 때릴 수 있으니 때린다"보다 "다음 한 방(카운터/일격)을 위해
+  // 아껴둔다"는 진짜 AP 운영이 EV 계산 자체에서 자연스럽게 나온다. ==============
+  function apPotential(ap){
+    let v = ap * 0.5;
+    if(ap >= 3) v += 2.2; // 카운터를 쓸 수 있는 상태
+    if(ap >= 5) v += 3.8; // 일격을 쓸 수 있는 상태
+    return v;
+  }
+
   // 시뮬레이션 결과에 점수를 매김 (관점: op = AI)
   function scoreOutcome(s, gReal){
     let score = 0;
     score += (gReal.me.maxHp - s.me.hp) * 2.2;   // 상대 체력을 많이 깎을수록 가점
     score += (s.op.hp - gReal.op.maxHp) * 2.0;   // 내 체력이 깎이면 감점, 회복하면 가점
-    score += s.op.ap * 1.1;
-    score -= s.me.ap * 0.7;
+    score += apPotential(s.op.ap);
+    score -= apPotential(s.me.ap) * 0.6;         // 상대가 문턱에 다가가는 것도 그만큼 경계
     if(s.me.hp <= 0 && s.op.hp > 0) score += 500;  // 확정 킬
     if(s.op.hp <= 0 && s.me.hp > 0) score -= 500;  // 내가 죽음
     if(s.me.hp <= 0 && s.op.hp <= 0) score -= 60;  // 동귀어진은 피하고 싶음
@@ -3577,6 +3597,34 @@
     return weightedPick(weights);
   }
 
+  // 이번 턴 시뮬레이션 결과(HP/AP)만 반영한 "다음 턴 시점" 근사 게임 상태.
+  // 보호막/스킬 사용 여부 등 세부 상태는 기존 시뮬레이터와 같은 수준의 근사치를
+  // 유지하기 위해 그대로 두고, HP/AP만 갱신한다.
+  function projectState(g, meOutcome, opOutcome){
+    return {
+      ...g,
+      me: { ...g.me, hp: meOutcome.hp, ap: meOutcome.ap },
+      op: { ...g.op, hp: opOutcome.hp, ap: opOutcome.ap },
+    };
+  }
+
+  // 주어진 미래 상황(g2)에서, 같은 상대 성향(dist)을 가정했을 때 AI가 낼 수 있는
+  // "그 다음 턴 최선의 기대값". aiCrazy의 1턴 평가 로직을 한 번 더 재사용해서
+  // "지금 이 선택이 다음 턴에 나를 얼마나 유리한 자리로 데려다주는가"를 어림한다.
+  function bestResponseValue(g2, dist){
+    const legal2 = legalActionsFor(g2.op);
+    let best = -Infinity;
+    legal2.forEach(act2 => {
+      let ev = 0;
+      Object.entries(dist).forEach(([oppAct2, p]) => {
+        const outcome2 = simulateTurn(g2, oppAct2, act2);
+        ev += p * scoreOutcome(outcome2, g2);
+      });
+      if(ev > best) best = ev;
+    });
+    return best === -Infinity ? 0 : best;
+  }
+
   function aiCrazy(g){
     const model = buildPlayerModel(g.history);
     const dist = predictPlayerDist(g, model);
@@ -3589,22 +3637,33 @@
       myLegal = myLegal.filter(a => a !== 'skill');
     }
 
+    // 이번 수만 보고 판단하면 "지금 때릴 수 있으니 때린다"는 근시안적 습관이 그대로 남는다.
+    // 한 수 더 내다봐서, 지금 당장의 작은 이득보다 다음 턴 카운터·일격을 쓸 수 있는 자리를
+    // 만드는 쪽(=AP를 모아뒀다가 결정적일 때 터뜨리는 심리전)이 실제로 더 낫다는 걸
+    // AI 스스로 계산해내게 한다. 할인율(0.5)은 "다음 턴 상대가 뭘 낼지는 조금 더 불확실하다"는
+    // 의미로, 미래 가치를 과신하지 않도록 낮춰서 반영한다.
+    const LOOKAHEAD_DISCOUNT = 0.5;
+
     const evs = {};
     myLegal.forEach(myAct => {
       let ev = 0;
       Object.entries(dist).forEach(([oppAct, p]) => {
         const outcome = simulateTurn(g, oppAct, myAct); // g.me=플레이어, g.op=AI
-        ev += p * scoreOutcome(outcome, g);
+        const immediate = scoreOutcome(outcome, g);
+        const g2 = projectState(g, outcome.me, outcome.op);
+        const future = bestResponseValue(g2, dist);
+        ev += p * (immediate + LOOKAHEAD_DISCOUNT * future);
       });
       // 같은 행동을 계속 반복했을수록 페널티가 급격히 커짐 (2연속부터 체감, 3연속이면 크게 억제)
+      // 2턴 내다보기가 들어가며 EV 전체 스케일이 커진 만큼, 페널티 계수도 비례해서 키웠다.
       const streak = selfActionStreak(g.history, myAct);
-      ev -= streak * streak * 1.8;
+      ev -= streak * streak * 3.2;
       evs[myAct] = ev;
     });
 
-    // 온도를 살짝 올려, EV가 확실히 갈리는 상황(예: 확정 킬)에서는 여전히 최적수를 내면서도
-    // 애매한 우열 사이에서는 매번 같은 그림이 나오지 않도록 자연스러운 변주를 더 남긴다.
-    return softmaxPick(evs, 4.2);
+    // 2턴 내다보기로 EV 편차가 커진 만큼, 온도도 함께 올려서 "확실히 유리한 선택"과
+    // "미묘한 우열" 사이의 체감 확률 차이가 예전과 비슷한 수준으로 유지되게 한다.
+    return softmaxPick(evs, 6.0);
   }
 
 
@@ -3757,7 +3816,7 @@
         <div class="skill-tag" style="border-color:${p.color}; color:${p.color};">패시브 · 상시 발동</div>
       ` : `<div class="empty-state"><div class="t1">보유한 패시브가 없습니다</div></div>`;
     } else if(charPopupState.tab === 'skill'){
-      const owned = Object.values(SKILLS).filter(sk => S.ownedSkills.has(sk.id));
+      const owned = Object.values(SKILLS).filter(sk => !sk.aiOnly && S.ownedSkills.has(sk.id));
       const equippedId = S.equippedSkill[ch.id] || null;
       if(owned.length === 0){
         contentEl.innerHTML = `
@@ -3991,7 +4050,7 @@
   function renderIntermissionSkillList(){
     const listEl = document.getElementById('ri-skill-list');
     const charId = S.selectedCharacter;
-    const owned = Object.values(SKILLS).filter(sk => S.ownedSkills.has(sk.id));
+    const owned = Object.values(SKILLS).filter(sk => !sk.aiOnly && S.ownedSkills.has(sk.id));
     const equippedId = S.equippedSkill[charId] || null;
 
     if(owned.length === 0){
