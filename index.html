@@ -238,6 +238,30 @@
   .inventory-count{ font-size:12px; color:var(--text-dim); margin-top:3px; font-family:'JetBrains Mono',monospace; }
   .inventory-use-btn{ padding:9px 16px; border-radius:10px; font-size:12px; flex:0 0 auto; }
   .inventory-use-btn:disabled{ opacity:.35; }
+  .mailbox-open-btn{ position:relative; }
+  .mailbox-badge{
+    position:absolute; top:-6px; right:-6px; background:var(--accent-crit); color:#fff;
+    font-size:10px; font-weight:900; min-width:16px; height:16px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; padding:0 4px; line-height:1;
+  }
+  .mailbox-list{ display:flex; flex-direction:column; gap:12px; padding:20px 22px; }
+  .mail-card{
+    padding:16px; border-radius:16px; background:var(--panel-alt); border:1px solid var(--panel-line);
+  }
+  .mail-card.claimed{ opacity:.5; }
+  .mail-title{ font-size:14px; font-weight:900; color:var(--text); margin-bottom:6px; }
+  .mail-message{ font-size:12px; line-height:1.6; color:var(--text-dim); white-space:pre-line; margin-bottom:12px; }
+  .mail-rewards{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .mail-reward-chip{
+    font-size:11px; font-weight:700; padding:6px 10px; border-radius:10px;
+    background:var(--panel); color:var(--text); border:1px solid var(--panel-line);
+  }
+  .mail-claim-btn{ width:100%; padding:11px; border-radius:12px; font-size:13px; }
+  .mail-empty{ text-align:center; color:var(--text-dim); font-size:13px; padding:40px 0; }
+  .ticket-picker-desc{ padding:0 22px 14px; font-size:12px; color:var(--text-dim); }
+  #ticket-picker-grid{ padding:0 22px 22px; }
+  .ticket-pick-card{ cursor:pointer; }
+  .ticket-pick-card:active{ filter:brightness(1.15); }
   .boost-active-banner{
     margin:20px 22px 0; padding:12px 16px; border-radius:14px; text-align:center;
     background:color-mix(in srgb, var(--accent-crit) 14%, var(--panel-alt));
@@ -739,6 +763,7 @@
         </div>
         <div class="header-actions">
           <div class="pp-badge" id="pp-badge">💰 0 PP</div>
+          <button class="btn rb-open-btn mailbox-open-btn" id="mailbox-open-btn">✉️ 우편함<span class="mailbox-badge" id="mailbox-badge" style="display:none;">0</span></button>
           <button class="btn rb-open-btn" id="rb-open-btn">📖 룰북</button>
         </div>
       </div>
@@ -841,6 +866,25 @@
     </div>
     <div id="boost-active-banner" class="boost-active-banner" style="display:none;"></div>
     <div class="inventory-list" id="inventory-list"></div>
+  </div>
+
+  <!-- 우편함 (서버 이전 보상 등 공지성 지급) -->
+  <div class="screen" id="screen-mailbox">
+    <div class="back-row">
+      <button class="back-btn" id="mailbox-back">←</button>
+      <div class="disp" style="font-size:20px;">우편함</div>
+    </div>
+    <div class="mailbox-list" id="mailbox-list"></div>
+  </div>
+
+  <!-- 선택권 사용: 캐릭터/컴뱃스킬을 직접 골라서 획득 -->
+  <div class="screen" id="screen-ticket-picker">
+    <div class="back-row">
+      <button class="back-btn" id="ticket-picker-back">←</button>
+      <div class="disp" style="font-size:20px;" id="ticket-picker-title">선택권 사용</div>
+    </div>
+    <div class="ticket-picker-desc" id="ticket-picker-desc">원하는 항목 하나를 골라 획득하세요</div>
+    <div class="char-grid" id="ticket-picker-grid"></div>
   </div>
 
   <!-- 배틀 -->
@@ -999,8 +1043,9 @@
     nickname: '노련한 전투원',            // 프로필 닉네임 (추후 멀티대전에서 서로에게 표시될 예정)
     profileChar: 'spear',                // 프로필 사진으로 쓸 보유 캐릭터 id
     pass: { totalXp:0, claimedLevel:0 }, // 시즌 패스 진행도 (누적 XP + 수령 완료한 레벨)
-    inventory: { charTickets:0, skillTickets:0 }, // 패스로 받은 미사용 획득권
+    inventory: { charTickets:0, skillTickets:0, charSelectTickets:0, skillSelectTickets:0 }, // 패스/우편함으로 받은 미사용 획득권 (랜덤형 2종 + 직접 선택형 2종)
     xpBoost: { multiplier:1, expiresAt:0 },        // 활성화된 XP 부스트 (실시간 만료)
+    mailbox: [],                                    // 공지성 우편함 (서버 이전 보상 등). {id, title, message, rewards, claimed}
   };
 
   const AI_NAMES = { easy:'초급 AI', normal:'중급 AI', hard:'고급 AI', crazy:'크레이지 AI', crazy_v2:'크레이지 AI V2' };
@@ -1274,6 +1319,7 @@
         pass: S.pass,
         inventory: S.inventory,
         xpBoost: S.xpBoost,
+        mailbox: S.mailbox,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     }catch(e){
@@ -1281,45 +1327,79 @@
     }
   }
 
+  // 실제로 데이터 객체(data)를 현재 상태(S/PP)에 적용하는 부분만 따로 뺐다.
+  // loadProgress(localStorage에서 불러오기)와 importSaveCode(붙여넣은 코드로 복원하기)가
+  // 이 함수를 공유해서 쓴다.
+  function applyProgressData(data){
+    if(typeof data.pp === 'number') PP = data.pp;
+    if(data.selectedCharacter && CHARACTERS[data.selectedCharacter]) S.selectedCharacter = data.selectedCharacter;
+    if(Array.isArray(data.ownedCharacters)){
+      data.ownedCharacters.forEach(id=>{ if(CHARACTERS[id]) S.ownedCharacters.add(id); });
+    }
+    if(Array.isArray(data.ownedSkills)){
+      data.ownedSkills.forEach(id=>{ if(SKILLS[id]) S.ownedSkills.add(id); });
+    }
+    if(data.equippedSkill && typeof data.equippedSkill === 'object'){
+      Object.keys(data.equippedSkill).forEach(charId=>{
+        const skillId = data.equippedSkill[charId];
+        if(CHARACTERS[charId] && (skillId === null || SKILLS[skillId])){
+          S.equippedSkill[charId] = skillId;
+        }
+      });
+    }
+    if(typeof data.nickname === 'string' && data.nickname.trim()) S.nickname = data.nickname.trim().slice(0, 12);
+    if(data.profileChar && CHARACTERS[data.profileChar]) S.profileChar = data.profileChar;
+    if(data.pass && typeof data.pass === 'object'){
+      if(typeof data.pass.totalXp === 'number') S.pass.totalXp = Math.max(0, data.pass.totalXp);
+      if(typeof data.pass.claimedLevel === 'number') S.pass.claimedLevel = Math.max(0, Math.min(PASS_MAX_LEVEL, data.pass.claimedLevel));
+    }
+    if(data.inventory && typeof data.inventory === 'object'){
+      if(typeof data.inventory.charTickets === 'number') S.inventory.charTickets = Math.max(0, data.inventory.charTickets);
+      if(typeof data.inventory.skillTickets === 'number') S.inventory.skillTickets = Math.max(0, data.inventory.skillTickets);
+      if(typeof data.inventory.charSelectTickets === 'number') S.inventory.charSelectTickets = Math.max(0, data.inventory.charSelectTickets);
+      if(typeof data.inventory.skillSelectTickets === 'number') S.inventory.skillSelectTickets = Math.max(0, data.inventory.skillSelectTickets);
+    }
+    if(data.xpBoost && typeof data.xpBoost === 'object'){
+      if(typeof data.xpBoost.multiplier === 'number') S.xpBoost.multiplier = data.xpBoost.multiplier;
+      if(typeof data.xpBoost.expiresAt === 'number') S.xpBoost.expiresAt = data.xpBoost.expiresAt;
+    }
+    if(Array.isArray(data.mailbox)){
+      S.mailbox = data.mailbox.filter(m => m && typeof m === 'object' && m.id);
+    }
+  }
+
+  // 서버 이전 공지 우편. "이 우편을 아직 못 받았으면" 지급한다 — localStorage가
+  // 완전히 비어있을 때만 주는 게 아니라, mailbox 안에 이 우편 id가 없으면
+  // (이미 다른 이유로 로컬 저장 기록이 있던 사람 포함) 한 번 넣어준다.
+  // 그래서 새 도메인에 처음 온 사람은 물론, 개발/테스트 중 이미 저장이 쌓인 사람도
+  // 딱 한 번만 자연스럽게 받게 되고, 한 번 받으면(claimed와 무관하게 id로 판단)
+  // 다시는 중복 지급되지 않는다.
+  function ensureMigrationMail(){
+    const already = S.mailbox.some(m => m.id === 'migration_apology_v1');
+    if(already) return;
+    S.mailbox.push({
+      id: 'migration_apology_v1',
+      title: '📦 서버 이전 안내',
+      message: '안녕하세요! 게임 서버를 새 주소로 옮기는 과정에서\n예전 계정의 진행 상황을 그대로 옮겨오지 못했습니다.\n불편을 드려 죄송한 마음을 담아 작은 보상을 드립니다.\n즐거운 대전 되세요!',
+      rewards: { charSelectTickets: 2, skillSelectTickets: 4 },
+      claimed: false,
+    });
+    saveProgress();
+  }
+
   function loadProgress(){
     try{
       const raw = localStorage.getItem(SAVE_KEY);
-      if(!raw) return;
-      const data = JSON.parse(raw);
-      if(typeof data.pp === 'number') PP = data.pp;
-      if(data.selectedCharacter && CHARACTERS[data.selectedCharacter]) S.selectedCharacter = data.selectedCharacter;
-      if(Array.isArray(data.ownedCharacters)){
-        data.ownedCharacters.forEach(id=>{ if(CHARACTERS[id]) S.ownedCharacters.add(id); });
-      }
-      if(Array.isArray(data.ownedSkills)){
-        data.ownedSkills.forEach(id=>{ if(SKILLS[id]) S.ownedSkills.add(id); });
-      }
-      if(data.equippedSkill && typeof data.equippedSkill === 'object'){
-        Object.keys(data.equippedSkill).forEach(charId=>{
-          const skillId = data.equippedSkill[charId];
-          if(CHARACTERS[charId] && (skillId === null || SKILLS[skillId])){
-            S.equippedSkill[charId] = skillId;
-          }
-        });
-      }
-      if(typeof data.nickname === 'string' && data.nickname.trim()) S.nickname = data.nickname.trim().slice(0, 12);
-      if(data.profileChar && CHARACTERS[data.profileChar]) S.profileChar = data.profileChar;
-      if(data.pass && typeof data.pass === 'object'){
-        if(typeof data.pass.totalXp === 'number') S.pass.totalXp = Math.max(0, data.pass.totalXp);
-        if(typeof data.pass.claimedLevel === 'number') S.pass.claimedLevel = Math.max(0, Math.min(PASS_MAX_LEVEL, data.pass.claimedLevel));
-      }
-      if(data.inventory && typeof data.inventory === 'object'){
-        if(typeof data.inventory.charTickets === 'number') S.inventory.charTickets = Math.max(0, data.inventory.charTickets);
-        if(typeof data.inventory.skillTickets === 'number') S.inventory.skillTickets = Math.max(0, data.inventory.skillTickets);
-      }
-      if(data.xpBoost && typeof data.xpBoost === 'object'){
-        if(typeof data.xpBoost.multiplier === 'number') S.xpBoost.multiplier = data.xpBoost.multiplier;
-        if(typeof data.xpBoost.expiresAt === 'number') S.xpBoost.expiresAt = data.xpBoost.expiresAt;
+      if(raw){
+        const data = JSON.parse(raw);
+        applyProgressData(data);
       }
     }catch(e){
       console.warn('불러오기 실패 (저장된 데이터 손상):', e);
     }
+    ensureMigrationMail();
   }
+
   const DIFF_XP_MULT = { easy:1.0, normal:1.15, hard:1.4, crazy:1.8, crazy_v2:2.6, multi:1.5 }; // PP와는 별개로, 더 완만한 난이도 배율 사용
 
   // XP 부스트 상품: 전부 동일하게 XP 2배, 기간만 다름 (구매 시 남은 시간에 이어붙는 방식)
@@ -1386,6 +1466,7 @@
 
   function updatePPDisplay(){
     document.getElementById('pp-badge').textContent = `💰 ${PP.toLocaleString()} PP`;
+    updateMailboxBadge();
     saveProgress();
   }
   function addPP(amount){
@@ -1568,8 +1649,10 @@
     const listEl = document.getElementById('inventory-list');
     const charCount = S.inventory.charTickets || 0;
     const skillCount = S.inventory.skillTickets || 0;
+    const charSelectCount = S.inventory.charSelectTickets || 0;
+    const skillSelectCount = S.inventory.skillSelectTickets || 0;
 
-    if(charCount === 0 && skillCount === 0){
+    if(charCount === 0 && skillCount === 0 && charSelectCount === 0 && skillSelectCount === 0){
       listEl.innerHTML = `
         <div class="empty-state" style="padding:50px 10px;">
           <div class="ic">🎒</div>
@@ -1596,14 +1679,180 @@
         </div>
         <button class="btn btn-primary inventory-use-btn" id="use-skill-ticket-btn" ${skillCount<=0?'disabled':''}>사용하기</button>
       </div>
+      <div class="inventory-card">
+        <div class="inventory-icon">🎫</div>
+        <div class="inventory-info">
+          <div class="inventory-name">캐릭터 선택권</div>
+          <div class="inventory-count">보유 ${charSelectCount}개 · 원하는 캐릭터를 직접 골라요</div>
+        </div>
+        <button class="btn btn-primary inventory-use-btn" id="use-char-select-ticket-btn" ${charSelectCount<=0?'disabled':''}>사용하기</button>
+      </div>
+      <div class="inventory-card">
+        <div class="inventory-icon">📜</div>
+        <div class="inventory-info">
+          <div class="inventory-name">컴뱃스킬 선택권</div>
+          <div class="inventory-count">보유 ${skillSelectCount}개 · 원하는 컴뱃스킬을 직접 골라요</div>
+        </div>
+        <button class="btn btn-primary inventory-use-btn" id="use-skill-select-ticket-btn" ${skillSelectCount<=0?'disabled':''}>사용하기</button>
+      </div>
     `;
     const charBtn = document.getElementById('use-char-ticket-btn');
     const skillBtn = document.getElementById('use-skill-ticket-btn');
+    const charSelectBtn = document.getElementById('use-char-select-ticket-btn');
+    const skillSelectBtn = document.getElementById('use-skill-select-ticket-btn');
     if(charCount > 0) charBtn.addEventListener('click', useCharTicket);
     if(skillCount > 0) skillBtn.addEventListener('click', useSkillTicket);
+    if(charSelectCount > 0) charSelectBtn.addEventListener('click', ()=> openTicketPicker('char'));
+    if(skillSelectCount > 0) skillSelectBtn.addEventListener('click', ()=> openTicketPicker('skill'));
   }
 
   document.getElementById('inventory-back').addEventListener('click', ()=> goHome('profile'));
+
+  /* ============== 선택권 사용: 랜덤이 아니라 직접 골라서 획득 ============== */
+  function openTicketPicker(type){
+    if(type === 'char' && (S.inventory.charSelectTickets||0) <= 0) return;
+    if(type === 'skill' && (S.inventory.skillSelectTickets||0) <= 0) return;
+    S.ticketPickerType = type;
+    showScreen('screen-ticket-picker');
+    renderTicketPicker();
+  }
+
+  function renderTicketPicker(){
+    const type = S.ticketPickerType;
+    const titleEl = document.getElementById('ticket-picker-title');
+    const descEl = document.getElementById('ticket-picker-desc');
+    const gridEl = document.getElementById('ticket-picker-grid');
+
+    if(type === 'char'){
+      titleEl.textContent = '캐릭터 선택권 사용';
+      const locked = Object.values(CHARACTERS).filter(ch => !ch.aiOnly && !S.ownedCharacters.has(ch.id));
+      if(locked.length === 0){
+        descEl.textContent = '이미 모든 캐릭터를 보유 중이에요';
+        gridEl.innerHTML = `<div class="mail-empty">🎉 더 고를 캐릭터가 없어요</div>`;
+        return;
+      }
+      descEl.textContent = `획득할 캐릭터를 하나 골라주세요 (보유 선택권 ${S.inventory.charSelectTickets}개)`;
+      gridEl.innerHTML = locked.map(ch => `
+        <button class="char-card ticket-pick-card" data-id="${ch.id}">
+          <img src="${ch.portraitImg}" class="char-card-img" alt="${ch.name}">
+          <div class="char-card-name">${ch.name}</div>
+        </button>
+      `).join('');
+      gridEl.querySelectorAll('.ticket-pick-card').forEach(btn=>{
+        btn.addEventListener('click', ()=> confirmTicketPick('char', btn.dataset.id));
+      });
+    } else {
+      titleEl.textContent = '컴뱃스킬 선택권 사용';
+      const locked = Object.values(SKILLS).filter(sk => !sk.aiOnly && !S.ownedSkills.has(sk.id));
+      if(locked.length === 0){
+        descEl.textContent = '이미 모든 컴뱃스킬을 보유 중이에요';
+        gridEl.innerHTML = `<div class="mail-empty">🎉 더 고를 컴뱃스킬이 없어요</div>`;
+        return;
+      }
+      descEl.textContent = `획득할 컴뱃스킬을 하나 골라주세요 (보유 선택권 ${S.inventory.skillSelectTickets}개)`;
+      gridEl.innerHTML = locked.map(sk => `
+        <button class="shop-card ticket-pick-card" data-id="${sk.id}">
+          <div class="shop-card-icon" style="background:${sk.color}22; border-color:${sk.color}66;">📜</div>
+          <div class="shop-card-name">${sk.name}</div>
+        </button>
+      `).join('');
+      gridEl.querySelectorAll('.ticket-pick-card').forEach(btn=>{
+        btn.addEventListener('click', ()=> confirmTicketPick('skill', btn.dataset.id));
+      });
+    }
+  }
+
+  function confirmTicketPick(type, id){
+    if(type === 'char'){
+      if((S.inventory.charSelectTickets||0) <= 0 || !CHARACTERS[id] || S.ownedCharacters.has(id)) return;
+      S.inventory.charSelectTickets--;
+      S.ownedCharacters.add(id);
+      showToast(`🎫 캐릭터 [${CHARACTERS[id].name}] 획득!`);
+    } else {
+      if((S.inventory.skillSelectTickets||0) <= 0 || !SKILLS[id] || S.ownedSkills.has(id)) return;
+      S.inventory.skillSelectTickets--;
+      S.ownedSkills.add(id);
+      showToast(`📜 컴뱃스킬 [${SKILLS[id].name}] 획득!`);
+    }
+    saveProgress();
+    openInventory();
+  }
+
+  document.getElementById('ticket-picker-back').addEventListener('click', openInventory);
+
+  /* ============== 우편함 (서버 이전 보상 등 공지성 지급) ============== */
+  function unclaimedMailCount(){
+    return S.mailbox.filter(m => !m.claimed).length;
+  }
+
+  function updateMailboxBadge(){
+    const badge = document.getElementById('mailbox-badge');
+    const count = unclaimedMailCount();
+    if(count > 0){
+      badge.textContent = count > 9 ? '9+' : String(count);
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function openMailbox(){
+    showScreen('screen-mailbox');
+    renderMailbox();
+  }
+
+  function renderMailbox(){
+    const listEl = document.getElementById('mailbox-list');
+    if(S.mailbox.length === 0){
+      listEl.innerHTML = `<div class="mail-empty">📭 받은 우편이 없어요</div>`;
+      return;
+    }
+    // 안 받은 것부터, 그 다음 받은 것 순서로 보여준다
+    const sorted = S.mailbox.slice().sort((a, b) => (a.claimed === b.claimed) ? 0 : (a.claimed ? 1 : -1));
+    listEl.innerHTML = sorted.map(mail => {
+      const r = mail.rewards || {};
+      const chips = [];
+      if(r.charTickets) chips.push(`<div class="mail-reward-chip">🎟 랜덤 캐릭터 획득권 x${r.charTickets}</div>`);
+      if(r.skillTickets) chips.push(`<div class="mail-reward-chip">🧧 랜덤 컴뱃스킬 획득권 x${r.skillTickets}</div>`);
+      if(r.charSelectTickets) chips.push(`<div class="mail-reward-chip">🎫 캐릭터 선택권 x${r.charSelectTickets}</div>`);
+      if(r.skillSelectTickets) chips.push(`<div class="mail-reward-chip">📜 컴뱃스킬 선택권 x${r.skillSelectTickets}</div>`);
+      if(r.pp) chips.push(`<div class="mail-reward-chip">💰 PP x${r.pp}</div>`);
+      return `
+        <div class="mail-card ${mail.claimed ? 'claimed' : ''}">
+          <div class="mail-title">${mail.title}</div>
+          <div class="mail-message">${mail.message}</div>
+          ${chips.length ? `<div class="mail-rewards">${chips.join('')}</div>` : ''}
+          ${mail.claimed
+            ? `<div class="pass-status-badge done" style="display:inline-block;">수령완료</div>`
+            : `<button class="btn btn-primary mail-claim-btn" data-mail-id="${mail.id}">모두 받기</button>`
+          }
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.mail-claim-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> claimMail(btn.dataset.mailId));
+    });
+  }
+
+  function claimMail(mailId){
+    const mail = S.mailbox.find(m => m.id === mailId);
+    if(!mail || mail.claimed) return;
+    mail.claimed = true;
+    const r = mail.rewards || {};
+    if(r.charTickets) S.inventory.charTickets = (S.inventory.charTickets||0) + r.charTickets;
+    if(r.skillTickets) S.inventory.skillTickets = (S.inventory.skillTickets||0) + r.skillTickets;
+    if(r.charSelectTickets) S.inventory.charSelectTickets = (S.inventory.charSelectTickets||0) + r.charSelectTickets;
+    if(r.skillSelectTickets) S.inventory.skillSelectTickets = (S.inventory.skillSelectTickets||0) + r.skillSelectTickets;
+    if(r.pp) PP += r.pp;
+    updatePPDisplay(); // 저장까지 함께 처리
+    updateMailboxBadge();
+    showToast('📬 우편함 보상을 수령했어요!');
+    renderMailbox();
+  }
+
+  document.getElementById('mailbox-open-btn').addEventListener('click', openMailbox);
+  document.getElementById('mailbox-back').addEventListener('click', ()=> goHome('main'));
 
   function buySkill(skillId){
     const sk = SKILLS[skillId];
@@ -3307,6 +3556,19 @@
     return score;
   }
 
+  // [자기 패턴 방지] 상대의 습관은 학습하면서 정작 자기 자신의 습관은 전혀 신경 쓰지 않다 보니,
+  // "AP 있으면 무조건 공격 → AP 0 되면 무조건 회복 → 다시 공격" 같은 뻔한 사이클이 그대로 노출되어
+  // 사람이 몇 판만 보면 완전히 외워서 대처할 수 있었다. 최근 자신의 행동을 돌아보고,
+  // 같은 행동을 연달아 반복할수록 그 행동의 점수를 깎아 강제로 다른 선택지를 섞어 쓰도록 만든다.
+  function selfActionStreak(history, act){
+    const ownMoves = history.filter(h => h.who === 'op');
+    let streak = 0;
+    for(let i = ownMoves.length - 1; i >= 0; i--){
+      if(ownMoves[i].act === act) streak++; else break;
+    }
+    return streak;
+  }
+
   function softmaxPick(evs, temperature){
     const keys = Object.keys(evs);
     const maxEv = Math.max(...keys.map(k => evs[k]));
@@ -3334,11 +3596,15 @@
         const outcome = simulateTurn(g, oppAct, myAct); // g.me=플레이어, g.op=AI
         ev += p * scoreOutcome(outcome, g);
       });
+      // 같은 행동을 계속 반복했을수록 페널티가 급격히 커짐 (2연속부터 체감, 3연속이면 크게 억제)
+      const streak = selfActionStreak(g.history, myAct);
+      ev -= streak * streak * 1.8;
       evs[myAct] = ev;
     });
 
-    // 거의 항상 최적수를 두되, 아주 낮은 온도로 미세한 변주만 남겨 완전한 결정론을 피함
-    return softmaxPick(evs, 3.2);
+    // 온도를 살짝 올려, EV가 확실히 갈리는 상황(예: 확정 킬)에서는 여전히 최적수를 내면서도
+    // 애매한 우열 사이에서는 매번 같은 그림이 나오지 않도록 자연스러운 변주를 더 남긴다.
+    return softmaxPick(evs, 4.2);
   }
 
 
