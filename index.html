@@ -400,6 +400,14 @@
     color:var(--accent-ap); background:var(--panel-alt); border:1px solid var(--panel-line);
     padding:16px 20px; border-radius:16px;
   }
+  .v2lobby-list{ display:flex; flex-direction:column; gap:8px; width:100%; padding:0 24px; }
+  .v2lobby-slot{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px;
+    background:var(--panel-alt); border:1px solid var(--panel-line); font-size:13px; font-weight:700;
+  }
+  .v2lobby-slot.empty{ opacity:.4; font-style:italic; }
+  .v2lobby-slot .dot{ width:8px; height:8px; border-radius:50%; background:var(--text-dim); flex:0 0 auto; }
+  .v2lobby-slot.filled .dot{ background:var(--accent-ap); }
   .back-row{ display:flex; align-items:center; gap:10px; margin-bottom:18px; }
   .back-btn{ background:none; border:none; color:var(--text-dim); font-size:20px; cursor:pointer; }
   .diff-card{
@@ -906,6 +914,57 @@
       <button class="btn" id="btn-copy-code" style="padding:10px 18px; border-radius:12px; font-size:12px;">코드 복사</button>
       <div class="spinner" style="margin-top:10px;"></div>
       <div class="mono" id="multi-wait-text" style="color:var(--text-dim); font-size:13px;">상대를 기다리는 중...</div>
+    </div>
+  </div>
+
+  <!-- 2VS2 메뉴: AI vs 온라인 선택 -->
+  <div class="screen" id="screen-2v2-menu">
+    <div class="back-row">
+      <button class="back-btn" id="v2menu-back">←</button>
+      <div class="disp" style="font-size:20px;">2VS2 <span class="beta-tag">BETA</span></div>
+    </div>
+    <button class="mode-btn hot" id="btn-2v2-ai">
+      <div class="ic">🤖</div>
+      <div class="txt"><div class="t1">AI 상대</div><div class="t2">아군 봇 1명과 팀을 이뤄 적 2명과 대결</div></div>
+    </button>
+    <button class="mode-btn" id="btn-2v2-online">
+      <div class="ic">🌐</div>
+      <div class="txt"><div class="t1">온라인 (4인)</div><div class="t2">실제 유저 3명과 함께, 무작위로 2팀을 나눠 대결</div></div>
+    </button>
+  </div>
+
+  <!-- 2VS2 온라인 메뉴: 방 만들기 / 참가하기 -->
+  <div class="screen" id="screen-2v2-online-menu">
+    <div class="back-row">
+      <button class="back-btn" id="v2online-menu-back">←</button>
+      <div class="disp" style="font-size:20px;">2VS2 온라인</div>
+    </div>
+    <div id="v2online-menu-content">
+      <button class="mode-btn hot" id="btn-2v2-create-room">
+        <div class="ic">🆕</div>
+        <div class="txt"><div class="t1">방 만들기</div><div class="t2">코드를 생성하고 3명을 기다립니다</div></div>
+      </button>
+      <div class="panel-card">
+        <div style="font-weight:900; font-size:14px; margin-bottom:10px;">방 참가하기</div>
+        <input id="v2join-code-input" class="join-input" maxlength="6" placeholder="코드 6자리 입력" autocomplete="off" autocapitalize="characters">
+        <button class="btn btn-primary" id="btn-2v2-join-room" style="width:100%; margin-top:10px; padding:13px; border-radius:12px;">참가하기</button>
+      </div>
+      <div class="multi-status mono" id="v2online-menu-status"></div>
+    </div>
+  </div>
+
+  <!-- 2VS2 온라인 대기실: 4명 모일 때까지 실시간으로 인원 확인 -->
+  <div class="screen" id="screen-2v2-lobby">
+    <div class="back-row">
+      <button class="back-btn" id="v2lobby-back">←</button>
+      <div class="disp" style="font-size:20px;">대기실 (0/4)</div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:14px; flex:1; justify-content:center;">
+      <div class="mono" style="color:var(--text-dim); font-size:12px;">방 코드</div>
+      <div class="room-code-display" id="v2room-code-display">------</div>
+      <button class="btn" id="v2btn-copy-code" style="padding:10px 18px; border-radius:12px; font-size:12px;">코드 복사</button>
+      <div class="v2lobby-list" id="v2lobby-list"></div>
+      <div class="mono" id="v2lobby-text" style="color:var(--text-dim); font-size:13px;">인원을 기다리는 중...</div>
     </div>
   </div>
 
@@ -1595,6 +1654,146 @@
     };
   }
 
+  /* ============== 2VS2 온라인 (4인) ==============
+     1:1 온라인 대전과 같은 신뢰 모델을 그대로 따른다: 서버는 그냥 값을 전달만 하고,
+     4명의 클라이언트가 각자 같은 입력을 가지고 로컬에서 동일하게 판정을 계산한다.
+     방/턴 동기화 패턴도 rooms/{code} 구조를 4인용으로 그대로 확장한 것뿐이다. */
+  function resetV2OnlineState(){
+    S.v2online = {
+      code:null, mySlot:null, roomRef:null, lobbyListenerRef:null, lobbyListener:null,
+      turnIndex:0, turnRef:null, turnListener:null,
+      liveListenerRef:null, liveListener:null,
+      isCreator:false,
+    };
+  }
+
+  const V2_SLOTS = ['p1','p2','p3','p4'];
+
+  function create2v2Room(){
+    if(!FIREBASE_READY){ showToast('Firebase 설정이 필요해요'); return; }
+    const statusEl = document.getElementById('v2online-menu-status');
+    statusEl.textContent = '방을 만드는 중...';
+
+    const code = generateRoomCode();
+    const roomRef = fbDb().ref('rooms2v2/' + code);
+    roomRef.set({
+      status: 'lobby',
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+      players: { p1: { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true } },
+    }).then(()=>{
+      resetV2OnlineState();
+      S.v2online.code = code;
+      S.v2online.mySlot = 'p1';
+      S.v2online.isCreator = true;
+      S.v2online.roomRef = roomRef;
+      roomRef.child('players/p1/connected').onDisconnect().set(false);
+
+      document.getElementById('v2room-code-display').textContent = code;
+      showScreen('screen-2v2-lobby');
+      listenV2Lobby();
+    }).catch(err=>{
+      console.error('2VS2 방 생성 실패:', err);
+      statusEl.textContent = '방 생성에 실패했어요. 다시 시도해주세요.';
+    });
+  }
+
+  function join2v2Room(rawCode){
+    if(!FIREBASE_READY){ showToast('Firebase 설정이 필요해요'); return; }
+    const statusEl = document.getElementById('v2online-menu-status');
+    const code = (rawCode || '').toUpperCase().trim();
+    if(code.length < 4){ statusEl.textContent = '코드를 정확히 입력해주세요.'; return; }
+
+    statusEl.textContent = '참가하는 중...';
+    const roomRef = fbDb().ref('rooms2v2/' + code);
+
+    // 트랜잭션 업데이트 함수는 충돌 시 여러 번 재시도될 수 있는데, 그때마다 내가 어느 슬롯을
+    // 잡았는지가 달라질 수 있다. 마지막으로 실행된(=실제로 커밋된) 슬롯 값을 여기 담아둔다.
+    let capturedSlot = null;
+
+    roomRef.transaction(room=>{
+      if(room === null) return room;             // 존재하지 않는 방
+      if(room.status !== 'lobby') return;         // 이미 시작됐거나 종료된 방
+      room.players = room.players || {};
+      const mySlot = V2_SLOTS.find(s => !room.players[s]);
+      if(!mySlot) return;                          // 이미 4명 꽉 참
+      capturedSlot = mySlot;
+      room.players[mySlot] = { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true };
+      // 이 참가로 4명이 다 찼다면, 이 자리에서 바로 팀을 무작위로 섞고 시작 상태로 전환한다
+      // (트랜잭션 안에서 처리해야 여러 명이 동시에 마지막 자리를 다투는 경쟁 상태가 안전하게 해결된다)
+      const filledSlots = V2_SLOTS.filter(s => room.players[s]);
+      if(filledSlots.length === 4){
+        const shuffled = shuffleTeams(filledSlots);
+        room.teamOf = shuffled.teamOf;
+        room.startActive = shuffled.startActive;
+        room.status = 'active';
+      }
+      return room;
+    }).then(result=>{
+      if(!result.committed || !result.snapshot.exists() || !capturedSlot){
+        statusEl.textContent = '참가할 수 없는 방이에요 (코드 확인, 정원 초과, 또는 이미 시작된 방).';
+        return;
+      }
+      const room = result.snapshot.val();
+      resetV2OnlineState();
+      S.v2online.code = code;
+      S.v2online.mySlot = capturedSlot;
+      S.v2online.isCreator = false;
+      S.v2online.roomRef = roomRef;
+      roomRef.child(`players/${capturedSlot}/connected`).onDisconnect().set(false);
+
+      document.getElementById('v2room-code-display').textContent = code;
+      showScreen('screen-2v2-lobby');
+      listenV2Lobby();
+    }).catch(err=>{
+      console.error('2VS2 방 참가 실패:', err);
+      statusEl.textContent = '참가에 실패했어요. 다시 시도해주세요.';
+    });
+  }
+
+  // 4명의 슬롯을 받아 무작위로 2팀(A/B)으로 나누고, 각 팀 안에서 누가 먼저 선봉인지도 무작위로 정한다.
+  function shuffleTeams(slots){
+    const shuffled = slots.slice();
+    for(let i = shuffled.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    const teamOf = {};
+    const startActive = {};
+    [shuffled[0], shuffled[1]].forEach((s, i) => { teamOf[s] = 'A'; startActive[s] = (i === 0); });
+    [shuffled[2], shuffled[3]].forEach((s, i) => { teamOf[s] = 'B'; startActive[s] = (i === 0); });
+    return { teamOf, startActive };
+  }
+
+  function renderV2Lobby(room){
+    const list = document.getElementById('v2lobby-list');
+    const players = (room && room.players) || {};
+    const filled = V2_SLOTS.filter(s => players[s]).length;
+    document.querySelector('#screen-2v2-lobby .disp').textContent = `대기실 (${filled}/4)`;
+    list.innerHTML = V2_SLOTS.map(s=>{
+      const p = players[s];
+      if(!p) return `<div class="v2lobby-slot empty"><span class="dot"></span>비어있음</div>`;
+      const me = s === S.v2online.mySlot ? ' (나)' : '';
+      return `<div class="v2lobby-slot filled"><span class="dot"></span>${p.nickname}${me}</div>`;
+    }).join('');
+    document.getElementById('v2lobby-text').textContent = filled < 4 ? '인원을 기다리는 중...' : '팀 배정 중...';
+  }
+
+  function listenV2Lobby(){
+    const V = S.v2online;
+    const roomRef = fbDb().ref('rooms2v2/' + V.code);
+    const listener = roomRef.on('value', snap=>{
+      const room = snap.val();
+      if(!room) return;
+      renderV2Lobby(room);
+      if(room.status === 'active' && room.teamOf && room.startActive){
+        roomRef.off('value', listener);
+        startBattle2v2Online(room);
+      }
+    });
+    V.lobbyListenerRef = roomRef;
+    V.lobbyListener = listener;
+  }
+
   function pickRandomCharacter(){
     const keys = Object.keys(CHARACTERS).filter(id => !CHARACTERS[id].aiOnly); // 크레이지 V2 전용 강화 변종은 일반 랜덤 매칭 풀에서 제외
     return keys[Math.floor(Math.random() * keys.length)];
@@ -2167,6 +2366,8 @@
     clearTimeout(S.resultTimer);
     resetBattleFX();
     if(S.mode === 'multi'){ leaveMultiRoom(); }
+    if(S.mode === 'v2online'){ leaveV2OnlineRoom(); }
+    S.team2v2 = null;
     S.tab = tab || S.tab || 'main';
     showScreen('screen-home');
     renderHome();
@@ -2201,7 +2402,7 @@
         </button>
         <button class="mode-btn" id="btn-2v2">
           <div class="ic">👥</div>
-          <div class="txt"><div class="t1">2VS2 [AI] <span class="beta-tag">BETA</span></div><div class="t2">아군 봇 1명과 팀을 이뤄 적 2명과 대결</div></div>
+          <div class="txt"><div class="t1">2VS2 <span class="beta-tag">BETA</span></div><div class="t2">2명씩 팀을 이뤄 대결 (AI 또는 온라인)</div></div>
         </button>
       `;
       document.getElementById('btn-single').onclick = ()=> showScreen('screen-difficulty');
@@ -2212,7 +2413,7 @@
         }
         openMultiMenu();
       };
-      document.getElementById('btn-2v2').onclick = ()=> start2v2Battle();
+      document.getElementById('btn-2v2').onclick = ()=> showScreen('screen-2v2-menu');
     } else if(S.tab==='shop'){
       desc.textContent = '캐릭터와 컴뱃스킬을 구매할 수 있는 공간';
       c.innerHTML = `
@@ -2544,7 +2745,7 @@
     document.getElementById('switch-toggle-btn').style.display = 'none';
     document.getElementById('switch-request-banner').style.display = 'none';
     document.getElementById('screen-battle').classList.remove('switch-alert');
-    if(S.mode !== 'ai2v2') S.team2v2 = null;
+    if(S.mode !== 'ai2v2' && S.mode !== 'v2online') S.team2v2 = null;
     renderSkillButton();
     resetBattleFX();
     document.getElementById('battle-log').innerHTML = '';
@@ -2692,6 +2893,17 @@
   // 자발적 교체 (선봉+벤치 둘 다 교체 요청을 켜놓은 경우 성사). 벤치로 빠지는 쪽은 상태를 그대로
   // 통째로 보관해두기만 하고 아무것도 건드리지 않으므로, 신경독/에너지 등 모든 타이머가
   // 자동으로 "멈춘 채" 보존된다. 필드로 올라오는 쪽은 최소한의 안전판으로 보호막 5를 즉시 받는다.
+  // 온라인 2VS2에서는 어느 "슬롯"(실제 사람)이 지금 선봉/벤치인지도 같이 추적해야
+  // 다음 턴에 누구의 입력을 선봉/벤치 자리에 꽂을지 알 수 있다. AI 모드에서는 이 필드들이
+  // 아예 없으므로 아래 swap은 조용히 건너뛴다.
+  function swapSlotTracking(team, side){
+    if(side === 'me'){
+      if(team.myActiveSlot){ const tmp = team.myActiveSlot; team.myActiveSlot = team.myBenchSlot; team.myBenchSlot = tmp; }
+    } else {
+      if(team.enemyActiveSlot){ const tmp = team.enemyActiveSlot; team.enemyActiveSlot = team.enemyBenchSlot; team.enemyBenchSlot = tmp; }
+    }
+  }
+
   function performVoluntarySwitch2v2(side){
     const g = S.game;
     const team = S.team2v2;
@@ -2704,6 +2916,7 @@
     g[side] = incoming;
     team[benchKey] = outgoing;
     if(side === 'me') team.meActiveIsPlayer = !team.meActiveIsPlayer;
+    swapSlotTracking(team, side);
     pushLog('sys', `🔄 ${side==='me'?'내':'상대'} 팀 교체 성사! [${CHARACTERS[outgoing.charKey].name}] → [${CHARACTERS[incoming.charKey].name}] (보호막 5 획득)`);
     refreshFighterDisplay(side);
   }
@@ -2722,6 +2935,7 @@
     g[side] = incoming;
     team[benchKey] = { alive:false, charKey: fallen.charKey, hp:0, maxHp: fallen.maxHp };
     if(side === 'me') team.meActiveIsPlayer = !team.meActiveIsPlayer;
+    swapSlotTracking(team, side);
     pushLog('sys', `💀 ${side==='me'?'내':'상대'} 선봉 [${CHARACTERS[fallen.charKey].name}]이(가) 쓰러져, 벤치의 [${CHARACTERS[incoming.charKey].name}]이(가) 급히 투입된다! (보호막 5)`);
     refreshFighterDisplay(side);
   }
@@ -2948,12 +3162,143 @@
     resolveTurn(meFinalAct, opFinalAct);
   }
 
+  // ============== 2VS2 온라인 전투 시작/진행 ==============
+  // 로비에서 팀이 확정된 room 데이터를 받아, 이 클라이언트 기준으로 "나(g.me)"와 "상대(g.op)"를
+  // 세팅한다. 이후 실제 전투 판정은 AI 버전과 100% 동일한 resolve2v2Turn/performVoluntarySwitch2v2
+  // 등을 그대로 재사용 — 4명의 실제 입력을 어떻게 모아오는지만 다르다.
+  function startBattle2v2Online(room){
+    S.mode = 'v2online';
+    S.difficulty = 'ai2v2'; // XP 배율은 2VS2 공용 값을 그대로 사용
+    const V = S.v2online;
+    const mySlot = V.mySlot;
+    const myTeam = room.teamOf[mySlot];
+    const teammateSlot = V2_SLOTS.find(s => s !== mySlot && room.teamOf[s] === myTeam);
+    const enemySlots = V2_SLOTS.filter(s => room.teamOf[s] !== myTeam);
+    const myActiveSlot = room.startActive[mySlot] ? mySlot : teammateSlot;
+    const myBenchSlot = myActiveSlot === mySlot ? teammateSlot : mySlot;
+    const enemyActiveSlot = room.startActive[enemySlots[0]] ? enemySlots[0] : enemySlots[1];
+    const enemyBenchSlot = enemyActiveSlot === enemySlots[0] ? enemySlots[1] : enemySlots[0];
+    const p = room.players;
+
+    S.team2v2HpMult = 1;
+    enterBattleUI(
+      p[myActiveSlot].charKey, p[enemyActiveSlot].charKey,
+      p[myActiveSlot].skillId, p[enemyActiveSlot].skillId,
+      p[myActiveSlot].nickname, p[enemyActiveSlot].nickname,
+      p[myBenchSlot].nickname, p[enemyBenchSlot].nickname
+    );
+
+    S.team2v2 = {
+      meBench: createFighterState(p[myBenchSlot].charKey, p[myBenchSlot].skillId, 1),
+      opBench: createFighterState(p[enemyBenchSlot].charKey, p[enemyBenchSlot].skillId, 1),
+      meActiveIsPlayer: (myActiveSlot === mySlot), // "내 슬롯이 지금 선봉인가"라는 뜻으로 그대로 재사용
+      mySlot, teammateSlot,
+      myActiveSlot, myBenchSlot, enemyActiveSlot, enemyBenchSlot,
+    };
+    renderTeam2v2Bench();
+  }
+
+  function startTurn2v2Online(){
+    const g = S.game;
+    const team = S.team2v2;
+    const V = S.v2online;
+    g.pendingMeAct = null;
+    g.pendingSwitchReq = false;
+    g.locked = false;
+
+    const meIsPlayerActive = team.meActiveIsPlayer;
+    document.getElementById('action-grid').style.display = meIsPlayerActive ? 'grid' : 'none';
+    document.getElementById('bench-action-grid').style.display = meIsPlayerActive ? 'none' : 'grid';
+
+    const switchBtn = document.getElementById('switch-toggle-btn');
+    // 온라인에선 팀원이 항상 사람이라, 살아있는 한 교체 요청은 늘 열려있다
+    switchBtn.style.display = (team.meBench.alive) ? 'flex' : 'none';
+    switchBtn.classList.remove('active', 'pulse');
+    switchBtn.disabled = false;
+
+    const banner = document.getElementById('switch-request-banner');
+    const screenEl = document.getElementById('screen-battle');
+    banner.style.display = 'none';
+    screenEl.classList.remove('switch-alert');
+
+    // 팀원(같은 편 사람)이 지금 이 순간 교체를 원하는지 실시간으로 구독 — 상대 팀 정보는 절대 안 봄
+    const liveRef = fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/live/${team.teammateSlot}`);
+    const liveListener = liveRef.on('value', snap=>{
+      const wants = !!snap.val();
+      banner.style.display = wants ? 'block' : 'none';
+      screenEl.classList.toggle('switch-alert', wants);
+      switchBtn.classList.toggle('pulse', wants);
+    });
+    V.liveListenerRef = liveRef;
+    V.liveListener = liveListener;
+
+    document.querySelectorAll('.act-btn').forEach(b=>b.classList.remove('selected'));
+    document.getElementById('thinking-ind').style.visibility = 'visible';
+    renderBattle();
+
+    let remainMs = TURN_MS_2V2;
+    const fill = document.getElementById('timer-fill');
+    const num = document.getElementById('timer-num');
+    fill.style.width = '100%';
+    fill.classList.remove('urgent');
+    num.textContent = String(Math.ceil(TURN_MS_2V2/1000));
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(()=>{
+      remainMs -= 100;
+      const pct = Math.max(0, remainMs/TURN_MS_2V2*100);
+      fill.style.width = pct + '%';
+      if(remainMs <= 3000) fill.classList.add('urgent');
+      const secLeft = Math.max(0, Math.ceil(remainMs/1000));
+      num.textContent = String(secLeft);
+      if(remainMs <= 0){
+        clearInterval(timerInterval);
+        g.locked = true;
+        document.querySelectorAll('.act-btn').forEach(b=>b.disabled = true);
+        switchBtn.disabled = true;
+        document.getElementById('thinking-ind').style.visibility = 'hidden';
+        liveRef.off('value', liveListener);
+
+        const myAct = g.pendingMeAct || (meIsPlayerActive ? 'defend' : 'cheer');
+        submitV2OnlineTurn(myAct, g.pendingSwitchReq);
+      }
+    }, 100);
+  }
+
+  function submitV2OnlineTurn(act, switchReq){
+    const V = S.v2online;
+    fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/final/${V.mySlot}`).set({ act, switchReq: !!switchReq });
+    waitForAllV2OnlineActions();
+  }
+
+  function waitForAllV2OnlineActions(){
+    const V = S.v2online;
+    const team = S.team2v2;
+    const finalRef = fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/final`);
+    const listener = finalRef.on('value', snap=>{
+      const val = snap.val();
+      if(!val) return;
+      const need = [team.myActiveSlot, team.myBenchSlot, team.enemyActiveSlot, team.enemyBenchSlot];
+      if(need.every(s => val[s] !== undefined)){
+        finalRef.off('value', listener);
+        V.turnIndex++; // 다음 턴 동기화는 이 새 인덱스를 기준으로 진행
+        resolve2v2Turn({
+          meActiveAct: val[team.myActiveSlot].act, meActiveSwitchReq: val[team.myActiveSlot].switchReq,
+          meBenchAct: val[team.myBenchSlot].act, meBenchSwitchReq: val[team.myBenchSlot].switchReq,
+          opActiveAct: val[team.enemyActiveSlot].act, opActiveSwitchReq: val[team.enemyActiveSlot].switchReq,
+          opBenchAct: val[team.enemyBenchSlot].act, opBenchSwitchReq: val[team.enemyBenchSlot].switchReq,
+        });
+      }
+    });
+  }
+
   const TURN_MS = 5000;
   const TURN_MS_2V2 = 5000; // 온라인 4인 아니라 AI 상대라 굳이 10초 안 줘도 돼서 1v1과 동일하게
   let timerInterval = null;
 
   function startTurn(){
     if(S.mode === 'ai2v2'){ startTurn2v2(); return; }
+    if(S.mode === 'v2online'){ startTurn2v2Online(); return; }
     const g = S.game;
     g.pendingMeAct = null;
     g.locked = false;
@@ -3186,6 +3531,11 @@
     if(!g || g.locked) return;
     g.pendingSwitchReq = !g.pendingSwitchReq;
     this.classList.toggle('active', g.pendingSwitchReq);
+    // 온라인 2VS2에서는 이 순간 즉시 팀원에게 실시간으로 알려준다 (턴 제출을 기다리지 않음)
+    if(S.mode === 'v2online'){
+      const V = S.v2online;
+      fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/live/${V.mySlot}`).set(g.pendingSwitchReq);
+    }
   });
 
   function actLabel(g, who, act){
@@ -4951,6 +5301,23 @@
     S.mode = 'single';
   }
 
+  function leaveV2OnlineRoom(){
+    const V = S.v2online;
+    if(!V){ S.mode = 'single'; return; }
+    try{
+      if(V.lobbyListenerRef && V.lobbyListener) V.lobbyListenerRef.off('value', V.lobbyListener);
+      if(V.liveListenerRef && V.liveListener) V.liveListenerRef.off('value', V.liveListener);
+      if(FIREBASE_READY && V.mySlot && V.code){
+        fbDb().ref(`rooms2v2/${V.code}/players/${V.mySlot}/connected`).set(false).catch(()=>{});
+        if(V.isCreator){
+          setTimeout(()=>{ fbDb().ref('rooms2v2/' + V.code).remove().catch(()=>{}); }, 8000);
+        }
+      }
+    }catch(err){ console.error('2VS2 방 정리 중 오류:', err); }
+    resetV2OnlineState();
+    S.mode = 'single';
+  }
+
   document.getElementById('multi-back').addEventListener('click', ()=> goHome('main'));
   document.getElementById('multi-wait-back').addEventListener('click', ()=>{ leaveMultiRoom(); goHome('main'); });
   document.getElementById('btn-create-room').addEventListener('click', createRoom);
@@ -4962,6 +5329,30 @@
   });
   document.getElementById('btn-copy-code').addEventListener('click', ()=>{
     const code = document.getElementById('room-code-display').textContent;
+    if(navigator.clipboard && code && code !== '------'){
+      navigator.clipboard.writeText(code).then(()=> showToast('코드가 복사됐어요'));
+    }
+  });
+
+  document.getElementById('v2menu-back').addEventListener('click', ()=> goHome('main'));
+  document.getElementById('btn-2v2-ai').addEventListener('click', ()=> start2v2Battle());
+  document.getElementById('btn-2v2-online').addEventListener('click', ()=>{
+    if(!FIREBASE_READY){ showToast('2VS2 온라인을 쓰려면 Firebase 설정이 먼저 필요해요'); return; }
+    document.getElementById('v2online-menu-status').textContent = '';
+    document.getElementById('v2join-code-input').value = '';
+    showScreen('screen-2v2-online-menu');
+  });
+  document.getElementById('v2online-menu-back').addEventListener('click', ()=> showScreen('screen-2v2-menu'));
+  document.getElementById('v2lobby-back').addEventListener('click', ()=>{ leaveV2OnlineRoom(); goHome('main'); });
+  document.getElementById('btn-2v2-create-room').addEventListener('click', create2v2Room);
+  document.getElementById('btn-2v2-join-room').addEventListener('click', ()=>{
+    join2v2Room(document.getElementById('v2join-code-input').value);
+  });
+  document.getElementById('v2join-code-input').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') join2v2Room(document.getElementById('v2join-code-input').value);
+  });
+  document.getElementById('v2btn-copy-code').addEventListener('click', ()=>{
+    const code = document.getElementById('v2room-code-display').textContent;
     if(navigator.clipboard && code && code !== '------'){
       navigator.clipboard.writeText(code).then(()=> showToast('코드가 복사됐어요'));
     }
