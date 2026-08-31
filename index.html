@@ -1675,7 +1675,7 @@
     statusEl.textContent = '방을 만드는 중...';
 
     const code = generateRoomCode();
-    const roomRef = fbDb().ref('rooms2v2/' + code);
+    const roomRef = fbDb().ref('rooms/' + code);
     roomRef.set({
       status: 'lobby',
       createdAt: firebase.database.ServerValue.TIMESTAMP,
@@ -1704,7 +1704,7 @@
     if(code.length < 4){ statusEl.textContent = '코드를 정확히 입력해주세요.'; return; }
 
     statusEl.textContent = '참가하는 중...';
-    const roomRef = fbDb().ref('rooms2v2/' + code);
+    const roomRef = fbDb().ref('rooms/' + code);
 
     // 트랜잭션 업데이트 함수는 충돌 시 여러 번 재시도될 수 있는데, 그때마다 내가 어느 슬롯을
     // 잡았는지가 달라질 수 있다. 마지막으로 실행된(=실제로 커밋된) 슬롯 값을 여기 담아둔다.
@@ -1780,7 +1780,7 @@
 
   function listenV2Lobby(){
     const V = S.v2online;
-    const roomRef = fbDb().ref('rooms2v2/' + V.code);
+    const roomRef = fbDb().ref('rooms/' + V.code);
     const listener = roomRef.on('value', snap=>{
       const room = snap.val();
       if(!room) return;
@@ -3222,7 +3222,7 @@
     screenEl.classList.remove('switch-alert');
 
     // 팀원(같은 편 사람)이 지금 이 순간 교체를 원하는지 실시간으로 구독 — 상대 팀 정보는 절대 안 봄
-    const liveRef = fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/live/${team.teammateSlot}`);
+    const liveRef = fbDb().ref(`rooms/${V.code}/turns/${V.turnIndex}/live/${team.teammateSlot}`);
     const liveListener = liveRef.on('value', snap=>{
       const wants = !!snap.val();
       banner.style.display = wants ? 'block' : 'none';
@@ -3267,14 +3267,14 @@
 
   function submitV2OnlineTurn(act, switchReq){
     const V = S.v2online;
-    fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/final/${V.mySlot}`).set({ act, switchReq: !!switchReq });
+    fbDb().ref(`rooms/${V.code}/turns/${V.turnIndex}/final/${V.mySlot}`).set({ act, switchReq: !!switchReq });
     waitForAllV2OnlineActions();
   }
 
   function waitForAllV2OnlineActions(){
     const V = S.v2online;
     const team = S.team2v2;
-    const finalRef = fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/final`);
+    const finalRef = fbDb().ref(`rooms/${V.code}/turns/${V.turnIndex}/final`);
     const listener = finalRef.on('value', snap=>{
       const val = snap.val();
       if(!val) return;
@@ -3534,7 +3534,7 @@
     // 온라인 2VS2에서는 이 순간 즉시 팀원에게 실시간으로 알려준다 (턴 제출을 기다리지 않음)
     if(S.mode === 'v2online'){
       const V = S.v2online;
-      fbDb().ref(`rooms2v2/${V.code}/turns/${V.turnIndex}/live/${V.mySlot}`).set(g.pendingSwitchReq);
+      fbDb().ref(`rooms/${V.code}/turns/${V.turnIndex}/live/${V.mySlot}`).set(g.pendingSwitchReq);
     }
   });
 
@@ -5308,9 +5308,9 @@
       if(V.lobbyListenerRef && V.lobbyListener) V.lobbyListenerRef.off('value', V.lobbyListener);
       if(V.liveListenerRef && V.liveListener) V.liveListenerRef.off('value', V.liveListener);
       if(FIREBASE_READY && V.mySlot && V.code){
-        fbDb().ref(`rooms2v2/${V.code}/players/${V.mySlot}/connected`).set(false).catch(()=>{});
+        fbDb().ref(`rooms/${V.code}/players/${V.mySlot}/connected`).set(false).catch(()=>{});
         if(V.isCreator){
-          setTimeout(()=>{ fbDb().ref('rooms2v2/' + V.code).remove().catch(()=>{}); }, 8000);
+          setTimeout(()=>{ fbDb().ref('rooms/' + V.code).remove().catch(()=>{}); }, 8000);
         }
       }
     }catch(err){ console.error('2VS2 방 정리 중 오류:', err); }
