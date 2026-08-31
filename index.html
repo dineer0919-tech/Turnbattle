@@ -965,6 +965,7 @@
       <button class="btn" id="v2btn-copy-code" style="padding:10px 18px; border-radius:12px; font-size:12px;">코드 복사</button>
       <div class="v2lobby-list" id="v2lobby-list"></div>
       <div class="mono" id="v2lobby-text" style="color:var(--text-dim); font-size:13px;">인원을 기다리는 중...</div>
+      <button class="btn btn-primary" id="btn-2v2-fill-ai" style="display:none; padding:12px 20px; border-radius:12px; font-size:13px;">🤖 AI 넣어 시작하기</button>
     </div>
   </div>
 
@@ -1776,7 +1777,42 @@
       return `<div class="v2lobby-slot filled"><span class="dot"></span>${p.nickname}${me}</div>`;
     }).join('');
     document.getElementById('v2lobby-text').textContent = filled < 4 ? '인원을 기다리는 중...' : '팀 배정 중...';
+    // 빈자리를 AI로 채우는 버튼은 방장에게만, 그리고 아직 자리가 남아있을 때만 보여준다
+    const fillBtn = document.getElementById('btn-2v2-fill-ai');
+    fillBtn.style.display = (S.v2online.isCreator && filled < 4) ? 'block' : 'none';
   }
+
+  // 방장이 빈자리를 AI로 채우고 바로 시작. 이후 실제 턴이 진행될 때는, 사람이 없는 슬롯의
+  // 판단을 매턴 방장의 클라이언트가 대신 계산해서 제출해준다 (아래 startTurn2v2Online 참고).
+  function fillWithAIAndStart(){
+    const V = S.v2online;
+    if(!V.isCreator) return;
+    const roomRef = fbDb().ref('rooms/' + V.code);
+    roomRef.transaction(room=>{
+      if(!room || room.status !== 'lobby') return;
+      room.players = room.players || {};
+      V2_SLOTS.forEach(s=>{
+        if(!room.players[s]){
+          room.players[s] = {
+            charKey: pickRandomCharacter(),
+            skillId: AI_SKILL_POOL[Math.floor(Math.random()*AI_SKILL_POOL.length)],
+            nickname: 'AI 봇',
+            connected: true,
+            isBot: true,
+          };
+        }
+      });
+      const shuffled = shuffleTeams(V2_SLOTS);
+      room.teamOf = shuffled.teamOf;
+      room.startActive = shuffled.startActive;
+      room.status = 'active';
+      return room;
+    }).catch(err=>{
+      console.error('AI 채우기 실패:', err);
+      showToast('AI를 채우는데 실패했어요');
+    });
+  }
+
 
   function listenV2Lobby(){
     const V = S.v2online;
@@ -3194,6 +3230,7 @@
       meActiveIsPlayer: (myActiveSlot === mySlot), // "내 슬롯이 지금 선봉인가"라는 뜻으로 그대로 재사용
       mySlot, teammateSlot,
       myActiveSlot, myBenchSlot, enemyActiveSlot, enemyBenchSlot,
+      botSlots: V2_SLOTS.filter(s => p[s].isBot), // 방장만 이 슬롯들의 몫을 대신 계산해서 제출한다
     };
     renderTeam2v2Bench();
   }
@@ -3261,6 +3298,7 @@
 
         const myAct = g.pendingMeAct || (meIsPlayerActive ? 'defend' : 'cheer');
         submitV2OnlineTurn(myAct, g.pendingSwitchReq);
+        if(V.isCreator && team.botSlots && team.botSlots.length) submitBotSlotActions();
       }
     }, 100);
   }
@@ -3269,6 +3307,29 @@
     const V = S.v2online;
     fbDb().ref(`rooms/${V.code}/turns/${V.turnIndex}/final/${V.mySlot}`).set({ act, switchReq: !!switchReq });
     waitForAllV2OnlineActions();
+  }
+
+  // 방장 전용: 사람이 없는 봇 슬롯들의 이번 턴 행동을 대신 계산해서 제출.
+  // 봇 슬롯이 지금 선봉인지 벤치인지, 어느 팀인지는 방장 자신의 team2v2 상태 기준으로 판단한다
+  // (모든 클라이언트가 같은 입력으로 같은 결과를 내는 신뢰 모델이라, 방장 기준 판단도 그대로 유효하다).
+  function submitBotSlotActions(){
+    const V = S.v2online;
+    const team = S.team2v2;
+    team.botSlots.forEach(slot=>{
+      if(slot === V.mySlot) return; // 방장 자신은 봇일 수 없음 (방어적 체크)
+      let side, isActiveRole;
+      if(slot === team.myActiveSlot){ side='me'; isActiveRole=true; }
+      else if(slot === team.myBenchSlot){ side='me'; isActiveRole=false; }
+      else if(slot === team.enemyActiveSlot){ side='op'; isActiveRole=true; }
+      else { side='op'; isActiveRole=false; }
+
+      const act = isActiveRole ? decideActiveAction(side) : decideBenchAI(side);
+      const switchReq = decideSwitchWillingness(side);
+      // decideBenchAI는 쿨타임 중이면 null을 주는데, Firebase는 null 값을 넣으면 그 키 자체를
+      // 지워버려서 나중에 다른 클라이언트가 이 슬롯이 아예 응답 안 한 걸로 오해할 수 있다.
+      // 그래서 "지원 없음"을 뜻하는 명시적인 문자열로 바꿔서 저장한다.
+      fbDb().ref(`rooms/${V.code}/turns/${V.turnIndex}/final/${slot}`).set({ act: act || 'none', switchReq });
+    });
   }
 
   function waitForAllV2OnlineActions(){
@@ -5357,6 +5418,7 @@
       navigator.clipboard.writeText(code).then(()=> showToast('코드가 복사됐어요'));
     }
   });
+  document.getElementById('btn-2v2-fill-ai').addEventListener('click', fillWithAIAndStart);
 
   /* ============== 시작 ============== */
   loadProgress();
