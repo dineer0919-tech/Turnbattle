@@ -129,6 +129,7 @@
   .mode-btn .txt .t2{ font-size:12px; color:var(--text-dim); margin-top:2px; }
   .mode-btn.locked{ opacity:.5; }
   .mode-btn.hot .t1{ color:var(--accent-ap); }
+  .beta-tag{ font-size:10px; font-weight:900; color:#08151A; background:var(--accent-crit); border-radius:6px; padding:1px 5px; vertical-align:middle; margin-left:2px; }
 
   .empty-state{
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -507,6 +508,7 @@
   }
   .vs-name-left{ transform:translateX(-220%); text-align:right; }
   .vs-name-right{ transform:translateX(220%); text-align:left; }
+  .vs-teammate{ font-size:14px; color:var(--text-dim); font-family:'Noto Sans KR',sans-serif; font-weight:700; margin-top:2px; }
   .vs-name.enter{ transition:transform 1s cubic-bezier(.2,.8,.2,1), opacity .5s ease; transform:translateX(0); opacity:1; }
   .vs-name.exit{ transition:transform .28s ease-in, opacity .28s ease-in; opacity:0; }
   .vs-name-left.exit{ transform:translateX(-50%); }
@@ -576,6 +578,51 @@
   .thinking .dots span:nth-child(2){ animation-delay:.18s; }
   .thinking .dots span:nth-child(3){ animation-delay:.36s; }
   @keyframes dotBlink{ 0%,60%,100%{ opacity:.2; } 30%{ opacity:1; } }
+  .bench-row{ display:flex; justify-content:space-between; gap:10px; margin:8px 14px 0; }
+  .bench-card{
+    flex:1; font-size:10px; color:var(--text-dim); background:var(--panel-alt);
+    border:1px solid var(--panel-line); border-radius:10px; padding:6px 10px;
+    display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace;
+  }
+  .bench-card.dead{ opacity:.4; text-decoration:line-through; }
+  .bench-card .bench-mini-portrait{ width:18px; height:18px; border-radius:5px; object-fit:cover; flex:0 0 auto; }
+  .bench-card .bench-hp-mini{ flex:1; height:4px; border-radius:2px; background:#000; overflow:hidden; }
+  .bench-card .bench-hp-mini-fill{ height:100%; background:var(--accent-hp); }
+  .switch-btn{ border-color:#38E1C6 !important; }
+  .switch-btn .cost{ color:#38E1C6 !important; }
+  #switch-fx-overlay{
+    position:fixed; inset:0; background:radial-gradient(circle, #38E1C688, #0A2A2ADD);
+    display:flex; align-items:center; justify-content:center; z-index:200;
+    opacity:0; pointer-events:none; transition:opacity .25s ease;
+    font-family:'Black Han Sans',sans-serif; color:#fff; text-shadow:0 0 12px #000;
+    flex-direction:column; gap:22px; text-align:center;
+  }
+  #switch-fx-overlay.show{ opacity:1; }
+  .switch-fx-row{ display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .switch-fx-imgs{ display:flex; align-items:center; gap:16px; }
+  .switch-fx-portrait{ width:84px; height:84px; border-radius:16px; object-fit:cover; border:3px solid #38E1C6; box-shadow:0 0 18px #38E1C6AA; }
+  .switch-fx-portrait.out{ animation: fxOutSlide .5s ease forwards; }
+  .switch-fx-portrait.in{ animation: fxInSlide .5s ease .3s backwards; }
+  @keyframes fxOutSlide{ from{ transform:translateX(0) scale(1); opacity:1;} to{ transform:translateX(-30px) scale(.85); opacity:.35; } }
+  @keyframes fxInSlide{ from{ transform:translateX(30px) scale(.7); opacity:0;} to{ transform:translateX(0) scale(1); opacity:1; } }
+  .switch-fx-arrow{ font-size:26px; color:#38E1C6; }
+  .switch-fx-label{ font-size:16px; }
+  .switch-request-banner{
+    display:none; text-align:center; padding:9px; margin:6px 14px 0; border-radius:10px;
+    background:#1E4A5A; color:#8FE3FF; font-size:12px; font-weight:800;
+    animation: bannerBlink 1.1s infinite;
+  }
+  @keyframes bannerBlink{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+  #screen-battle.switch-alert{ background:linear-gradient(180deg, #0A2A3A70, transparent 45%); }
+  .switch-toggle-btn{
+    display:none; width:calc(100% - 28px); margin:8px 14px 0; padding:13px; border-radius:14px;
+    font-weight:900; font-size:14px; border:2px solid #38E1C6; background:var(--panel-alt); color:#38E1C6;
+    align-items:center; justify-content:center; gap:8px;
+  }
+  .switch-toggle-btn .ic{ font-size:18px; }
+  .switch-toggle-btn.active{ background:#38E1C6; color:#08151A; }
+  .switch-toggle-btn.pulse{ animation: switchPulse .8s infinite; }
+  @keyframes switchPulse{ 0%,100%{ box-shadow:0 0 0 0 #38E1C688; } 50%{ box-shadow:0 0 0 10px #38E1C600; } }
   .fighter .name{ font-size:12px; font-weight:700; color:var(--text-dim); display:flex; align-items:center; gap:6px; justify-content:flex-start; }
   .fighter.op .name{ justify-content:flex-end; }
   .fighter-portrait{
@@ -950,6 +997,10 @@
           <span class="thinking" id="thinking-ind"><span>상대 고민 중</span><span class="dots"><span>.</span><span>.</span><span>.</span></span></span>
         </div>
       </div>
+      <div class="bench-row" id="bench-row" style="display:none;">
+        <div class="bench-card" id="me-bench-card"></div>
+        <div class="bench-card" id="op-bench-card"></div>
+      </div>
     </div>
 
     <div id="battle-log"></div>
@@ -962,6 +1013,22 @@
       <button class="btn act-btn counter" data-act="counter"><span class="ic">↩️</span><span class="lbl">카운터</span><span class="cost">AP 3</span></button>
       <button class="btn act-btn skill-btn" data-act="skill"><span class="ic">⚔️</span><span class="lbl" id="skill-lbl">컴뱃스킬</span><span class="cost" id="skill-cost">1회용</span></button>
     </div>
+
+    <!-- 2VS2 전용: 벤치에 있을 때는 위 전투 메뉴 대신 이 지원 메뉴가 뜬다 -->
+    <div class="action-grid" id="bench-action-grid" style="display:none;">
+      <button class="btn act-btn" data-bench-act="cheer"><span class="ic">📣</span><span class="lbl">응원</span><span class="cost">체력 지원</span></button>
+      <button class="btn act-btn" data-bench-act="shield"><span class="ic">🛡️</span><span class="lbl">엄호</span><span class="cost">보호막 지원</span></button>
+      <button class="btn act-btn" data-bench-act="apboost"><span class="ic">⚡</span><span class="lbl">독려</span><span class="cost">행동력 지원</span></button>
+    </div>
+
+    <!-- 2VS2 전용: 교체는 위에서 고른 행동과 별개로 "부가적으로" 켜고 끄는 토글.
+         켜놓은 채로 턴이 끝났을 때 같은 팀 파트너도 켜놨으면 교체 성사, 아니면 위에서 고른 행동 그대로 진행 -->
+    <div class="switch-request-banner" id="switch-request-banner" style="display:none;">🔵 팀원이 교체를 요청 중입니다!</div>
+    <button class="btn switch-toggle-btn" id="switch-toggle-btn" style="display:none;">
+      <span class="ic">🔄</span><span class="lbl">교체 요청</span>
+    </button>
+
+    <div id="switch-fx-overlay"></div>
 
     <div id="danger-vignette"></div>
     <div id="hit-flash"></div>
@@ -1067,7 +1134,7 @@
 
   const AI_NAMES = { easy:'초급 AI', normal:'중급 AI', hard:'고급 AI', crazy:'크레이지 AI', crazy_v2:'크레이지 AI V2' };
 
-  const COST = { attack:1, defend:0, heal:0, ultimate:5, counter:3, skill:0 };
+  const COST = { attack:1, defend:0, heal:0, ultimate:5, counter:3, skill:0, switch:0, switched:0 };
   const AP_MAX = 8;
   const HP_MAX = 30;
   const START_AP = 3;
@@ -1469,7 +1536,7 @@
     ensureMigrationMail();
   }
 
-  const DIFF_XP_MULT = { easy:1.0, normal:1.15, hard:1.4, crazy:1.8, crazy_v2:2.6, multi:1.5 }; // PP와는 별개로, 더 완만한 난이도 배율 사용
+  const DIFF_XP_MULT = { easy:1.0, normal:1.15, hard:1.4, crazy:1.8, crazy_v2:2.6, multi:1.5, ai2v2:2.2 }; // PP와는 별개로, 더 완만한 난이도 배율 사용
 
   // XP 부스트 상품: 전부 동일하게 XP 2배, 기간만 다름 (구매 시 남은 시간에 이어붙는 방식)
   const BOOSTS = {
@@ -2006,7 +2073,7 @@
     ro.classList.remove('show','visible');
   }
 
-  function playBattleIntro(meName, opName, onDone){
+  function playBattleIntro(meName, opName, onDone, meTeammateName, opTeammateName){
     const overlay = document.getElementById('intro-overlay');
     const loading = document.getElementById('intro-loading');
     const vsWrap = document.getElementById('intro-vs');
@@ -2016,8 +2083,12 @@
     const flash = document.getElementById('intro-flash');
     const titleEl = document.getElementById('intro-title');
 
-    nameMe.textContent = meName;
-    nameOp.textContent = opName;
+    nameMe.innerHTML = meTeammateName
+      ? `${meName}<div class="vs-teammate">& ${meTeammateName}</div>`
+      : meName;
+    nameOp.innerHTML = opTeammateName
+      ? `${opName}<div class="vs-teammate">& ${opTeammateName}</div>`
+      : opName;
     [loading, vsWrap, flash, titleEl].forEach(el=> el.classList.remove('show'));
     [nameMe, nameOp, vsMark].forEach(el=> el.classList.remove('enter','exit'));
 
@@ -2128,6 +2199,10 @@
           <div class="ic">🌐</div>
           <div class="txt"><div class="t1">멀티대전</div><div class="t2">실시간으로 다른 플레이어와 대결</div></div>
         </button>
+        <button class="mode-btn" id="btn-2v2">
+          <div class="ic">👥</div>
+          <div class="txt"><div class="t1">2VS2 [AI] <span class="beta-tag">BETA</span></div><div class="t2">아군 봇 1명과 팀을 이뤄 적 2명과 대결</div></div>
+        </button>
       `;
       document.getElementById('btn-single').onclick = ()=> showScreen('screen-difficulty');
       document.getElementById('btn-multi').onclick = ()=>{
@@ -2137,6 +2212,7 @@
         }
         openMultiMenu();
       };
+      document.getElementById('btn-2v2').onclick = ()=> start2v2Battle();
     } else if(S.tab==='shop'){
       desc.textContent = '캐릭터와 컴뱃스킬을 구매할 수 있는 공간';
       c.innerHTML = `
@@ -2426,13 +2502,30 @@
   });
 
   /* ============== 배틀 로직 ============== */
-  function enterBattleUI(meChar, opChar, meSkillId, opSkillId, meDisplayName, opDisplayName){
-    const meMaxHp = CHARACTERS[meChar].stats.hp;
-    const opMaxHp = CHARACTERS[opChar].stats.hp;
+  // 파이터 상태 객체를 만드는 공용 함수. 1v1에서는 g.me/g.op를 만들 때, 2VS2에서는
+  // 벤치 인원의 상태 객체를 만들 때도 똑같이 이 함수를 쓴다 — 필드가 하나라도 어긋나면
+  // 나중에 벤치↔필드를 스왑할 때 상태이상 필드가 빠져서 버그가 나므로, 반드시 한 곳에서만 정의한다.
+  const TEAM2V2_HP_MULT = 1; // 실제로 붙여보니 스탯업이 게임을 질질 끌게 만들어서 그냥 원래 스탯 그대로
+  function createFighterState(charKey, skillId, hpMult){
+    const maxHp = Math.round(CHARACTERS[charKey].stats.hp * (hpMult || 1));
+    return {
+      hp:maxHp, maxHp:maxHp, ap:START_AP, defended:false, charKey:charKey, skillId:skillId||null,
+      skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false,
+      passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false,
+      deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0,
+      neurotoxinJustApplied:false, lifestealTurns:0, lifestealJustGranted:false, lastHealApplied:0,
+      actionSealTurns:0, actionSealJustApplied:false,
+      alive:true, // 2VS2 벤치 인원 전용 필드 (1v1에서는 그냥 안 쓰임)
+      benchCooldown:0, // 2VS2 벤치 지원(응원/엄호/독려) 전용 쿨타임 — 사용하면 3턴간 재사용 불가
+    };
+  }
+
+  function enterBattleUI(meChar, opChar, meSkillId, opSkillId, meDisplayName, opDisplayName, meTeammateName, opTeammateName){
+    const hpMult = S.team2v2HpMult || 1; // 2VS2 모드에서는 한 방에 훅 가는 걸 막기 위해 최대체력을 늘려서 시작한다
     S.game = {
       turn:1,
-      me:  { hp:meMaxHp, maxHp:meMaxHp, ap:START_AP, defended:false, charKey:meChar, skillId:meSkillId||null, skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false, passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false, deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0, neurotoxinJustApplied:false, lifestealTurns:0, lifestealJustGranted:false, lastHealApplied:0, actionSealTurns:0, actionSealJustApplied:false },
-      op:  { hp:opMaxHp, maxHp:opMaxHp, ap:START_AP, defended:false, charKey:opChar, skillId:opSkillId||null, skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false, passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false, deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0, neurotoxinJustApplied:false, lifestealTurns:0, lifestealJustGranted:false, lastHealApplied:0, actionSealTurns:0, actionSealJustApplied:false },
+      me:  createFighterState(meChar, meSkillId, hpMult),
+      op:  createFighterState(opChar, opSkillId, hpMult),
       log:[],
       history:[],       // {who:'me'|'op', act, ap}
       locked:true,      // 인트로 연출이 끝나기 전에는 조작 불가
@@ -2444,6 +2537,14 @@
     document.getElementById('op-portrait').src = CHARACTERS[opChar].portraitImg;
     document.getElementById('me-name').textContent = meName;
     document.getElementById('op-name').textContent = opName;
+    // 2VS2 전용 UI는 기본적으로 꺼둔 상태로 시작 (2VS2 시작 함수가 이후 다시 켬)
+    document.getElementById('bench-row').style.display = 'none';
+    document.getElementById('action-grid').style.display = 'grid';
+    document.getElementById('bench-action-grid').style.display = 'none';
+    document.getElementById('switch-toggle-btn').style.display = 'none';
+    document.getElementById('switch-request-banner').style.display = 'none';
+    document.getElementById('screen-battle').classList.remove('switch-alert');
+    if(S.mode !== 'ai2v2') S.team2v2 = null;
     renderSkillButton();
     resetBattleFX();
     document.getElementById('battle-log').innerHTML = '';
@@ -2451,7 +2552,7 @@
     pushLog('sys', `⚔️ ${opName}(과)와의 전투가 시작됐다!`);
     renderBattle();
     showScreen('screen-battle');
-    playBattleIntro(meName, opName, startTurn);
+    playBattleIntro(meName, opName, startTurn, meTeammateName, opTeammateName);
   }
 
   function startBattle(diff){
@@ -2477,10 +2578,382 @@
     watchOpponentPresence();
   }
 
+  // ============== 2VS2 [AI] BETA ==============
+  // 실제 맞붙는 건 항상 선봉끼리 1:1이라, 기존 resolveTurn/applyCombat 엔진을 손대지 않고 그대로 쓴다.
+  // "벤치는 시간이 멈춘다"는 별도 구현이 필요 없다 — 벤치에 있는 동안은 그 상태 객체를 아무도
+  // 건드리지 않으니, 신경독 턴수·에너지 스택 등 모든 타이머가 저절로 멈춘 것처럼 보존된다.
+  function start2v2Battle(){
+    S.mode = 'ai2v2';
+    S.difficulty = 'ai2v2';
+    const meChar = S.selectedCharacter || 'spear';
+    const meSkillId = getEquippedSkillId(meChar);
+    const allyChar = pickRandomCharacter();
+    const allySkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+    const enemyActiveChar = pickRandomCharacter();
+    const enemyActiveSkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+    const enemyBenchChar = pickRandomCharacter();
+    const enemyBenchSkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+
+    S.team2v2HpMult = TEAM2V2_HP_MULT;
+    enterBattleUI(meChar, enemyActiveChar, meSkillId, enemyActiveSkillId, null, null, CHARACTERS[allyChar].name, CHARACTERS[enemyBenchChar].name);
+    S.team2v2HpMult = 1;
+
+    S.team2v2 = {
+      meBench: createFighterState(allyChar, allySkillId, TEAM2V2_HP_MULT),
+      opBench: createFighterState(enemyBenchChar, enemyBenchSkillId, TEAM2V2_HP_MULT),
+      meActiveIsPlayer: true, // 항상 플레이어가 선봉으로 시작
+    };
+    renderTeam2v2Bench();
+  }
+
+  function renderTeam2v2Bench(){
+    const bar = document.getElementById('bench-row');
+    if(!S.team2v2){ bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    ['me','op'].forEach(side=>{
+      const bench = S.team2v2[side+'Bench'];
+      const card = document.getElementById(side+'-bench-card');
+      const ch = CHARACTERS[bench.charKey];
+      if(!bench.alive){
+        card.classList.add('dead');
+        card.innerHTML = `<img class="bench-mini-portrait" src="${ch.portraitImg}">💀 ${ch.name} (탈락)`;
+      } else {
+        card.classList.remove('dead');
+        const pct = Math.max(0, Math.round(bench.hp/bench.maxHp*100));
+        card.innerHTML = `
+          <img class="bench-mini-portrait" src="${ch.portraitImg}">
+          <span>${ch.name}</span>
+          <div class="bench-hp-mini"><div class="bench-hp-mini-fill" style="width:${pct}%"></div></div>
+          <span>${Math.max(0,bench.hp)}/${bench.maxHp}</span>
+        `;
+      }
+    });
+  }
+
+  // 벤치의 지원 액션 처리 (교체가 이번 턴에 성사되지 않았고, 벤치가 살아있을 때만 호출됨)
+  function applyBenchSupport(side, act){
+    const g = S.game;
+    const team = S.team2v2;
+    const active = g[side];
+    const bench = team[side+'Bench'];
+    const label = side==='me' ? '내' : '상대';
+    if(active.hp <= 0) return; // 이미 쓰러진 선봉에겐 지원해도 의미 없음 (사망 처리는 별도로 진행)
+    if((bench.benchCooldown||0) > 0) return; // 쿨타임 중이면 시도해도 아무 효과 없음
+    if(act === 'cheer'){
+      const amt = 3;
+      active.hp = Math.min(active.maxHp, active.hp + amt);
+      pushLog('sys', `📣 ${label} 벤치의 응원! 선봉 체력 +${amt}`);
+      spawnPopup(side, `+${amt}`, 'heal');
+    } else if(act === 'shield'){
+      active.shieldHp = 3;
+      active.shieldTurns = 1;
+      active.shieldJustGranted = true;
+      pushLog('sys', `🛡 ${label} 벤치의 엄호! 선봉에게 보호막 3 (1턴)`);
+    } else if(act === 'apboost'){
+      active.ap = Math.min(AP_MAX, active.ap + 1);
+      pushLog('sys', `⚡ ${label} 벤치의 독려! 선봉 행동력 +1`);
+    }
+    bench.benchCooldown = 3; // 셋 중 뭘 쓰든 공용 쿨타임 — 3턴에 한 번만 지원 가능
+  }
+
+  // 스위치 이펙트: 스킬 연출보다 먼저 나오는 짧은 화면 전환 (파란 톤 + 이름 스와이프)
+  // 스위치 이펙트: 실제 초상화 스프라이트가 슬라이드로 교차하는 짧은 연출. 스킬 연출보다 먼저 나온다.
+  function playSwitchSprites(entries){
+    return new Promise(resolve=>{
+      const overlay = document.getElementById('switch-fx-overlay');
+      overlay.innerHTML = entries.map(e => `
+        <div class="switch-fx-row">
+          <div class="switch-fx-imgs">
+            <img class="switch-fx-portrait out" src="${e.outImg}">
+            <div class="switch-fx-arrow">→</div>
+            <img class="switch-fx-portrait in" src="${e.inImg}">
+          </div>
+          <div class="switch-fx-label">🔄 ${e.label} 교체! ${e.outName} → ${e.inName}</div>
+        </div>
+      `).join('');
+      overlay.classList.add('show');
+      setTimeout(()=>{
+        overlay.classList.remove('show');
+        setTimeout(resolve, 250);
+      }, 900);
+    });
+  }
+
+  // 필드에 새로 나온 캐릭터에 맞춰 이름/초상화/컴뱃스킬 버튼을 즉시 갱신한다.
+  // 이걸 안 하면 교체 후에도 화면엔 죽거나 빠진 이전 캐릭터가 그대로 보인다.
+  function refreshFighterDisplay(side){
+    const g = S.game;
+    const charKey = g[side].charKey;
+    document.getElementById(side+'-portrait').src = CHARACTERS[charKey].portraitImg;
+    document.getElementById(side+'-name').textContent = CHARACTERS[charKey].name;
+    if(side === 'me') renderSkillButton();
+  }
+
+  // 자발적 교체 (선봉+벤치 둘 다 교체 요청을 켜놓은 경우 성사). 벤치로 빠지는 쪽은 상태를 그대로
+  // 통째로 보관해두기만 하고 아무것도 건드리지 않으므로, 신경독/에너지 등 모든 타이머가
+  // 자동으로 "멈춘 채" 보존된다. 필드로 올라오는 쪽은 최소한의 안전판으로 보호막 5를 즉시 받는다.
+  function performVoluntarySwitch2v2(side){
+    const g = S.game;
+    const team = S.team2v2;
+    const benchKey = side+'Bench';
+    const outgoing = g[side];
+    const incoming = team[benchKey];
+    incoming.shieldHp = 5;
+    incoming.shieldTurns = 1;
+    incoming.shieldJustGranted = true;
+    g[side] = incoming;
+    team[benchKey] = outgoing;
+    if(side === 'me') team.meActiveIsPlayer = !team.meActiveIsPlayer;
+    pushLog('sys', `🔄 ${side==='me'?'내':'상대'} 팀 교체 성사! [${CHARACTERS[outgoing.charKey].name}] → [${CHARACTERS[incoming.charKey].name}] (보호막 5 획득)`);
+    refreshFighterDisplay(side);
+  }
+
+  // 강제 교체 (선봉이 쓰러졌고 벤치가 살아있을 때). 쓰러진 선봉은 완전히 탈락하고,
+  // 벤치 인원 하나만 남아있으므로 이후로는 그 인원이 계속 싸운다 (더 이상 벤치 없음).
+  function forceSwitch2v2(side){
+    const g = S.game;
+    const team = S.team2v2;
+    const benchKey = side+'Bench';
+    const fallen = g[side];
+    const incoming = team[benchKey];
+    incoming.shieldHp = 5;
+    incoming.shieldTurns = 1;
+    incoming.shieldJustGranted = true;
+    g[side] = incoming;
+    team[benchKey] = { alive:false, charKey: fallen.charKey, hp:0, maxHp: fallen.maxHp };
+    if(side === 'me') team.meActiveIsPlayer = !team.meActiveIsPlayer;
+    pushLog('sys', `💀 ${side==='me'?'내':'상대'} 선봉 [${CHARACTERS[fallen.charKey].name}]이(가) 쓰러져, 벤치의 [${CHARACTERS[incoming.charKey].name}]이(가) 급히 투입된다! (보호막 5)`);
+    refreshFighterDisplay(side);
+  }
+
+  // 벤치 AI의 지원 액션 판단 (아군 봇, 적 벤치 봇 공용) — 이제 교체 개념은 완전히 분리됐으니
+  // 순수하게 응원/엄호/독려 중 뭐가 지금 상황에 맞는지만 고른다.
+  function decideBenchAI(side){
+    const g = S.game;
+    const team = S.team2v2;
+    const bench = team[side+'Bench'];
+    if((bench.benchCooldown||0) > 0) return null; // 쿨타임 중이면 아무것도 안 함
+    const active = g[side];
+    const opSide = side === 'me' ? 'op' : 'me';
+    const hpRatio = active.hp / active.maxHp;
+    // 상대가 이번에 일격을 쓸 법한 상태(AP 5 이상)라면 미리 보호막으로 대비
+    if(g[opSide].ap >= 5 && Math.random() < 0.6) return 'shield';
+    // 체력이 어중간히 깎였으면 응원으로 보충
+    if(hpRatio < 0.6) return 'cheer';
+    // 평소엔 절반 정도 확률로 독려, 나머지는 응원/엄호 랜덤
+    const r = Math.random();
+    if(r < 0.45) return 'apboost';
+    if(r < 0.75) return 'cheer';
+    return 'shield';
+  }
+
+  // aiCrazy 등 AI 사고 로직은 전부 "g.op가 곧 나 자신"이라는 전제로 하드코딩되어 있다.
+  // 2VS2에서 아군 봇이 g.me 자리(플레이어가 벤치로 빠졌을 때)에 있을 때도 그대로 재사용하려면,
+  // me/op를 뒤집은 가짜 게임 상태를 만들어 넘겨야 한다 (history의 who 태그도 함께 뒤집어야
+  // buildPlayerModel이 "진짜 상대"의 습관을 올바르게 학습한다).
+  function decideAIForOwnSide(diff, side){
+    const g = S.game;
+    if(side === 'op') return decideAI(diff, g);
+    const mirrored = {
+      turn: g.turn,
+      me: g.op,
+      op: g.me,
+      history: g.history.map(h => ({ who: h.who==='me' ? 'op' : 'me', act: h.act, ap: h.ap })),
+    };
+    return decideAI(diff, mirrored);
+  }
+
+  // 선봉 역할의 실제 전투 행동 결정 — 교체 개념이 빠졌으니 그냥 기존 크레이지 AI 그대로.
+  function decideActiveAction(side){
+    return decideAIForOwnSide('crazy', side);
+  }
+
+  // 교체 요청은 이제 "행동 선택과 별개인 부가 토글"이라, 팀의 선봉/벤치가 각자 독립적으로
+  // "이번 턴에 교체를 원하는가"를 판단한다. 어차피 실패해도 원래 고른 행동이 그대로 나가서
+  // 손해가 없으니, AI 쪽은 전반적으로 꽤 적극적으로 응하도록 확률을 넉넉하게 잡았다.
+  function decideSwitchWillingness(side){
+    const g = S.game;
+    const active = g[side];
+    const benchKey = side === 'me' ? 'meBench' : 'opBench';
+    const bench = S.team2v2 && S.team2v2[benchKey];
+    if(!bench || !bench.alive) return false;
+    const hpRatio = active.hp / active.maxHp;
+    let chance = 0.15; // 평소에도 살짝은 열려있는 정도
+    if(hpRatio < 0.5) chance = 0.35;
+    if(hpRatio < 0.25) chance = 0.6;
+    // 행동력도 없고 스킬도 다 써서 이번 턴에 딱히 할 게 없다면, 판을 갈아엎는 것도 매력적인 선택
+    const skill = SKILLS[active.skillId];
+    const outOfOptions = active.ap <= 0 && (!skill || active.skillUsed);
+    if(outOfOptions) chance = Math.max(chance, 0.35);
+    return Math.random() < chance;
+  }
+
+  // 내 팀 AI가 담당하는 역할(선봉 또는 벤치)이, 방금 확인된 "플레이어가 이번 턴 교체를 원하는지"를
+  // 실제로 보고 다시 한번 고민해서 반응하게 만든다. 원래는 턴 시작 시점에 서로 모른 채 독립적으로
+  // 결정돼서 "우연히 맞아떨어질 때만" 성사됐는데, 같은 팀끼리는 이렇게 반응해주는 게 훨씬 자연스럽다.
+  // 이미 스스로 교체를 원하고 있었다면 그대로 두고, 아니었다면 플레이어의 요청을 보고 한 번 더 고민한다.
+  function reconsiderTeammateSwitch(aiWantedSwitch, playerRequested){
+    if(aiWantedSwitch) return true;
+    if(playerRequested && Math.random() < 0.7) return true; // 팀원이 부탁하면 꽤 잘 들어줌 (단, 100%는 아님)
+    return aiWantedSwitch;
+  }
+
+  function startTurn2v2(){
+    const g = S.game;
+    const team = S.team2v2;
+    g.pendingMeAct = null;
+    g.pendingSwitchReq = false;
+    g.locked = false;
+
+    // 벤치 지원 쿨타임 감소 (이번 턴이 시작되는 시점 기준으로 하루씩 줄어든다)
+    if(team.meBench.alive && team.meBench.benchCooldown > 0) team.meBench.benchCooldown--;
+    if(team.opBench.alive && team.opBench.benchCooldown > 0) team.opBench.benchCooldown--;
+
+    const meIsPlayerActive = team.meActiveIsPlayer;
+    document.getElementById('action-grid').style.display = meIsPlayerActive ? 'grid' : 'none';
+    document.getElementById('bench-action-grid').style.display = meIsPlayerActive ? 'none' : 'grid';
+
+    const switchBtn = document.getElementById('switch-toggle-btn');
+    const meBenchAliveForToggle = team.meBench.alive;
+    switchBtn.style.display = meBenchAliveForToggle ? 'flex' : 'none';
+    switchBtn.classList.remove('active', 'pulse');
+    switchBtn.disabled = false; // 지난 턴 종료 시 잠갔던 걸 다시 풀어줘야 함 (안 풀면 첫 턴 이후 계속 눌리지 않음)
+
+    // 상대 팀(둘 다 AI)의 이번 턴 행동 + 교체 의향을 미리 결정
+    g.pendingAiAct = decideActiveAction('op');
+    team.pendingOpActiveSwitchReq = decideSwitchWillingness('op');
+    team.pendingOpBenchAct = team.opBench.alive ? decideBenchAI('op') : null;
+    team.pendingOpBenchSwitchReq = team.opBench.alive ? decideSwitchWillingness('op') : false;
+
+    // 내 팀에서 AI가 맡은 역할의 행동 + 교체 의향도 미리 결정.
+    // 이건 "내 편"이라 몰래 숨길 이유가 없으니, 결과에 따라 배너로 바로 알려준다.
+    let teammateWantsSwitch = false;
+    if(meIsPlayerActive){
+      team.pendingMeBenchAct = team.meBench.alive ? decideBenchAI('me') : null;
+      team.pendingMeBenchSwitchReq = team.meBench.alive ? decideSwitchWillingness('me') : false;
+      teammateWantsSwitch = team.pendingMeBenchSwitchReq;
+    } else {
+      g.pendingMeActiveAiAct = decideActiveAction('me');
+      g.pendingMeActiveAiSwitchReq = decideSwitchWillingness('me');
+      teammateWantsSwitch = g.pendingMeActiveAiSwitchReq;
+    }
+
+    const banner = document.getElementById('switch-request-banner');
+    const screenEl = document.getElementById('screen-battle');
+    if(teammateWantsSwitch){
+      banner.style.display = 'block';
+      screenEl.classList.add('switch-alert');
+      switchBtn.classList.add('pulse');
+    } else {
+      banner.style.display = 'none';
+      screenEl.classList.remove('switch-alert');
+    }
+
+    document.querySelectorAll('.act-btn').forEach(b=>b.classList.remove('selected'));
+    document.getElementById('thinking-ind').style.visibility = 'visible';
+    renderBattle();
+
+    let remainMs = TURN_MS_2V2;
+    const fill = document.getElementById('timer-fill');
+    const num = document.getElementById('timer-num');
+    fill.style.width = '100%';
+    fill.classList.remove('urgent');
+    num.textContent = String(Math.ceil(TURN_MS_2V2/1000));
+
+    clearInterval(timerInterval);
+    timerInterval = setInterval(()=>{
+      remainMs -= 100;
+      const pct = Math.max(0, remainMs/TURN_MS_2V2*100);
+      fill.style.width = pct + '%';
+      if(remainMs <= 3000) fill.classList.add('urgent');
+      const secLeft = Math.max(0, Math.ceil(remainMs/1000));
+      num.textContent = String(secLeft);
+      if(remainMs <= 0){
+        clearInterval(timerInterval);
+        g.locked = true;
+        document.querySelectorAll('.act-btn').forEach(b=>b.disabled = true);
+        switchBtn.disabled = true;
+        document.getElementById('thinking-ind').style.visibility = 'hidden';
+        banner.style.display = 'none';
+        screenEl.classList.remove('switch-alert');
+        switchBtn.classList.remove('pulse');
+
+        let meActiveAct, meActiveSwitchReq, meBenchAct, meBenchSwitchReq;
+        if(meIsPlayerActive){
+          meActiveAct = g.pendingMeAct || 'defend';
+          meActiveSwitchReq = g.pendingSwitchReq;
+          meBenchAct = team.pendingMeBenchAct;
+          // 아군 봇(벤치)이 방금 확정된 내 교체 요청 여부를 실제로 보고 한 번 더 고민한다
+          meBenchSwitchReq = reconsiderTeammateSwitch(team.pendingMeBenchSwitchReq, meActiveSwitchReq);
+        } else {
+          meActiveAct = g.pendingMeActiveAiAct;
+          // 아군 봇(선봉)도 마찬가지로 내(벤치)가 방금 요청했는지 보고 반응한다
+          meActiveSwitchReq = reconsiderTeammateSwitch(g.pendingMeActiveAiSwitchReq, g.pendingSwitchReq);
+          meBenchAct = g.pendingMeAct || 'cheer';
+          meBenchSwitchReq = g.pendingSwitchReq;
+        }
+
+        setTimeout(()=> resolve2v2Turn({
+          meActiveAct, meActiveSwitchReq, meBenchAct, meBenchSwitchReq,
+          opActiveAct: g.pendingAiAct, opActiveSwitchReq: team.pendingOpActiveSwitchReq,
+          opBenchAct: team.pendingOpBenchAct, opBenchSwitchReq: team.pendingOpBenchSwitchReq,
+        }), 200);
+      }
+    }, 100);
+  }
+
+  // 2VS2 턴 전체 파이프라인: 교체 합의 판정(선봉+벤치 둘 다 요청 시에만 성사) → 성사 안 됐으면
+  // 원래 고른 행동 그대로 진행 → 벤치 지원 적용 → 기존 1:1 엔진으로 선봉전 진행.
+  // 선봉끼리의 실제 전투는 resolveTurn을 그대로 재사용한다 (2VS2 전용으로 새로 안 짬).
+  async function resolve2v2Turn(p){
+    const team = S.team2v2;
+    const g = S.game;
+
+    const meSwitching = p.meActiveSwitchReq && p.meBenchSwitchReq && team.meBench.alive;
+    const opSwitching = p.opActiveSwitchReq && p.opBenchSwitchReq && team.opBench.alive;
+
+    if(meSwitching || opSwitching){
+      const entries = [];
+      if(meSwitching){
+        entries.push({
+          label: '내 팀',
+          outImg: CHARACTERS[g.me.charKey].portraitImg, outName: CHARACTERS[g.me.charKey].name,
+          inImg: CHARACTERS[team.meBench.charKey].portraitImg, inName: CHARACTERS[team.meBench.charKey].name,
+        });
+      }
+      if(opSwitching){
+        entries.push({
+          label: '상대 팀',
+          outImg: CHARACTERS[g.op.charKey].portraitImg, outName: CHARACTERS[g.op.charKey].name,
+          inImg: CHARACTERS[team.opBench.charKey].portraitImg, inName: CHARACTERS[team.opBench.charKey].name,
+        });
+      }
+      await playSwitchSprites(entries);
+      if(meSwitching) performVoluntarySwitch2v2('me');
+      if(opSwitching) performVoluntarySwitch2v2('op');
+      renderBattle();
+    }
+
+    // 교체가 성사되지 않았다면(파트너가 요청에 안 응했다면) 원래 고르거나 AI가 정한 행동이 그대로 나간다
+    const meFinalAct = meSwitching ? 'switched' : p.meActiveAct;
+    const opFinalAct = opSwitching ? 'switched' : p.opActiveAct;
+
+    if(!meSwitching && p.meBenchAct && team.meBench.alive){
+      applyBenchSupport('me', p.meBenchAct);
+    }
+    if(!opSwitching && p.opBenchAct && team.opBench.alive){
+      applyBenchSupport('op', p.opBenchAct);
+    }
+
+    resolveTurn(meFinalAct, opFinalAct);
+  }
+
   const TURN_MS = 5000;
+  const TURN_MS_2V2 = 5000; // 온라인 4인 아니라 AI 상대라 굳이 10초 안 줘도 돼서 1v1과 동일하게
   let timerInterval = null;
 
   function startTurn(){
+    if(S.mode === 'ai2v2'){ startTurn2v2(); return; }
     const g = S.game;
     g.pendingMeAct = null;
     g.locked = false;
@@ -2606,6 +3079,7 @@
     renderShieldGauge(g.op, 'op-hpfill', 'op-hpshield');
     renderPassiveBadge(g.me, 'me-passive-badge');
     renderPassiveBadge(g.op, 'op-passive-badge');
+    if(S.mode === 'ai2v2') renderTeam2v2Bench();
     renderPoisonBadge(g.me, 'me-poison-badge');
     renderPoisonBadge(g.op, 'op-poison-badge');
     renderNeurotoxinBadge(g.me, 'me-neurotoxin-badge');
@@ -2623,7 +3097,17 @@
     renderPips('me-ap', g.me.ap);
     renderPips('op-ap', g.op.ap);
 
-    document.querySelectorAll('.act-btn').forEach(btn=>{
+    // 2VS2 벤치 지원 메뉴 버튼 상태 — 쿨타임 중이면 눌러도 의미 없으니 아예 비활성화하고 남은 턴을 보여준다
+    const myBenchCd = (S.team2v2 && S.team2v2.meBench) ? (S.team2v2.meBench.benchCooldown||0) : 0;
+    document.querySelectorAll('#bench-action-grid .act-btn').forEach(btn=>{
+      btn.disabled = g.locked || myBenchCd > 0;
+      btn.classList.toggle('selected', S.team2v2 && g.pendingMeAct === btn.dataset.benchAct);
+      const costEl = btn.querySelector('.cost');
+      if(costEl && costEl.dataset.origText === undefined) costEl.dataset.origText = costEl.textContent;
+      if(costEl) costEl.textContent = myBenchCd > 0 ? `쿨타임 ${myBenchCd}턴` : costEl.dataset.origText;
+    });
+
+    document.querySelectorAll('#action-grid .act-btn').forEach(btn=>{
       const act = btn.dataset.act;
       const icEl = btn.querySelector('.ic');
       // [도발]에 걸려 방어/회복이 봉인된 상태라면, 눌러봤자 무효화된다는 걸 미리 알 수 있도록
@@ -2669,9 +3153,9 @@
     }
   }
 
-  const ACT_LABEL = { attack:'공격', defend:'방어', heal:'회복', ultimate:'일격', counter:'카운터' };
+  const ACT_LABEL = { attack:'공격', defend:'방어', heal:'회복', ultimate:'일격', counter:'카운터', switched:'교체' };
 
-  document.querySelectorAll('.act-btn').forEach(btn=>{
+  document.querySelectorAll('#action-grid .act-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const g = S.game;
       if(!g || g.locked) return;
@@ -2680,8 +3164,28 @@
       if(g.me.ap < COST[act]) return;
       // 시간이 끝날 때까지는 몇 번이든 마음을 바꿀 수 있다 (마지막 선택이 최종 판정)
       g.pendingMeAct = (g.pendingMeAct === act) ? null : act;
-      document.querySelectorAll('.act-btn').forEach(b=> b.classList.toggle('selected', b.dataset.act===g.pendingMeAct));
+      document.querySelectorAll('#action-grid .act-btn').forEach(b=> b.classList.toggle('selected', b.dataset.act===g.pendingMeAct));
     });
+  });
+
+  // 2VS2 벤치 지원 메뉴 (응원/엄호/독려/교체) 클릭 처리 — 기존 전투 메뉴와는 별개의 버튼 세트라 따로 둔다
+  document.querySelectorAll('#bench-action-grid .act-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const g = S.game;
+      if(!g || g.locked) return;
+      const act = btn.dataset.benchAct;
+      g.pendingMeAct = (g.pendingMeAct === act) ? null : act;
+      document.querySelectorAll('#bench-action-grid .act-btn').forEach(b=> b.classList.toggle('selected', b.dataset.benchAct===g.pendingMeAct));
+    });
+  });
+
+  // 2VS2 교체 요청 토글 — 위에서 고른 전투/지원 행동과는 별개로 켜고 끄는 부가 버튼.
+  // 켜놓은 채로 턴이 끝났을 때 같은 팀 파트너도 켜놨으면 교체가 성사되고, 아니면 원래 고른 행동이 그대로 나간다.
+  document.getElementById('switch-toggle-btn').addEventListener('click', function(){
+    const g = S.game;
+    if(!g || g.locked) return;
+    g.pendingSwitchReq = !g.pendingSwitchReq;
+    this.classList.toggle('active', g.pendingSwitchReq);
   });
 
   function actLabel(g, who, act){
@@ -2851,7 +3355,13 @@
     });
 
     // 종료 판정
-    const meDead = g.me.hp<=0, opDead = g.op.hp<=0;
+    let meDead = g.me.hp<=0, opDead = g.op.hp<=0;
+
+    // 2VS2: 선봉이 쓰러져도 벤치가 살아있으면 그 자리에서 강제 교체되고, 팀 전체가 전멸했을 때만 진짜 패배
+    if(S.mode === 'ai2v2' && S.team2v2){
+      if(meDead && S.team2v2.meBench.alive){ forceSwitch2v2('me'); meDead = false; }
+      if(opDead && S.team2v2.opBench.alive){ forceSwitch2v2('op'); opDead = false; }
+    }
     renderBattle();
 
     if(meDead || opDead || g.turn>MAX_TURNS){
@@ -3469,6 +3979,7 @@
 
   document.getElementById('result-menu-btn').addEventListener('click', ()=>{
     clearTimeout(S.resultTimer);
+    S.team2v2 = null; // 2VS2 대전 종료 후 다음 싱글/멀티 대전에 상태가 새지 않도록 정리
     goHome('main');
   });
 
