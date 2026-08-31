@@ -264,6 +264,46 @@
   }
   .mail-claim-btn{ width:100%; padding:11px; border-radius:12px; font-size:13px; }
   .mail-empty{ text-align:center; color:var(--text-dim); font-size:13px; padding:40px 0; }
+
+  /* 챌린지북 */
+  .book-list{ display:flex; flex-direction:column; gap:12px; padding:20px 22px; }
+  .book-card{
+    display:flex; align-items:center; gap:14px; padding:16px; border-radius:16px;
+    background:var(--panel-alt); border:1px solid var(--panel-line); cursor:pointer;
+  }
+  .book-card img{ width:44px; height:44px; border-radius:10px; object-fit:cover; flex:0 0 auto; }
+  .book-card-info{ flex:1; min-width:0; }
+  .book-card-name{ font-size:14px; font-weight:800; color:var(--text); }
+  .book-card-sub{ font-size:11px; color:var(--text-dim); margin-top:3px; }
+  .book-card-badge{
+    font-size:11px; font-weight:900; padding:5px 10px; border-radius:10px; flex:0 0 auto;
+    background:color-mix(in srgb, var(--accent-ap) 18%, var(--panel)); color:var(--accent-ap);
+  }
+  .book-card-badge.done{ background:color-mix(in srgb, #FFD166 22%, var(--panel)); color:#FFD166; }
+  .book-title-banner{
+    margin:0 22px 16px; padding:16px; border-radius:14px; text-align:center;
+    background:linear-gradient(135deg, #E8B84B22, var(--panel-alt)); border:1px solid #E8B84B55;
+  }
+  .book-title-banner .bt-name{ font-size:11px; color:var(--text-dim); margin-bottom:4px; }
+  .book-title-banner .bt-title{ font-size:18px; font-weight:900; color:#E8B84B; }
+  .book-title-banner .bt-status{ font-size:11px; margin-top:8px; color:var(--text-dim); }
+  .mission-list{ display:flex; flex-direction:column; gap:10px; padding:0 22px 22px; }
+  .mission-card{
+    padding:14px; border-radius:14px; background:var(--panel-alt); border:1px solid var(--panel-line);
+  }
+  .mission-card.done{ border-color:var(--accent-ap); }
+  .mission-card-top{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+  .mission-card-desc{ font-size:13px; font-weight:700; color:var(--text); }
+  .mission-card-check{ font-size:16px; flex:0 0 auto; }
+  .mission-progress-bar{ height:6px; border-radius:3px; background:#000; overflow:hidden; }
+  .mission-progress-fill{ height:100%; background:var(--accent-ap); }
+  .mission-progress-num{ font-size:10px; color:var(--text-dim); margin-top:5px; font-family:'JetBrains Mono',monospace; text-align:right; }
+  .title-select-row{ display:flex; flex-wrap:wrap; gap:8px; margin:0 2px 20px; }
+  .title-chip{
+    padding:8px 14px; border-radius:12px; font-size:12px; font-weight:800;
+    background:var(--panel-alt); border:1px solid var(--panel-line); color:var(--text-dim); cursor:pointer;
+  }
+  .title-chip.equipped{ background:color-mix(in srgb, #E8B84B22, var(--panel-alt)); border-color:#E8B84B; color:#E8B84B; }
   .ticket-picker-desc{ padding:0 22px 14px; font-size:12px; color:var(--text-dim); }
   #ticket-picker-grid{ padding:0 22px 22px; }
   .ticket-pick-card{ cursor:pointer; }
@@ -1025,6 +1065,25 @@
     <div class="inventory-list" id="inventory-list"></div>
   </div>
 
+  <!-- 챌린지북 목록 (구매한 것만) -->
+  <div class="screen" id="screen-challengebook-list">
+    <div class="back-row">
+      <button class="back-btn" id="challengebook-list-back">←</button>
+      <div class="disp" style="font-size:20px;">챌린지북</div>
+    </div>
+    <div class="book-list" id="book-list"></div>
+  </div>
+
+  <!-- 챌린지북 상세 (미션 체크리스트 + 칭호) -->
+  <div class="screen" id="screen-challengebook-detail">
+    <div class="back-row">
+      <button class="back-btn" id="challengebook-detail-back">←</button>
+      <div class="disp" style="font-size:20px;" id="book-detail-title">챌린지북</div>
+    </div>
+    <div class="book-title-banner" id="book-title-banner"></div>
+    <div class="mission-list" id="mission-list"></div>
+  </div>
+
   <!-- 우편함 (서버 이전 보상 등 공지성 지급) -->
   <div class="screen" id="screen-mailbox">
     <div class="back-row">
@@ -1245,6 +1304,10 @@
     inventory: { charTickets:0, skillTickets:0, charSelectTickets:0, skillSelectTickets:0 }, // 패스/우편함으로 받은 미사용 획득권 (랜덤형 2종 + 직접 선택형 2종)
     xpBoost: { multiplier:1, expiresAt:0 },        // 활성화된 XP 부스트 (실시간 만료)
     mailbox: [],                                    // 공지성 우편함 (서버 이전 보상 등). {id, title, message, rewards, claimed}
+    ownedChallengeBooks: new Set(),                  // 구매한 챌린지북 (캐릭터 id 기준)
+    charStats: {},                                   // 캐릭터별 누적 스탯 (챌린지북 미션 진행도 판정용)
+    titles: new Set(),                               // 획득한 칭호 목록
+    equippedTitle: null,                              // 현재 장착한 칭호
   };
 
   const AI_NAMES = { easy:'초급 AI', normal:'중급 AI', hard:'고급 AI', crazy:'크레이지 AI', crazy_v2:'크레이지 AI V2' };
@@ -1522,6 +1585,104 @@
   // 싱글플레이 AI가 랜덤으로 장착하고 오는 컴뱃스킬 풀 (캐릭터와 무관하게 매 대전마다 하나 랜덤 선택)
   const AI_SKILL_POOL = ['steal_thrust', 'selfdestruct', 'shield', 'medkit', 'poison_dart', 'mini_ultimate', 'double_strike', 'vampire', 'taunt', 'bottom_deal'];
 
+  /* ============== 챌린지북 (캐릭터별 도전과제 + 칭호) ==============
+     공통 미션 5개(모든 책 동일) + 전용 미션 2개(캐릭터 패시브 연계)로 구성.
+     전부 완료하면 그 캐릭터 전용 칭호를 얻는다. 스탯은 charStats[캐릭터id][stat]에 누적되고,
+     싱글/1v1 멀티에서 그 캐릭터로 직접 플레이한 판에서만 올라간다 (2VS2는 팀원 귀속이 애매해 제외).
+  */
+  const COMMON_MISSIONS = [
+    { id:'common_wins10', desc:'이 캐릭터로 10승 달성', stat:'wins', target:10 },
+    { id:'common_battles30', desc:'이 캐릭터로 총 30회 전투 참가', stat:'battles', target:30 },
+    { id:'common_ult15', desc:'이 캐릭터로 [일격] 15회 적중', stat:'ultimateHits', target:15 },
+    { id:'common_atk100', desc:'이 캐릭터로 [공격] 100회 적중', stat:'attackHits', target:100 },
+    { id:'common_crazywin', desc:'이 캐릭터로 크레이지 난이도에서 승리', stat:'crazyWins', target:1 },
+  ];
+
+  const CHALLENGE_BOOKS = {
+    spear: {
+      charId:'spear', title:'마지막 창병', price:2000,
+      unique: [
+        { id:'spear_passive30', desc:'[급소추적] 30회 발동시키기', stat:'passiveTriggers', target:30 },
+        { id:'spear_atk300', desc:'이 캐릭터로 [공격] 누적 300회 적중', stat:'attackHits', target:300 },
+      ],
+    },
+    nabi: {
+      charId:'nabi', title:'냥냥게이머', price:2000,
+      unique: [
+        { id:'nabi_revive5', desc:'[1UP]으로 5회 부활하기', stat:'oneUpRevives', target:5 },
+        { id:'nabi_wins30', desc:'이 캐릭터로 30승 달성', stat:'wins', target:30 },
+      ],
+    },
+    berry: {
+      charId:'berry', title:'천상의 날개', price:2000,
+      unique: [
+        { id:'berry_shield15', desc:'[요정날개] 보호막을 최대(6)까지 15회 채우기', stat:'shieldMaxCount', target:15 },
+        { id:'berry_battles50', desc:'이 캐릭터로 총 50회 전투 참가', stat:'battles', target:50 },
+      ],
+    },
+    takamura: {
+      charId:'takamura', title:'발소리 없는 연무회', price:2000,
+      unique: [
+        { id:'takamura_exec10', desc:'[결단일섬]으로 10회 처형하기', stat:'executionWins', target:10 },
+        { id:'takamura_passive50', desc:'[죽을 사] 중첩을 누적 50회 새기기', stat:'passiveTriggers', target:50 },
+      ],
+    },
+    delta: {
+      charId:'delta', title:'TYPE : ULTIMATE', price:2000,
+      unique: [
+        { id:'delta_energyult5', desc:'에너지 5중첩 상태로 [일격] 5회 적중', stat:'energyUltimates', target:5 },
+        { id:'delta_ult20', desc:'이 캐릭터로 [일격] 누적 20회 적중', stat:'ultimateHits', target:20 },
+      ],
+    },
+    weklein: {
+      charId:'weklein', title:'그 찰나에 맹독을', price:2000,
+      unique: [
+        { id:'weklein_neuro15', desc:'[신경독] 3중첩을 15회 만들기', stat:'neurotoxinMaxStacks', target:15 },
+        { id:'weklein_wins20', desc:'이 캐릭터로 20승 달성', stat:'wins', target:20 },
+      ],
+    },
+    usagi: {
+      charId:'usagi', title:'뿅뿅 바니랜드', price:2000,
+      unique: [
+        { id:'usagi_passive30', desc:'[뿅뿅 바니 칩월드] 30회 발동시키기', stat:'passiveTriggers', target:30 },
+        { id:'usagi_jackpot3', desc:'[밑장빼기]로 20 피해(잭팟)를 3회 뽑아내기', stat:'chipMaxRoll', target:3 },
+      ],
+    },
+  };
+
+  const ALL_TITLES = new Set(Object.values(CHALLENGE_BOOKS).map(b => b.title));
+
+  function getMissionsForBook(charId){
+    return [...COMMON_MISSIONS, ...CHALLENGE_BOOKS[charId].unique];
+  }
+
+  function getCharStat(charId, field){
+    return (S.charStats[charId] && S.charStats[charId][field]) || 0;
+  }
+
+  // 싱글/1v1 멀티에서 "내가 직접 조작하는 캐릭터"의 행동일 때만 호출되어야 한다 (actorKey==='me' 체크는 호출부 책임)
+  function bumpCharStat(field, amount){
+    if(S.mode !== 'single' && S.mode !== 'multi') return; // 2VS2는 팀원 귀속이 애매해서 집계하지 않는다
+    const charId = S.selectedCharacter;
+    if(!charId || !CHALLENGE_BOOKS[charId]) return;
+    if(!S.charStats[charId]) S.charStats[charId] = {};
+    S.charStats[charId][field] = (S.charStats[charId][field]||0) + (amount||1);
+  }
+
+  // 이 캐릭터의 챌린지북 미션이 방금 전부 완료됐는지 확인하고, 그렇다면 칭호를 지급한다.
+  // 조용히 지급만 하고(진행 중인 전투를 방해하지 않음), 다음에 챌린지북 화면을 열 때 완료 표시가 보인다.
+  function checkChallengeBookCompletion(charId){
+    if(!CHALLENGE_BOOKS[charId] || !S.ownedChallengeBooks.has(charId)) return;
+    const book = CHALLENGE_BOOKS[charId];
+    if(S.titles.has(book.title)) return; // 이미 받음
+    const missions = getMissionsForBook(charId);
+    const allDone = missions.every(m => getCharStat(charId, m.stat) >= m.target);
+    if(allDone){
+      S.titles.add(book.title);
+      showToast(`🏆 칭호 [${book.title}] 획득!`);
+    }
+  }
+
   /* ============== 크레이지 AI V2 전용 콘텐츠 ==============
      사고 로직(aiCrazy)은 그대로 두고, 봇의 "장비"만 강화한다:
      1) 스탯이 부풀려진 캐릭터 변종을 자동 생성 (상점/캐릭터 목록/일반 랜덤 매칭 풀에는 노출 안 됨)
@@ -1597,6 +1758,10 @@
         inventory: S.inventory,
         xpBoost: S.xpBoost,
         mailbox: S.mailbox,
+        ownedChallengeBooks: Array.from(S.ownedChallengeBooks),
+        charStats: S.charStats,
+        titles: Array.from(S.titles),
+        equippedTitle: S.equippedTitle,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     }catch(e){
@@ -1643,6 +1808,25 @@
     }
     if(Array.isArray(data.mailbox)){
       S.mailbox = data.mailbox.filter(m => m && typeof m === 'object' && m.id);
+    }
+    if(Array.isArray(data.ownedChallengeBooks)){
+      data.ownedChallengeBooks.forEach(id => { if(CHALLENGE_BOOKS[id]) S.ownedChallengeBooks.add(id); });
+    }
+    if(data.charStats && typeof data.charStats === 'object'){
+      Object.keys(data.charStats).forEach(charId=>{
+        if(!CHARACTERS[charId]) return;
+        const src = data.charStats[charId];
+        if(!src || typeof src !== 'object') return;
+        const clean = {};
+        Object.keys(src).forEach(k=>{ if(typeof src[k] === 'number') clean[k] = src[k]; });
+        S.charStats[charId] = clean;
+      });
+    }
+    if(Array.isArray(data.titles)){
+      data.titles.forEach(t => { if(typeof t === 'string' && ALL_TITLES.has(t)) S.titles.add(t); });
+    }
+    if(typeof data.equippedTitle === 'string' && S.titles.has(data.equippedTitle)){
+      S.equippedTitle = data.equippedTitle;
     }
   }
 
@@ -2104,6 +2288,106 @@
     renderInventory();
   }
 
+  /* ---------- 챌린지북 ---------- */
+  function openChallengeBookList(){
+    showScreen('screen-challengebook-list');
+    renderChallengeBookList();
+  }
+
+  function renderChallengeBookList(){
+    const listEl = document.getElementById('book-list');
+    const owned = Object.values(CHALLENGE_BOOKS).filter(b => S.ownedChallengeBooks.has(b.charId));
+    if(owned.length === 0){
+      listEl.innerHTML = `
+        <div class="empty-state" style="padding:50px 10px;">
+          <div class="ic">📕</div>
+          <div class="t1">보유한 챌린지북이 없습니다</div>
+          <div>상점 → 챌린지북 탭에서 구매할 수 있어요</div>
+        </div>`;
+      return;
+    }
+    listEl.innerHTML = owned.map(book=>{
+      const ch = CHARACTERS[book.charId];
+      const missions = getMissionsForBook(book.charId);
+      const doneCount = missions.filter(m => getCharStat(book.charId, m.stat) >= m.target).length;
+      const complete = S.titles.has(book.title);
+      return `
+        <div class="book-card" data-char-id="${book.charId}">
+          <img src="${ch.portraitImg}" alt="${ch.name}">
+          <div class="book-card-info">
+            <div class="book-card-name">${ch.name}의 챌린지북</div>
+            <div class="book-card-sub">칭호 [${book.title}] · 미션 ${doneCount}/${missions.length}</div>
+          </div>
+          <div class="book-card-badge${complete ? ' done' : ''}">${complete ? '완료' : `${doneCount}/${missions.length}`}</div>
+        </div>
+      `;
+    }).join('');
+    listEl.querySelectorAll('.book-card').forEach(card=>{
+      card.addEventListener('click', ()=> openChallengeBookDetail(card.dataset.charId));
+    });
+  }
+
+  function openChallengeBookDetail(charId){
+    S.viewingBookCharId = charId;
+    showScreen('screen-challengebook-detail');
+    renderChallengeBookDetail();
+  }
+
+  function renderChallengeBookDetail(){
+    const charId = S.viewingBookCharId;
+    const book = CHALLENGE_BOOKS[charId];
+    if(!book) return;
+    const ch = CHARACTERS[charId];
+    document.getElementById('book-detail-title').textContent = `${ch.name}의 챌린지북`;
+
+    const missions = getMissionsForBook(charId);
+    const complete = S.titles.has(book.title);
+    document.getElementById('book-title-banner').innerHTML = `
+      <div class="bt-name">완료 보상 칭호</div>
+      <div class="bt-title">[${book.title}]</div>
+      <div class="bt-status">${complete ? '✅ 획득 완료 — 프로필에서 장착할 수 있어요' : `미션 ${missions.filter(m=>getCharStat(charId,m.stat)>=m.target).length}/${missions.length} 완료`}</div>
+    `;
+
+    const listEl = document.getElementById('mission-list');
+    listEl.innerHTML = missions.map(m=>{
+      const cur = Math.min(m.target, getCharStat(charId, m.stat));
+      const done = cur >= m.target;
+      const pct = Math.round(cur / m.target * 100);
+      return `
+        <div class="mission-card${done ? ' done' : ''}">
+          <div class="mission-card-top">
+            <div class="mission-card-desc">${m.desc}</div>
+            <div class="mission-card-check">${done ? '✅' : '⬜'}</div>
+          </div>
+          <div class="mission-progress-bar"><div class="mission-progress-fill" style="width:${pct}%"></div></div>
+          <div class="mission-progress-num">${cur} / ${m.target}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /* ---------- 칭호 선택 (프로필) ---------- */
+  function renderTitleSelectRow(){
+    const row = document.getElementById('title-select-row');
+    if(!row) return;
+    if(S.titles.size === 0){
+      row.innerHTML = `<div style="font-size:12px; color:var(--text-dim);">아직 획득한 칭호가 없어요. 챌린지북을 완료해보세요!</div>`;
+      return;
+    }
+    const chips = ['<button class="title-chip' + (!S.equippedTitle ? ' equipped' : '') + '" data-title="">칭호 없음</button>'];
+    Array.from(S.titles).forEach(t=>{
+      chips.push(`<button class="title-chip${S.equippedTitle===t?' equipped':''}" data-title="${t}">${t}</button>`);
+    });
+    row.innerHTML = chips.join('');
+    row.querySelectorAll('.title-chip').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        S.equippedTitle = btn.dataset.title || null;
+        saveProgress();
+        renderTitleSelectRow();
+      });
+    });
+  }
+
   function renderInventory(){
     const banner = document.getElementById('boost-active-banner');
     const boostText = formatBoostRemaining();
@@ -2175,6 +2459,8 @@
   }
 
   document.getElementById('inventory-back').addEventListener('click', ()=> goHome('profile'));
+  document.getElementById('challengebook-list-back').addEventListener('click', ()=> goHome('profile'));
+  document.getElementById('challengebook-detail-back').addEventListener('click', openChallengeBookList);
 
   /* ============== 선택권 사용: 랜덤이 아니라 직접 골라서 획득 ============== */
   function openTicketPicker(type){
@@ -2330,6 +2616,17 @@
     S.ownedSkills.add(skillId);
     updatePPDisplay(); // 저장까지 함께 처리
     showToast(`${sk.name}(을)를 구매했습니다`);
+    renderShop();
+  }
+
+  function buyChallengeBook(charId){
+    const book = CHALLENGE_BOOKS[charId];
+    if(!book || S.ownedChallengeBooks.has(charId)) return;
+    if(PP < book.price){ showToast('PP가 부족해요'); return; }
+    PP -= book.price;
+    S.ownedChallengeBooks.add(charId);
+    updatePPDisplay(); // 저장까지 함께 처리
+    showToast(`${CHARACTERS[charId].name}의 챌린지북을 구매했습니다`);
     renderShop();
   }
 
@@ -2570,12 +2867,16 @@
             <button class="btn btn-primary profile-nickname-save" id="profile-nickname-save">저장</button>
           </div>
           <button class="btn profile-inventory-btn" id="profile-inventory-btn">🎒 인벤토리 열기</button>
+          <button class="btn profile-inventory-btn" id="profile-challengebook-btn">📕 챌린지북</button>
         </div>
+        <div class="profile-section-title">칭호</div>
+        <div class="title-select-row" id="title-select-row"></div>
         <div class="profile-section-title">프로필 사진으로 사용할 캐릭터</div>
         <div class="char-grid" id="profile-pic-grid"></div>
       `;
       renderProfile();
       document.getElementById('profile-inventory-btn').addEventListener('click', openInventory);
+      document.getElementById('profile-challengebook-btn').addEventListener('click', openChallengeBookList);
     }
   }
 
@@ -2679,6 +2980,8 @@
       showToast('닉네임이 저장되었습니다');
     };
 
+    renderTitleSelectRow();
+
     picGrid.innerHTML = '';
     Object.values(CHARACTERS).filter(ch=> S.ownedCharacters.has(ch.id)).forEach(ch=>{
       const selected = S.profileChar === ch.id;
@@ -2705,6 +3008,7 @@
     const defs = [
       { key:'character', label:'캐릭터' },
       { key:'skill', label:'컴뱃스킬' },
+      { key:'book', label:'챌린지북' },
       { key:'boost', label:'부스트' },
     ];
     subtabsEl.innerHTML = '';
@@ -2729,6 +3033,15 @@
         id: sk.id, name: sk.name, color: sk.color, price: sk.price, desc: sk.desc,
         owned: S.ownedSkills.has(sk.id),
         onBuy: ()=> buySkill(sk.id),
+      }));
+      renderShopGrid(listEl, items);
+    } else if(S.shopTab === 'book'){
+      const items = Object.values(CHALLENGE_BOOKS).map(book=>({
+        id: book.charId, name: `${CHARACTERS[book.charId].name}의 챌린지북`, color: '#E8B84B',
+        desc: `완료 시 칭호 [${book.title}] 획득 · 공통 미션 5개 + 전용 미션 2개`,
+        price: book.price,
+        owned: S.ownedChallengeBooks.has(book.charId),
+        onBuy: ()=> buyChallengeBook(book.charId),
       }));
       renderShopGrid(listEl, items);
     } else {
@@ -3910,6 +4223,7 @@
           if(g[k].chipTurnCounter >= 2){
             g[k].chipTurnCounter = 0;
             const { upKey, downKey } = applyChipWorldPassive(g[k]);
+            if(k === 'me') bumpCharStat('passiveTriggers', 1);
             pushLog('sys', `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`);
             g.pendingChipEffects.push({ side: k, upKey, downKey });
           }
@@ -4042,6 +4356,7 @@
       defender.passiveShieldTurns = 3; // 새 보호막 발생 시 지속시간 갱신
       defender.passiveShieldJustGranted = true; // 획득한 바로 이번 턴은 지속시간 카운트에서 제외
       const label = defenderKey==='me' ? '내' : '상대';
+      if(defenderKey === 'me' && defender.passiveShield >= 6) bumpCharStat('shieldMaxCount', 1);
       pushLog(cls, `ㄴ ${label} [${passive.name}] 발동! 보호막 +${gained} (현재 ${defender.passiveShield}, ${defender.passiveShieldTurns}턴 유지)`);
       spawnPopup(defenderKey, gained>0 ? `SHIELD +${gained}` : 'SHIELD 갱신', 'heal');
     }
@@ -4059,10 +4374,12 @@
       target.hp = 0; // 즉시 처형
       pushLog(cls, `ㄴ ${label} [${passive.name}] 발동! [죽을 사] 최대 중첩 — 상대를 즉시 처형했다`);
       spawnPopup(targetKey, '처형!', null);
+      if(actorKey === 'me') bumpCharStat('executionWins', 1);
       checkOneUpRevive(targetKey, g); // [1UP] 등 부활 패시브가 있다면 여기서도 발동 가능
       return;
     }
     target.deathMarkStacks = Math.min(4, (target.deathMarkStacks||0) + 1);
+    if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
     pushLog(cls, `ㄴ ${label} [${passive.name}]! [죽을 사] 중첩 새김 (현재 ${target.deathMarkStacks}/4)`);
     spawnPopup(targetKey, `☠${target.deathMarkStacks}`, 'poison');
   }
@@ -4079,6 +4396,7 @@
     target.neurotoxinStacks = Math.min(3, (target.neurotoxinStacks||0) + 1);
     target.neurotoxinTurns = 3;
     target.neurotoxinJustApplied = true; // 적중한 이번 턴은 틱 카운트에서 제외, 다음 턴부터 3턴간 진행
+    if(actorKey === 'me' && target.neurotoxinStacks >= 3) bumpCharStat('neurotoxinMaxStacks', 1);
     pushLog(cls, `ㄴ ${label} [${passive.name}]! [신경독] 중첩 ${target.neurotoxinStacks}단계 부여 (3턴, 받는 회복 50% 감소)`);
     spawnPopup(targetKey, `🟣${target.neurotoxinStacks}`, 'poison');
   }
@@ -4094,6 +4412,7 @@
       target.hp = 1;
       target.dmgDebuff = (target.dmgDebuff||0) + 2;
       const label = targetKey==='me' ? '내' : '상대';
+      if(targetKey === 'me') bumpCharStat('oneUpRevives', 1);
       pushLog('sys', `💫 ${label} [${passive.name}] 발동! 1의 체력으로 부활 (이후 공격/일격 피해 -2)`);
       spawnPopup(targetKey, 'REVIVE!', 'heal');
     }
@@ -4186,6 +4505,7 @@
         amount += 2;
         actor.hitCount = 0;
         const actorLabel = actorKey==='me' ? '내' : '상대';
+        if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
         pushLog(cls, `ㄴ ${actorLabel} [${passive.name}] 발동! 추가 2 피해`);
       }
     }
@@ -4352,12 +4672,14 @@
           const dmg = applyOnHitPassive(actorKey, roll, g, cls);
           dealDamage(targetKey, dmg);
           pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]! 카드가 뒤집힌다... ${dmg} 피해`);
+          if(actorKey === 'me' && roll === 20) bumpCharStat('chipMaxRoll', 1);
         }
         // [우사기] 전용: 이 스킬을 쓰면 자기 패시브 [뿅뿅 바니 칩월드]도 함께 발동한다
         const actorPassive = CHARACTERS[actor.charKey].passive;
         if(actorPassive && actorPassive.id === 'chip_world'){
           const { upKey, downKey } = applyChipWorldPassive(actor);
           actor.chipTurnCounter = 0; // 방금 수동으로 발동시켰으니 자동 발동 타이밍도 여기서부터 다시 센다
+          if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
           pushLog(cls, `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`);
           g.pendingChipEffects.push({ side: actorKey, upKey, downKey });
         }
@@ -4407,6 +4729,7 @@
         const dmg = applyOnHitPassive(actorKey, base, g, cls);
         dealDamage(targetKey, dmg);
         pushLog(cls, `ㄴ ${actorLabel} 공격! ${dmg} 피해`);
+        if(actorKey === 'me') bumpCharStat('attackHits', 1);
         applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [결단일섬] 등 "공격 적중" 트리거
         applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "공격 적중" 트리거
       }
@@ -4414,6 +4737,7 @@
       // [비상충전 프로토콜] 등 "일격 사용" 자체에 반응하는 패시브. 카운터에 막히더라도 "사용"은 한 것이므로 소모는 그대로 진행된다.
       let energyBonus = 0;
       const actorPassive = CHARACTERS[actor.charKey].passive;
+      const hadFullEnergy = actorPassive && actorPassive.id === 'overcharge_protocol' && (actor.energyStacks||0) >= 5;
       if(actorPassive && actorPassive.id === 'overcharge_protocol' && (actor.energyStacks||0) > 0){
         energyBonus = actor.energyStacks * 3;
         pushLog(cls, `ㄴ ${actorLabel} [${actorPassive.name}] 발동! 에너지 ${actor.energyStacks} 소모, 일격 피해 +${energyBonus}`);
@@ -4427,12 +4751,14 @@
         const dmg = applyOnHitPassive(actorKey, base, g, cls);
         dealDamage(targetKey, dmg);
         pushLog(cls, `ㄴ ${actorLabel} 일격이 방어를 격파! ${dmg} 피해`);
+        if(actorKey === 'me'){ bumpCharStat('ultimateHits', 1); if(hadFullEnergy) bumpCharStat('energyUltimates', 1); }
         applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "일격 적중" 트리거
       } else {
         const base = Math.max(0, getEffectiveUltimate(actor) - (actor.dmgDebuff||0)) + energyBonus;
         const dmg = applyOnHitPassive(actorKey, base, g, cls);
         dealDamage(targetKey, dmg);
         pushLog(cls, `ㄴ ${actorLabel} 일격! ${dmg} 피해`);
+        if(actorKey === 'me'){ bumpCharStat('ultimateHits', 1); if(hadFullEnergy) bumpCharStat('energyUltimates', 1); }
         applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "일격 적중" 트리거
       }
     } else if(actorAct==='counter'){
@@ -4484,6 +4810,14 @@
 
     const { win, loserKey, subtext } = computeRoundResult(meDead, opDead, g);
     pushLog('sys', win===null ? '🤝 무승부' : (win? '🏆 승리!' : '💀 패배...'));
+
+    // 챌린지북 진행도 집계 (싱글/1v1 멀티에서 실제로 조작한 캐릭터 기준, 2VS2는 제외)
+    bumpCharStat('battles', 1);
+    if(win === true){
+      bumpCharStat('wins', 1);
+      if(S.difficulty === 'crazy') bumpCharStat('crazyWins', 1);
+    }
+    if(S.selectedCharacter) checkChallengeBookCompletion(S.selectedCharacter);
 
     // 1) 패배한 쪽의 이름/체력바가 터지는 연출 (싱글/멀티 공용)
     if(loserKey){
