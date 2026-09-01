@@ -448,6 +448,8 @@
   }
   .friend-card .dot{ width:9px; height:9px; border-radius:50%; background:var(--text-dim); flex:0 0 auto; }
   .friend-card .dot.online{ background:#3EE6C9; box-shadow:0 0 6px #3EE6C9; }
+  .friend-card .dot.battling{ background:#FF4D5E; box-shadow:0 0 6px #FF4D5E; }
+  .friend-card .friend-status-tag{ font-size:11px; color:#FF4D5E; font-weight:700; flex:0 0 auto; }
   .friend-card .friend-name{ flex:1; min-width:0; }
   .friend-card .btn{ flex:0 0 auto; padding:8px 12px; border-radius:10px; font-size:11px; }
   .join-input{
@@ -1022,7 +1024,7 @@
     </div>
     <div id="multi-menu-content">
       <div class="profile-section-title" style="margin:0 0 10px;">지금 접속 중인 유저</div>
-      <div class="v2lobby-list" id="online-users-list" style="margin-bottom:20px;"></div>
+      <div class="v2lobby-list" id="online-users-list" style="margin-bottom:20px; max-height:260px; overflow-y:auto; background:var(--panel); border:1px solid var(--panel-line); border-radius:16px; padding:12px;"></div>
       <button class="mode-btn hot" id="btn-create-room">
         <div class="ic">🆕</div>
         <div class="txt"><div class="t1">방 만들기</div><div class="t2">코드를 생성하고 상대를 기다립니다</div></div>
@@ -2000,8 +2002,8 @@
     const uid = myUid();
     if(!uid) return;
     const presenceRef = fbDb().ref('presence/' + uid);
-    presenceRef.set({ nickname: S.nickname || '노련한 전투원', online: true, updatedAt: firebase.database.ServerValue.TIMESTAMP });
-    presenceRef.onDisconnect().update({ online: false });
+    presenceRef.set({ nickname: S.nickname || '노련한 전투원', online: true, inBattle: false, updatedAt: firebase.database.ServerValue.TIMESTAMP });
+    presenceRef.onDisconnect().update({ online: false, inBattle: false });
 
     // [버그 수정] 예전에는 "닉네임 변경" 화면을 한 번도 거치지 않은 유저는 usernames/{닉네임}에
     // 등록되지 않아서, 그 닉네임으로 친구 요청을 보내면 무조건 "찾을 수 없음"이 떴다.
@@ -2041,6 +2043,12 @@
   // 대전 신청 알림 배너. 지금 화면이 뭐든 상관없이 뜨고, 수락하면 그 즉시 상대가 만들어둔
   // 방으로 들어간다 (joinRoom을 그대로 재사용 — 코드만 직접 넣어주는 셈).
   function showMatchInviteBanner(fromUid, invite){
+    // 안전장치: 신청 보내는 쪽에서 걸러도 타이밍 상 놓칠 수 있으니, 내가 지금 전투 중이면
+    // 배너를 띄우지 않고 조용히 거절한다 (수락 시 크래시 방지).
+    if(document.getElementById('screen-battle').classList.contains('active')){
+      fbDb().ref(`matchInvites/${myUid()}/${fromUid}`).remove().catch(()=>{});
+      return;
+    }
     const banner = document.getElementById('match-invite-banner');
     document.getElementById('mib-text').textContent = `⚔️ ${invite.fromNickname}님이 대전을 신청했어요!`;
     banner.classList.add('show');
@@ -2598,15 +2606,24 @@
         return;
       }
       Promise.all(entries.map(([friendUid, info])=>
-        fbDb().ref(`presence/${friendUid}/online`).once('value').then(s=>({ friendUid, nickname: info.nickname, online: !!s.val() }))
+        fbDb().ref(`presence/${friendUid}`).once('value').then(s=>{
+          const p = s.val() || {};
+          return { friendUid, nickname: info.nickname, online: !!p.online, inBattle: !!p.inBattle };
+        })
       )).then(list=>{
-        listEl.innerHTML = list.map(f=>`
+        listEl.innerHTML = list.map(f=>{
+          const busy = f.online && f.inBattle;
+          const dotClass = busy ? 'battling' : (f.online ? 'online' : '');
+          const statusText = busy ? '' : (f.online ? '' : ' (오프라인)');
+          return `
           <div class="friend-card">
-            <span class="dot${f.online ? ' online' : ''}"></span>
-            <span class="friend-name">${f.nickname}${f.online ? '' : ' (오프라인)'}</span>
-            <button class="btn btn-primary" data-invite="${f.friendUid}" data-nick="${f.nickname}" ${f.online ? '' : 'disabled'}>대전 신청</button>
+            <span class="dot${dotClass ? ' ' + dotClass : ''}"></span>
+            <span class="friend-name">${f.nickname}${statusText}</span>
+            ${busy ? `<span class="friend-status-tag">전투 중</span>` : ''}
+            <button class="btn btn-primary" data-invite="${f.friendUid}" data-nick="${f.nickname}" ${(f.online && !busy) ? '' : 'disabled'}>대전 신청</button>
           </div>
-        `).join('');
+        `;
+        }).join('');
         listEl.querySelectorAll('[data-invite]').forEach(btn=>{
           btn.addEventListener('click', ()=> sendMatchInvite(btn.dataset.invite, btn.dataset.nick));
         });
@@ -3118,6 +3135,10 @@
     if(S.mode === 'multi'){ leaveMultiRoom(); }
     if(S.mode === 'v2online'){ leaveV2OnlineRoom(); }
     S.team2v2 = null;
+    // 홈으로 돌아올 때는 항상 "전투 중" 상태를 해제 (싱글/멀티/2VS2 공통)
+    if(FIREBASE_READY && myUid()){
+      fbDb().ref('presence/' + myUid() + '/inBattle').set(false).catch(()=>{});
+    }
     S.tab = tab || S.tab || 'main';
     showScreen('screen-home');
     renderHome();
@@ -3515,6 +3536,10 @@
     renderBattle();
     showScreen('screen-battle');
     playBattleIntro(meName, opName, startTurn, meTeammateName, opTeammateName);
+    // 전투 시작 시 내 상태를 "전투 중"으로 표시 (다른 유저가 대전 신청 못 하도록)
+    if(FIREBASE_READY && myUid()){
+      fbDb().ref('presence/' + myUid() + '/inBattle').set(true).catch(()=>{});
+    }
   }
 
   function startBattle(diff){
@@ -6105,13 +6130,17 @@
         listEl.innerHTML = `<div class="mail-empty">지금 접속 중인 다른 유저가 없어요</div>`;
         return;
       }
-      listEl.innerHTML = others.slice(0, 30).map(([otherUid, info])=>`
+      listEl.innerHTML = others.slice(0, 30).map(([otherUid, info])=>{
+        const busy = !!info.inBattle;
+        return `
         <div class="friend-card">
-          <span class="dot online"></span>
+          <span class="dot ${busy ? 'battling' : 'online'}"></span>
           <span class="friend-name">${info.nickname || '이름없음'}</span>
-          <button class="btn btn-primary" data-invite="${otherUid}" data-nick="${info.nickname||'상대'}">대전 신청</button>
+          ${busy ? `<span class="friend-status-tag">전투 중</span>` : ''}
+          <button class="btn btn-primary" data-invite="${otherUid}" data-nick="${info.nickname||'상대'}" ${busy ? 'disabled' : ''}>대전 신청</button>
         </div>
-      `).join('');
+      `;
+      }).join('');
       listEl.querySelectorAll('[data-invite]').forEach(btn=>{
         btn.addEventListener('click', ()=> sendMatchInvite(btn.dataset.invite, btn.dataset.nick));
       });
@@ -6125,6 +6154,14 @@
   // 알림함(matchInvites)에 넣어준다. 상대가 수락하면 joinRoom으로 바로 그 코드에 들어온다.
   function sendMatchInvite(targetUid, targetNickname){
     if(!FIREBASE_READY || !myUid()){ showToast('Firebase 설정이 필요해요'); return; }
+    // 목록이 갱신되기 전 잠깐 사이에 상대가 전투에 들어갔을 수 있으니, 신청 직전에 한 번 더 확인
+    fbDb().ref('presence/' + targetUid + '/inBattle').once('value').then(snap=>{
+      if(snap.val()){ showToast(`${targetNickname}님은 이미 전투 중이에요`); return; }
+      sendMatchInviteConfirmed(targetUid, targetNickname);
+    }).catch(()=>{ sendMatchInviteConfirmed(targetUid, targetNickname); });
+  }
+
+  function sendMatchInviteConfirmed(targetUid, targetNickname){
     const code = generateRoomCode();
     const roomRef = fbDb().ref('rooms/' + code);
     roomRef.set({
