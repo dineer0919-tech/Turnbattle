@@ -1163,6 +1163,16 @@
     <div class="v2lobby-list" id="friend-list" style="padding:0 22px 22px;"></div>
   </div>
 
+  <!-- 티어리스트 (캐릭터/컴뱃스킬 픽률·승률 통계) -->
+  <div class="screen" id="screen-tierlist">
+    <div class="back-row">
+      <button class="back-btn" id="tierlist-back">←</button>
+      <div class="disp" style="font-size:20px;">티어리스트</div>
+    </div>
+    <div class="rb-tabs" id="tier-subtabs" style="padding:14px 22px 0;"></div>
+    <div class="v2lobby-list" id="tier-list" style="padding:14px 22px 22px;"></div>
+  </div>
+
   <!-- 우편함 (서버 이전 보상 등 공지성 지급) -->
   <div class="screen" id="screen-mailbox">
     <div class="back-row">
@@ -2073,6 +2083,133 @@
     badge.textContent = count > 9 ? '9+' : String(count);
   }
 
+  /* ============== 캐릭터/컴뱃스킬 티어 통계 (OP.GG 스타일) ==============
+     모드별(single/multi/ai2v2/v2online)로 stats/{mode}/{charKey}/games,wins 와
+     stats/{mode}/{charKey}/skills/{skillId}/games,wins 를 원자적으로(increment) 누적한다.
+     전 유저의 전적이 합산되는 전역 통계라 uid와 무관하게 기록되며, Firebase 규칙에
+     "stats": { ".read": true, ".write": "auth != null" } 가 추가로 필요하다. */
+  function recordCharStat(mode, charKey, skillId, win){
+    if(!FIREBASE_READY || !myUid() || !mode || !charKey || win === null || win === undefined) return;
+    const inc = firebase.database.ServerValue.increment(1);
+    const updates = {};
+    updates[`stats/${mode}/${charKey}/games`] = inc;
+    if(win) updates[`stats/${mode}/${charKey}/wins`] = inc;
+    if(skillId){
+      updates[`stats/${mode}/${charKey}/skills/${skillId}/games`] = inc;
+      if(win) updates[`stats/${mode}/${charKey}/skills/${skillId}/wins`] = inc;
+    }
+    fbDb().ref().update(updates).catch(err=> console.error('티어 통계 기록 실패:', err));
+  }
+
+  function openTierListScreen(){
+    showScreen('screen-tierlist');
+    S.tierTab = S.tierTab || 'all';
+    renderTierList();
+  }
+
+  const TIER_MODE_GROUPS = {
+    all: ['single','multi','ai2v2','v2online'],
+    single: ['single'],
+    multi: ['multi'],
+    team2v2: ['ai2v2','v2online'],
+  };
+
+  function renderTierList(){
+    const tabsEl = document.getElementById('tier-subtabs');
+    const listEl = document.getElementById('tier-list');
+    const defs = [
+      { key:'all', label:'전체' },
+      { key:'single', label:'싱글' },
+      { key:'multi', label:'1v1 멀티' },
+      { key:'team2v2', label:'2VS2' },
+    ];
+    tabsEl.innerHTML = '';
+    defs.forEach(d=>{
+      const tab = document.createElement('div');
+      tab.className = 'rb-tab' + (d.key===S.tierTab ? ' active' : '');
+      tab.textContent = d.label;
+      tab.addEventListener('click', ()=>{ S.tierTab = d.key; renderTierList(); });
+      tabsEl.appendChild(tab);
+    });
+
+    if(!FIREBASE_READY || !myUid()){
+      listEl.innerHTML = `<div class="mail-empty">Firebase 연결이 필요해요</div>`;
+      return;
+    }
+    listEl.innerHTML = `<div class="mail-empty">불러오는 중...</div>`;
+
+    const modes = TIER_MODE_GROUPS[S.tierTab] || TIER_MODE_GROUPS.all;
+    Promise.all(modes.map(m=> fbDb().ref('stats/' + m).once('value').then(s=> s.val() || {})))
+      .then(snapshots=>{
+        // 캐릭터별로 games/wins/스킬별 games/wins를 여러 모드 스냅샷에 걸쳐 합산
+        const merged = {};
+        snapshots.forEach(snap=>{
+          Object.entries(snap).forEach(([charKey, cdata])=>{
+            if(!merged[charKey]) merged[charKey] = { games:0, wins:0, skills:{} };
+            merged[charKey].games += cdata.games || 0;
+            merged[charKey].wins += cdata.wins || 0;
+            const skills = cdata.skills || {};
+            Object.entries(skills).forEach(([skillId, sdata])=>{
+              if(!merged[charKey].skills[skillId]) merged[charKey].skills[skillId] = { games:0, wins:0 };
+              merged[charKey].skills[skillId].games += sdata.games || 0;
+              merged[charKey].skills[skillId].wins += sdata.wins || 0;
+            });
+          });
+        });
+
+        const totalGames = Object.values(merged).reduce((sum,c)=> sum + c.games, 0);
+
+        const rows = Object.keys(CHARACTERS).map(charKey=>{
+          const data = merged[charKey] || { games:0, wins:0, skills:{} };
+          const winRate = data.games > 0 ? Math.round((data.wins / data.games) * 100) : null;
+          const pickRate = totalGames > 0 ? Math.round((data.games / totalGames) * 100) : 0;
+          let topSkill = null;
+          Object.entries(data.skills).forEach(([skillId, sdata])=>{
+            if(!topSkill || sdata.games > topSkill.games) topSkill = { skillId, ...sdata };
+          });
+          return { charKey, games:data.games, winRate, pickRate, topSkill };
+        });
+
+        rows.sort((a,b)=>{
+          if(a.games === 0 && b.games === 0) return 0;
+          if(a.games === 0) return 1;
+          if(b.games === 0) return -1;
+          return b.winRate - a.winRate;
+        });
+
+        if(totalGames === 0){
+          listEl.innerHTML = `<div class="mail-empty">아직 쌓인 전적이 없어요</div>`;
+          return;
+        }
+
+        listEl.innerHTML = rows.map(r=>{
+          const ch = CHARACTERS[r.charKey];
+          if(r.games === 0){
+            return `
+            <div class="friend-card" style="opacity:.5;">
+              <span class="friend-name">${ch.name}</span>
+              <span class="friend-status-tag" style="color:var(--text-dim);">데이터 없음</span>
+            </div>`;
+          }
+          const skillName = r.topSkill ? (SKILLS[r.topSkill.skillId] ? SKILLS[r.topSkill.skillId].name : r.topSkill.skillId) : null;
+          const skillWinRate = (r.topSkill && r.topSkill.games > 0) ? Math.round((r.topSkill.wins / r.topSkill.games) * 100) : null;
+          return `
+          <div class="friend-card" style="align-items:flex-start; flex-direction:column; gap:4px; padding:12px 14px;">
+            <div style="display:flex; align-items:center; width:100%; gap:8px;">
+              <span class="friend-name" style="font-weight:900; flex:0 0 auto;">${ch.name}</span>
+              <span class="mono" style="font-size:12px; color:var(--text-dim);">픽률 ${r.pickRate}% · ${r.games}판</span>
+              <span class="mono" style="margin-left:auto; font-weight:900; color:${r.winRate>=50?'#3EE6C9':'#FF8C8C'};">${r.winRate}%</span>
+            </div>
+            ${skillName ? `<div class="mono" style="font-size:11px; color:var(--text-dim);">인기 스킬: ${skillName}${skillWinRate!==null ? ` (승률 ${skillWinRate}%)` : ''}</div>` : ''}
+          </div>`;
+        }).join('');
+      })
+      .catch(err=>{
+        console.error('티어 통계 조회 실패:', err);
+        listEl.innerHTML = `<div class="mail-empty">불러오지 못했어요</div>`;
+      });
+  }
+
   const NICKNAME_CHANGE_COST = 10000;
 
   // 닉네임 변경: 처음 1회는 무료, 이후로는 10000 PP. 전역 usernames/{닉네임} 레지스트리를
@@ -2804,6 +2941,7 @@
   document.getElementById('challengebook-list-back').addEventListener('click', ()=> goHome('profile'));
   document.getElementById('challengebook-detail-back').addEventListener('click', openChallengeBookList);
   document.getElementById('friends-back').addEventListener('click', ()=> goHome('profile'));
+  document.getElementById('tierlist-back').addEventListener('click', ()=> goHome('profile'));
   document.getElementById('friend-add-btn').addEventListener('click', ()=> sendFriendRequest(document.getElementById('friend-add-input').value));
   document.getElementById('friend-add-input').addEventListener('keydown', e=>{
     if(e.key === 'Enter') sendFriendRequest(document.getElementById('friend-add-input').value);
@@ -3220,6 +3358,7 @@
           <button class="btn profile-inventory-btn" id="profile-inventory-btn">🎒 인벤토리 열기</button>
           <button class="btn profile-inventory-btn" id="profile-challengebook-btn">📕 챌린지북</button>
           <button class="btn profile-inventory-btn" id="profile-friends-btn" style="position:relative;">👥 친구<span class="mailbox-badge" id="friends-badge" style="display:none;">0</span></button>
+          <button class="btn profile-inventory-btn" id="profile-tierlist-btn">📊 티어리스트</button>
         </div>
         <div class="profile-section-title">칭호</div>
         <div class="title-select-row" id="title-select-row"></div>
@@ -3230,6 +3369,7 @@
       document.getElementById('profile-inventory-btn').addEventListener('click', openInventory);
       document.getElementById('profile-challengebook-btn').addEventListener('click', openChallengeBookList);
       document.getElementById('profile-friends-btn').addEventListener('click', openFriendsScreen);
+      document.getElementById('profile-tierlist-btn').addEventListener('click', openTierListScreen);
       updateFriendsBadge();
     }
   }
@@ -5313,6 +5453,15 @@
     }
     if(S.selectedCharacter) checkChallengeBookCompletion(S.selectedCharacter);
 
+    // 티어리스트 통계: 싱글/2VS2는 이 시점(=매치가 실제로 끝나는 시점)에 바로 기록한다.
+    // 1v1 멀티는 3판 2선승제라 매치가 완전히 끝나는 endMultiRound에서 따로 기록한다.
+    if(S.mode === 'single'){
+      recordCharStat('single', g.me.charKey, g.me.skillId, win);
+    } else if(is2v2Mode() && S.team2v2){
+      recordCharStat(S.mode, g.me.charKey, g.me.skillId, win);
+      recordCharStat(S.mode, S.team2v2.meBench.charKey, S.team2v2.meBench.skillId, win);
+    }
+
     // 1) 패배한 쪽의 이름/체력바가 터지는 연출 (싱글/멀티 공용)
     if(loserKey){
       const el = document.querySelector(loserKey==='me' ? '.fighter.me' : '.fighter.op');
@@ -5385,6 +5534,9 @@
 
       if(matchDecided){
         const matchWin = M.myWins > M.oppWins;
+        // 티어리스트 통계: 매치가 완전히 끝난 이 시점에 한 번만 기록 (라운드마다 캐릭터는 안 바뀌고
+        // 컴뱃스킬만 바뀔 수 있어서, 마지막 라운드에 장착 중이던 스킬 기준으로 집계한다)
+        recordCharStat('multi', g.me.charKey, g.me.skillId, matchWin);
         titleEl.textContent = matchWin ? 'MATCH WIN' : 'MATCH LOSE';
         titleEl.className = 'result-title disp ' + (matchWin?'win':'lose');
         document.getElementById('result-sub').textContent = `${roundLabel} ${subtext} · 최종 전적 ${M.myWins} : ${M.oppWins}`;
