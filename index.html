@@ -442,6 +442,7 @@
   #screen-multi-menu, #screen-multi-wait{ padding:26px 22px; overflow-y:auto; }
   #screen-challengebook-list, #screen-challengebook-detail{ overflow-y:auto; }
   #screen-friends{ overflow-y:auto; }
+  #screen-tierlist, #screen-tierdetail{ overflow-y:auto; }
   .friend-card{
     display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px;
     background:var(--panel-alt); border:1px solid var(--panel-line); font-size:13px; font-weight:700;
@@ -1249,7 +1250,7 @@
     </div>
     <div class="rb-tabs" id="tier-subtabs" style="padding:14px 22px 0;"></div>
     <div class="tier-legend" id="tier-legend" style="margin:14px 22px 4px;"></div>
-    <div class="v2lobby-list" id="tier-list" style="padding:10px 22px 22px;"></div>
+    <div class="v2lobby-list" id="tier-list" style="padding:10px 22px 90px;"></div>
   </div>
 
   <!-- 티어리스트 상세 (캐릭터 클릭 시: 컴뱃스킬별 픽률/승률 총집합) -->
@@ -1263,7 +1264,7 @@
       <div class="tier-detail-summary mono" id="tierdetail-summary"></div>
     </div>
     <div class="profile-section-title" style="margin:0 22px 10px;">사용된 컴뱃스킬</div>
-    <div class="v2lobby-list" id="tierdetail-skill-list" style="padding:0 22px 22px;"></div>
+    <div class="v2lobby-list" id="tierdetail-skill-list" style="padding:0 22px 90px;"></div>
   </div>
 
   <!-- 우편함 (서버 이전 보상 등 공지성 지급) -->
