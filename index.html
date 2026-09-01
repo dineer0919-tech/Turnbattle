@@ -2274,10 +2274,17 @@
   ];
 
   // 캐릭터 통계(games>0인 것만)를 받아 점수순 정렬 + 1~5 티어를 매겨 반환한다.
+  // 점수 = 승률 가중치가 훨씬 큰 방식으로 계산한다. 이전 버전은 "픽률 - 평균픽률"을 그대로 더해서
+  // 픽률만 매우 높으면 승률이 20%대로 나락이어도 상위 티어에 뜨는 문제가 있었다 (픽률 편차가
+  // 승률보다 값의 범위가 훨씬 커서 승률을 완전히 덮어버림). 이제는 승률을 50%를 기준으로 한
+  // 편차에 큰 가중치(WIN_WEIGHT)를, 픽률은 평균 대비 편차에 작은 가중치(PICK_WEIGHT)만 줘서
+  // "픽률은 높은데 승률이 나쁘면" 점수가 확실히 낮게 나오도록 한다.
+  const TIERLIST_WIN_WEIGHT = 2;   // 승률이 50%에서 1%p 벗어날 때마다 점수 ±2
+  const TIERLIST_PICK_WEIGHT = 0.5; // 픽률이 평균에서 1%p 벗어날 때마다 점수 ±0.5
   function assignTiers(rows){
     const avgPickRate = rows.length > 0 ? 100 / rows.length : 0;
     const scored = rows.map(r=> Object.assign({}, r, {
-      score: r.winRate + (r.pickRate - avgPickRate), // 승률 + "평균보다 얼마나 더/덜 픽되는지" 보정
+      score: (r.winRate - 50) * TIERLIST_WIN_WEIGHT + (r.pickRate - avgPickRate) * TIERLIST_PICK_WEIGHT,
     }));
     scored.sort((a,b)=> b.score - a.score);
     const n = scored.length;
