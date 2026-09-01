@@ -452,6 +452,43 @@
   .friend-card .friend-status-tag{ font-size:11px; color:#FF4D5E; font-weight:700; flex:0 0 auto; }
   .friend-card .friend-name{ flex:1; min-width:0; }
   .friend-card .btn{ flex:0 0 auto; padding:8px 12px; border-radius:10px; font-size:11px; }
+
+  /* ---------- 티어리스트 ---------- */
+  .tier-legend{
+    display:flex; flex-wrap:wrap; gap:6px 14px; padding:10px 12px;
+    background:var(--panel-alt); border:1px solid var(--panel-line); border-radius:12px;
+  }
+  .tier-legend-item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-dim); }
+  .tier-legend-dot{
+    width:18px; height:18px; border-radius:6px; flex:0 0 auto; color:#08151A; font-weight:900;
+    font-size:11px; display:flex; align-items:center; justify-content:center;
+  }
+  .tier-row{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px;
+    background:var(--panel-alt); border:1px solid var(--panel-line); cursor:pointer;
+  }
+  .tier-row:active{ opacity:.8; }
+  .tier-badge{
+    width:26px; height:26px; border-radius:8px; flex:0 0 auto; color:#08151A; font-weight:900;
+    font-size:13px; display:flex; align-items:center; justify-content:center;
+  }
+  .tier-portrait{
+    width:44px; height:44px; border-radius:10px; object-fit:cover; object-position:top center;
+    flex:0 0 auto; background:var(--panel);
+  }
+  .tier-name{ flex:1; min-width:0; font-size:14px; font-weight:900; }
+  .tier-stat{ display:flex; flex-direction:column; align-items:center; gap:1px; flex:0 0 auto; min-width:44px; }
+  .tier-stat-label{ font-size:9px; color:var(--text-dim); font-weight:700; }
+  .tier-stat-value{ font-size:13px; font-weight:900; }
+  .tier-detail-head{
+    display:flex; align-items:center; gap:14px; padding:18px 22px;
+  }
+  .tier-detail-portrait{
+    width:76px; height:76px; border-radius:16px; object-fit:cover; object-position:top center;
+    background:var(--panel-alt); border:1px solid var(--panel-line);
+  }
+  .tier-detail-summary{ font-size:14px; color:var(--text-dim); }
+
   .join-input{
     width:100%; box-sizing:border-box; padding:13px 14px; border-radius:12px;
     background:var(--panel-alt); border:1px solid var(--panel-line); color:var(--text);
@@ -1170,7 +1207,22 @@
       <div class="disp" style="font-size:20px;">티어리스트</div>
     </div>
     <div class="rb-tabs" id="tier-subtabs" style="padding:14px 22px 0;"></div>
-    <div class="v2lobby-list" id="tier-list" style="padding:14px 22px 22px;"></div>
+    <div class="tier-legend" id="tier-legend" style="margin:14px 22px 4px;"></div>
+    <div class="v2lobby-list" id="tier-list" style="padding:10px 22px 22px;"></div>
+  </div>
+
+  <!-- 티어리스트 상세 (캐릭터 클릭 시: 컴뱃스킬별 픽률/승률 총집합) -->
+  <div class="screen" id="screen-tierdetail">
+    <div class="back-row">
+      <button class="back-btn" id="tierdetail-back">←</button>
+      <div class="disp" style="font-size:20px;" id="tierdetail-title">캐릭터</div>
+    </div>
+    <div class="tier-detail-head">
+      <img class="tier-detail-portrait" id="tierdetail-portrait" alt="">
+      <div class="tier-detail-summary mono" id="tierdetail-summary"></div>
+    </div>
+    <div class="profile-section-title" style="margin:0 22px 10px;">사용된 컴뱃스킬</div>
+    <div class="v2lobby-list" id="tierdetail-skill-list" style="padding:0 22px 22px;"></div>
   </div>
 
   <!-- 우편함 (서버 이전 보상 등 공지성 지급) -->
@@ -2114,6 +2166,60 @@
     team2v2: ['ai2v2','v2online'],
   };
 
+  // 1~5티어 색상/설명. 점수(승률 + 픽률 보정)를 기준으로 순위를 매긴 뒤,
+  // 표본이 적어도 항상 고르게 나뉘도록 "상위 몇 %" 구간(분위)으로 5단계를 나눈다.
+  const TIER_DEFS = [
+    { tier:1, color:'#4F8FFF', desc:'최상위권 — 승률·픽률 모두 높음' },
+    { tier:2, color:'#3EE6C9', desc:'강세 — 평균보다 확실히 좋음' },
+    { tier:3, color:'#FFD84F', desc:'평균권 — 무난한 성능' },
+    { tier:4, color:'#9AA0A6', desc:'약세 — 평균보다 아쉬움' },
+    { tier:5, color:'#8B5E3C', desc:'최하위권 — 승률·픽률 모두 낮음' },
+  ];
+
+  // 캐릭터 통계(games>0인 것만)를 받아 점수순 정렬 + 1~5 티어를 매겨 반환한다.
+  function assignTiers(rows){
+    const avgPickRate = rows.length > 0 ? 100 / rows.length : 0;
+    const scored = rows.map(r=> Object.assign({}, r, {
+      score: r.winRate + (r.pickRate - avgPickRate), // 승률 + "평균보다 얼마나 더/덜 픽되는지" 보정
+    }));
+    scored.sort((a,b)=> b.score - a.score);
+    const n = scored.length;
+    scored.forEach((r,i)=>{
+      r.tier = Math.min(5, Math.floor((i / n) * 5) + 1);
+    });
+    return scored;
+  }
+
+  function renderTierLegend(){
+    const el = document.getElementById('tier-legend');
+    if(!el) return;
+    el.innerHTML = TIER_DEFS.map(t=>`
+      <div class="tier-legend-item">
+        <span class="tier-legend-dot" style="background:${t.color};">${t.tier}</span>
+        <span>${t.desc}</span>
+      </div>
+    `).join('');
+  }
+
+  // 여러 모드의 stats 스냅샷을 캐릭터별로 합산한다 (games/wins/skills 전부).
+  function mergeStatsSnapshots(snapshots){
+    const merged = {};
+    snapshots.forEach(snap=>{
+      Object.entries(snap).forEach(([charKey, cdata])=>{
+        if(!merged[charKey]) merged[charKey] = { games:0, wins:0, skills:{} };
+        merged[charKey].games += cdata.games || 0;
+        merged[charKey].wins += cdata.wins || 0;
+        const skills = cdata.skills || {};
+        Object.entries(skills).forEach(([skillId, sdata])=>{
+          if(!merged[charKey].skills[skillId]) merged[charKey].skills[skillId] = { games:0, wins:0 };
+          merged[charKey].skills[skillId].games += sdata.games || 0;
+          merged[charKey].skills[skillId].wins += sdata.wins || 0;
+        });
+      });
+    });
+    return merged;
+  }
+
   function renderTierList(){
     const tabsEl = document.getElementById('tier-subtabs');
     const listEl = document.getElementById('tier-list');
@@ -2131,6 +2237,7 @@
       tab.addEventListener('click', ()=>{ S.tierTab = d.key; renderTierList(); });
       tabsEl.appendChild(tab);
     });
+    renderTierLegend();
 
     if(!FIREBASE_READY || !myUid()){
       listEl.innerHTML = `<div class="mail-empty">Firebase 연결이 필요해요</div>`;
@@ -2141,71 +2248,115 @@
     const modes = TIER_MODE_GROUPS[S.tierTab] || TIER_MODE_GROUPS.all;
     Promise.all(modes.map(m=> fbDb().ref('stats/' + m).once('value').then(s=> s.val() || {})))
       .then(snapshots=>{
-        // 캐릭터별로 games/wins/스킬별 games/wins를 여러 모드 스냅샷에 걸쳐 합산
-        const merged = {};
-        snapshots.forEach(snap=>{
-          Object.entries(snap).forEach(([charKey, cdata])=>{
-            if(!merged[charKey]) merged[charKey] = { games:0, wins:0, skills:{} };
-            merged[charKey].games += cdata.games || 0;
-            merged[charKey].wins += cdata.wins || 0;
-            const skills = cdata.skills || {};
-            Object.entries(skills).forEach(([skillId, sdata])=>{
-              if(!merged[charKey].skills[skillId]) merged[charKey].skills[skillId] = { games:0, wins:0 };
-              merged[charKey].skills[skillId].games += sdata.games || 0;
-              merged[charKey].skills[skillId].wins += sdata.wins || 0;
-            });
-          });
-        });
-
+        const merged = mergeStatsSnapshots(snapshots);
         const totalGames = Object.values(merged).reduce((sum,c)=> sum + c.games, 0);
 
-        const rows = Object.keys(CHARACTERS).map(charKey=>{
-          const data = merged[charKey] || { games:0, wins:0, skills:{} };
-          const winRate = data.games > 0 ? Math.round((data.wins / data.games) * 100) : null;
-          const pickRate = totalGames > 0 ? Math.round((data.games / totalGames) * 100) : 0;
-          let topSkill = null;
-          Object.entries(data.skills).forEach(([skillId, sdata])=>{
-            if(!topSkill || sdata.games > topSkill.games) topSkill = { skillId, ...sdata };
-          });
-          return { charKey, games:data.games, winRate, pickRate, topSkill };
-        });
+        // 자료 없는 캐릭터는 아예 목록에서 제외
+        const rows = Object.keys(CHARACTERS)
+          .map(charKey=>{
+            const data = merged[charKey];
+            if(!data || data.games === 0) return null;
+            const winRate = Math.round((data.wins / data.games) * 100);
+            const pickRate = totalGames > 0 ? Math.round((data.games / totalGames) * 100) : 0;
+            return { charKey, games:data.games, winRate, pickRate };
+          })
+          .filter(Boolean);
 
-        rows.sort((a,b)=>{
-          if(a.games === 0 && b.games === 0) return 0;
-          if(a.games === 0) return 1;
-          if(b.games === 0) return -1;
-          return b.winRate - a.winRate;
-        });
-
-        if(totalGames === 0){
+        if(rows.length === 0){
           listEl.innerHTML = `<div class="mail-empty">아직 쌓인 전적이 없어요</div>`;
           return;
         }
 
-        listEl.innerHTML = rows.map(r=>{
+        const tiered = assignTiers(rows);
+
+        listEl.innerHTML = tiered.map(r=>{
           const ch = CHARACTERS[r.charKey];
-          if(r.games === 0){
-            return `
-            <div class="friend-card" style="opacity:.5;">
-              <span class="friend-name">${ch.name}</span>
-              <span class="friend-status-tag" style="color:var(--text-dim);">데이터 없음</span>
-            </div>`;
-          }
-          const skillName = r.topSkill ? (SKILLS[r.topSkill.skillId] ? SKILLS[r.topSkill.skillId].name : r.topSkill.skillId) : null;
-          const skillWinRate = (r.topSkill && r.topSkill.games > 0) ? Math.round((r.topSkill.wins / r.topSkill.games) * 100) : null;
+          const tierColor = TIER_DEFS[r.tier - 1].color;
           return `
-          <div class="friend-card" style="align-items:flex-start; flex-direction:column; gap:4px; padding:12px 14px;">
-            <div style="display:flex; align-items:center; width:100%; gap:8px;">
-              <span class="friend-name" style="font-weight:900; flex:0 0 auto;">${ch.name}</span>
-              <span class="mono" style="font-size:12px; color:var(--text-dim);">픽률 ${r.pickRate}% · ${r.games}판</span>
-              <span class="mono" style="margin-left:auto; font-weight:900; color:${r.winRate>=50?'#3EE6C9':'#FF8C8C'};">${r.winRate}%</span>
+          <div class="tier-row" data-char="${r.charKey}">
+            <div class="tier-badge" style="background:${tierColor};">${r.tier}</div>
+            <img class="tier-portrait" src="${ch.portraitImg}" alt="${ch.name}">
+            <div class="tier-name">${ch.name}</div>
+            <div class="tier-stat">
+              <span class="tier-stat-label">승률</span>
+              <span class="tier-stat-value" style="color:${r.winRate>=50?'#3EE6C9':'#FF8C8C'};">${r.winRate}%</span>
             </div>
-            ${skillName ? `<div class="mono" style="font-size:11px; color:var(--text-dim);">인기 스킬: ${skillName}${skillWinRate!==null ? ` (승률 ${skillWinRate}%)` : ''}</div>` : ''}
+            <div class="tier-stat">
+              <span class="tier-stat-label">픽률</span>
+              <span class="tier-stat-value">${r.pickRate}%</span>
+            </div>
+          </div>`;
+        }).join('');
+
+        listEl.querySelectorAll('.tier-row').forEach(row=>{
+          row.addEventListener('click', ()=> openTierDetail(row.dataset.char));
+        });
+      })
+      .catch(err=>{
+        console.error('티어 통계 조회 실패:', err);
+        listEl.innerHTML = `<div class="mail-empty">불러오지 못했어요</div>`;
+      });
+  }
+
+  // 캐릭터 하나를 클릭했을 때: 그 캐릭터가 지금까지 사용된 모든 컴뱃스킬을 픽률순으로 총집합해 보여준다
+  function openTierDetail(charKey){
+    S.tierDetailChar = charKey;
+    showScreen('screen-tierdetail');
+    renderTierDetail();
+  }
+
+  function renderTierDetail(){
+    const charKey = S.tierDetailChar;
+    const ch = CHARACTERS[charKey];
+    if(!ch) return;
+    document.getElementById('tierdetail-title').textContent = ch.name;
+    document.getElementById('tierdetail-portrait').src = ch.portraitImg;
+    const summaryEl = document.getElementById('tierdetail-summary');
+    const listEl = document.getElementById('tierdetail-skill-list');
+    summaryEl.textContent = '불러오는 중...';
+    listEl.innerHTML = '';
+
+    const modes = TIER_MODE_GROUPS[S.tierTab] || TIER_MODE_GROUPS.all;
+    Promise.all(modes.map(m=> fbDb().ref(`stats/${m}/${charKey}`).once('value').then(s=> s.val() || {})))
+      .then(snapshots=>{
+        const merged = { games:0, wins:0, skills:{} };
+        snapshots.forEach(data=>{
+          merged.games += data.games || 0;
+          merged.wins += data.wins || 0;
+          Object.entries(data.skills || {}).forEach(([skillId, sdata])=>{
+            if(!merged.skills[skillId]) merged.skills[skillId] = { games:0, wins:0 };
+            merged.skills[skillId].games += sdata.games || 0;
+            merged.skills[skillId].wins += sdata.wins || 0;
+          });
+        });
+        const games = merged.games, wins = merged.wins;
+        const winRate = games > 0 ? Math.round((wins / games) * 100) : null;
+        summaryEl.innerHTML = `${games}판 · 승률 <span style="color:${winRate>=50?'#3EE6C9':'#FF8C8C'};">${winRate!==null?winRate+'%':'-'}</span>`;
+
+        const skillRows = Object.entries(merged.skills).map(([skillId, sdata])=>{
+          const pickRate = games > 0 ? Math.round((sdata.games / games) * 100) : 0;
+          const skillWinRate = sdata.games > 0 ? Math.round((sdata.wins / sdata.games) * 100) : null;
+          return { skillId, games:sdata.games, pickRate, winRate:skillWinRate };
+        }).sort((a,b)=> b.pickRate - a.pickRate);
+
+        if(skillRows.length === 0){
+          listEl.innerHTML = `<div class="mail-empty">기록된 컴뱃스킬 데이터가 없어요</div>`;
+          return;
+        }
+
+        listEl.innerHTML = skillRows.map(s=>{
+          const name = SKILLS[s.skillId] ? SKILLS[s.skillId].name : s.skillId;
+          return `
+          <div class="friend-card">
+            <span class="friend-name">${name}</span>
+            <span class="mono" style="font-size:11px; color:var(--text-dim); flex:0 0 auto;">${s.games}판</span>
+            <span class="mono" style="font-weight:900; flex:0 0 auto;">픽률 ${s.pickRate}%</span>
+            <span class="mono" style="font-weight:900; flex:0 0 auto; color:${s.winRate>=50?'#3EE6C9':'#FF8C8C'};">${s.winRate!==null?s.winRate+'%':'-'}</span>
           </div>`;
         }).join('');
       })
       .catch(err=>{
-        console.error('티어 통계 조회 실패:', err);
+        console.error('티어 상세 조회 실패:', err);
         listEl.innerHTML = `<div class="mail-empty">불러오지 못했어요</div>`;
       });
   }
@@ -2942,6 +3093,7 @@
   document.getElementById('challengebook-detail-back').addEventListener('click', openChallengeBookList);
   document.getElementById('friends-back').addEventListener('click', ()=> goHome('profile'));
   document.getElementById('tierlist-back').addEventListener('click', ()=> goHome('profile'));
+  document.getElementById('tierdetail-back').addEventListener('click', ()=> showScreen('screen-tierlist'));
   document.getElementById('friend-add-btn').addEventListener('click', ()=> sendFriendRequest(document.getElementById('friend-add-input').value));
   document.getElementById('friend-add-input').addEventListener('keydown', e=>{
     if(e.key === 'Enter') sendFriendRequest(document.getElementById('friend-add-input').value);
