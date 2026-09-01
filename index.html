@@ -51,6 +51,19 @@
   .screen{ display:none; flex-direction:column; flex:1; min-height:0; }
   .screen.active{ display:flex; }
 
+  #match-invite-banner{
+    position:fixed; top:0; left:0; right:0; z-index:500;
+    background:linear-gradient(135deg, #3EE6C9, #2AA9D6); color:#08151A;
+    padding:14px 16px; display:none; align-items:center; justify-content:space-between; gap:12px;
+    box-shadow:0 4px 16px #000a; transform:translateY(-100%); transition:transform .3s ease;
+  }
+  #match-invite-banner.show{ display:flex; transform:translateY(0); }
+  .mib-text{ font-size:13px; font-weight:800; flex:1; min-width:0; }
+  .mib-actions{ display:flex; gap:8px; flex:0 0 auto; }
+  .mib-actions .btn{ padding:8px 14px; border-radius:10px; font-size:12px; }
+  .mib-accept{ background:#08151A; color:#3EE6C9; }
+  .mib-decline{ background:#ffffff33; color:#08151A; }
+
   /* ---------- 공통 ---------- */
   .disp{ font-family:'Black Han Sans',sans-serif; letter-spacing:1px; }
   .mono{ font-family:'JetBrains Mono',monospace; }
@@ -86,7 +99,7 @@
   @keyframes spin{ to{ transform:rotate(360deg);} }
 
   /* ---------- 홈 (main/shop/character 공통 프레임) ---------- */
-  #home-content{ flex:1; min-height:0; overflow-y:auto; padding:28px 22px 100px; }
+  #home-content{ flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding:28px 22px 100px; }
   .home-header{ padding:26px 22px 6px; }
   .home-header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
   .home-header .title{ font-size:26px; }
@@ -213,7 +226,7 @@
   /* ---------- 프로필 ---------- */
   .profile-head{
     display:flex; flex-direction:column; align-items:center; gap:14px;
-    padding:10px 0 26px;
+    padding:10px 0 26px; width:100%; box-sizing:border-box;
   }
   .profile-avatar{
     width:104px; height:104px; border-radius:50%; object-fit:cover; object-position:top center;
@@ -223,7 +236,7 @@
     display:flex; align-items:center; gap:8px; width:100%; max-width:320px;
   }
   .profile-nickname-input{
-    flex:1; box-sizing:border-box; padding:12px 14px; border-radius:12px;
+    flex:1; min-width:0; box-sizing:border-box; padding:12px 14px; border-radius:12px;
     background:var(--panel-alt); border:1px solid var(--panel-line); color:var(--text);
     font-family:'Noto Sans KR',sans-serif; font-size:15px; font-weight:800; text-align:center;
   }
@@ -428,6 +441,15 @@
   /* ---------- 멀티대전 ---------- */
   #screen-multi-menu, #screen-multi-wait{ padding:26px 22px; overflow-y:auto; }
   #screen-challengebook-list, #screen-challengebook-detail{ overflow-y:auto; }
+  #screen-friends{ overflow-y:auto; }
+  .friend-card{
+    display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px;
+    background:var(--panel-alt); border:1px solid var(--panel-line); font-size:13px; font-weight:700;
+  }
+  .friend-card .dot{ width:9px; height:9px; border-radius:50%; background:var(--text-dim); flex:0 0 auto; }
+  .friend-card .dot.online{ background:#3EE6C9; box-shadow:0 0 6px #3EE6C9; }
+  .friend-card .friend-name{ flex:1; min-width:0; }
+  .friend-card .btn{ flex:0 0 auto; padding:8px 12px; border-radius:10px; font-size:11px; }
   .join-input{
     width:100%; box-sizing:border-box; padding:13px 14px; border-radius:12px;
     background:var(--panel-alt); border:1px solid var(--panel-line); color:var(--text);
@@ -917,6 +939,16 @@
 <body>
 <div id="app">
 
+  <!-- 대전 신청 알림 (어느 화면에 있든 실시간으로 뜬다) -->
+  <div id="match-invite-banner">
+    <div class="mib-text" id="mib-text"></div>
+    <div class="mib-actions">
+      <button class="btn btn-primary mib-accept" id="mib-accept">수락</button>
+      <button class="btn mib-decline" id="mib-decline">거절</button>
+    </div>
+  </div>
+
+
   <!-- 스플래시 -->
   <div class="screen active" id="screen-splash">
     <div class="logo disp">턴제대전<span class="sub">TURN BATTLE</span></div>
@@ -989,6 +1021,8 @@
       <div class="disp" style="font-size:20px;">멀티대전</div>
     </div>
     <div id="multi-menu-content">
+      <div class="profile-section-title" style="margin:0 0 10px;">지금 접속 중인 유저</div>
+      <div class="v2lobby-list" id="online-users-list" style="margin-bottom:20px;"></div>
       <button class="mode-btn hot" id="btn-create-room">
         <div class="ic">🆕</div>
         <div class="txt"><div class="t1">방 만들기</div><div class="t2">코드를 생성하고 상대를 기다립니다</div></div>
@@ -1107,6 +1141,24 @@
     </div>
     <div class="book-title-banner" id="book-title-banner"></div>
     <div class="mission-list" id="mission-list"></div>
+  </div>
+
+  <!-- 친구 -->
+  <div class="screen" id="screen-friends">
+    <div class="back-row">
+      <button class="back-btn" id="friends-back">←</button>
+      <div class="disp" style="font-size:20px;">친구</div>
+    </div>
+    <div class="panel-card" style="margin:0 22px 16px;">
+      <div style="font-weight:900; font-size:14px; margin-bottom:10px;">친구 추가</div>
+      <input id="friend-add-input" class="join-input" style="letter-spacing:normal; font-size:14px;" maxlength="12" placeholder="닉네임으로 검색" autocomplete="off">
+      <button class="btn btn-primary" id="friend-add-btn" style="width:100%; margin-top:10px; padding:13px; border-radius:12px;">친구 요청 보내기</button>
+      <div class="multi-status mono" id="friend-add-status"></div>
+    </div>
+    <div class="profile-section-title" id="friend-requests-title" style="display:none; margin:0 22px 10px;">받은 친구 요청</div>
+    <div class="v2lobby-list" id="friend-requests-list" style="padding:0 22px 16px;"></div>
+    <div class="profile-section-title" style="margin:0 22px 10px;">친구 목록</div>
+    <div class="v2lobby-list" id="friend-list" style="padding:0 22px 22px;"></div>
   </div>
 
   <!-- 우편함 (서버 이전 보상 등 공지성 지급) -->
@@ -1336,6 +1388,7 @@
     charStats: {},                                   // 캐릭터별 누적 스탯 (챌린지북 미션 진행도 판정용)
     titles: new Set(),                               // 획득한 칭호 목록
     equippedTitle: null,                              // 현재 장착한 칭호
+    hasUsedFreeNicknameChange: false,                  // 무료 닉네임 변경권 사용 여부
   };
 
   const AI_NAMES = { easy:'초급 AI', normal:'중급 AI', hard:'고급 AI', crazy:'크레이지 AI', crazy_v2:'크레이지 AI V2' };
@@ -1792,6 +1845,7 @@
         charStats: S.charStats,
         titles: Array.from(S.titles),
         equippedTitle: S.equippedTitle,
+        hasUsedFreeNicknameChange: S.hasUsedFreeNicknameChange,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     }catch(e){
@@ -1857,6 +1911,9 @@
     }
     if(typeof data.equippedTitle === 'string' && S.titles.has(data.equippedTitle)){
       S.equippedTitle = data.equippedTitle;
+    }
+    if(typeof data.hasUsedFreeNicknameChange === 'boolean'){
+      S.hasUsedFreeNicknameChange = data.hasUsedFreeNicknameChange;
     }
   }
 
@@ -1924,7 +1981,10 @@
     try{
       firebase.initializeApp(firebaseConfig);
       firebase.auth().signInAnonymously()
-        .then(()=>{ fbAuthReady = true; })
+        .then(()=>{
+          fbAuthReady = true;
+          initPresenceAndInvites();
+        })
         .catch(err=>{ console.error('Firebase 익명 로그인 실패:', err); });
     }catch(err){
       console.error('Firebase 초기화 실패:', err);
@@ -1932,6 +1992,116 @@
   }
 
   function fbDb(){ return firebase.database(); }
+  function myUid(){ return (firebase.auth().currentUser && firebase.auth().currentUser.uid) || null; }
+
+  // 로그인 직후 한 번 호출: 내 온라인 상태를 전역에 기록하고(친구/온라인유저 목록용),
+  // 누군가 나에게 보낸 대전 신청을 앱을 쓰는 내내(화면과 무관하게) 실시간으로 감시한다.
+  function initPresenceAndInvites(){
+    const uid = myUid();
+    if(!uid) return;
+    const presenceRef = fbDb().ref('presence/' + uid);
+    presenceRef.set({ nickname: S.nickname || '노련한 전투원', online: true, updatedAt: firebase.database.ServerValue.TIMESTAMP });
+    presenceRef.onDisconnect().update({ online: false });
+
+    fbDb().ref('matchInvites/' + uid).on('child_added', snap=>{
+      const invite = snap.val();
+      if(!invite) return;
+      showMatchInviteBanner(snap.key, invite);
+    });
+
+    fbDb().ref('friendRequests/' + uid).on('value', snap=>{
+      S.pendingFriendRequestCount = snap.exists() ? Object.keys(snap.val()).length : 0;
+      updateFriendsBadge();
+    });
+  }
+
+  // 내 닉네임이 바뀌면 presence에도 반영 (온라인 목록에 예전 이름이 남아있지 않도록)
+  function syncPresenceNickname(){
+    const uid = myUid();
+    if(!uid || !FIREBASE_READY) return;
+    fbDb().ref('presence/' + uid + '/nickname').set(S.nickname || '노련한 전투원').catch(()=>{});
+  }
+
+  // 대전 신청 알림 배너. 지금 화면이 뭐든 상관없이 뜨고, 수락하면 그 즉시 상대가 만들어둔
+  // 방으로 들어간다 (joinRoom을 그대로 재사용 — 코드만 직접 넣어주는 셈).
+  function showMatchInviteBanner(fromUid, invite){
+    const banner = document.getElementById('match-invite-banner');
+    document.getElementById('mib-text').textContent = `⚔️ ${invite.fromNickname}님이 대전을 신청했어요!`;
+    banner.classList.add('show');
+
+    const cleanup = ()=>{
+      banner.classList.remove('show');
+      fbDb().ref(`matchInvites/${myUid()}/${fromUid}`).remove().catch(()=>{});
+    };
+    document.getElementById('mib-accept').onclick = ()=>{
+      cleanup();
+      showScreen('screen-multi-wait');
+      joinRoom(invite.roomCode);
+    };
+    document.getElementById('mib-decline').onclick = cleanup;
+  }
+
+  function updateFriendsBadge(){
+    const badge = document.getElementById('friends-badge');
+    if(!badge) return;
+    const count = S.pendingFriendRequestCount || 0;
+    badge.style.display = count > 0 ? 'flex' : 'none';
+    badge.textContent = count > 9 ? '9+' : String(count);
+  }
+
+  const NICKNAME_CHANGE_COST = 10000;
+
+  // 닉네임 변경: 처음 1회는 무료, 이후로는 10000 PP. 전역 usernames/{닉네임} 레지스트리를
+  // 트랜잭션으로 선점해서 중복 닉네임을 막는다 (Firebase가 없으면 중복 체크는 건너뛰고 로컬에만 저장).
+  function requestNicknameChange(nickInput){
+    const val = nickInput.value.trim();
+    if(!val){ showToast('닉네임을 입력해주세요'); return; }
+    const newNick = val.slice(0, 12);
+    if(newNick === S.nickname){ showToast('현재 닉네임과 동일해요'); return; }
+
+    const isFree = !S.hasUsedFreeNicknameChange;
+    if(!isFree && PP < NICKNAME_CHANGE_COST){
+      showToast(`닉네임 변경에는 ${NICKNAME_CHANGE_COST.toLocaleString()} PP가 필요해요`);
+      return;
+    }
+
+    const finishChange = ()=>{
+      const oldNick = S.nickname;
+      if(!isFree) PP -= NICKNAME_CHANGE_COST;
+      S.hasUsedFreeNicknameChange = true;
+      S.nickname = newNick;
+      nickInput.value = S.nickname;
+      updatePPDisplay(); // 저장까지 함께 처리
+      syncPresenceNickname();
+      showToast(isFree ? '닉네임이 변경되었습니다 (첫 변경 무료)' : `닉네임이 변경되었습니다 (-${NICKNAME_CHANGE_COST.toLocaleString()} PP)`);
+      if(FIREBASE_READY && myUid()){
+        const uid = myUid();
+        fbDb().ref('usernames/' + newNick).set(uid).catch(()=>{});
+        if(oldNick) fbDb().ref('usernames/' + oldNick).remove().catch(()=>{});
+      }
+    };
+
+    if(!FIREBASE_READY || !myUid()){
+      // 온라인 중복 체크가 불가능한 환경이면(오프라인/설정 전) 로컬로만 변경
+      finishChange();
+      return;
+    }
+
+    const uid = myUid();
+    fbDb().ref('usernames/' + newNick).transaction(owner=>{
+      if(owner === null) return uid;   // 비어있으면 내가 선점
+      return owner === uid ? owner : undefined; // 남이 쓰는 중이면 트랜잭션 중단(undefined)
+    }).then(result=>{
+      if(!result.committed){
+        showToast('이미 사용 중인 닉네임이에요');
+        return;
+      }
+      finishChange();
+    }).catch(err=>{
+      console.error('닉네임 중복 확인 실패:', err);
+      showToast('닉네임 확인에 실패했어요. 다시 시도해주세요');
+    });
+  }
 
   // 6자리 방 코드 생성 (헷갈리기 쉬운 0/O, 1/I 는 제외)
   function generateRoomCode(){
@@ -2319,6 +2489,115 @@
   }
 
   /* ---------- 챌린지북 ---------- */
+  /* ---------- 친구 ---------- */
+  function openFriendsScreen(){
+    if(!FIREBASE_READY){ showToast('친구 기능을 쓰려면 Firebase 설정이 먼저 필요해요'); return; }
+    showScreen('screen-friends');
+    document.getElementById('friend-add-status').textContent = '';
+    document.getElementById('friend-add-input').value = '';
+    renderFriendsScreen();
+  }
+
+  function sendFriendRequest(nickname){
+    const statusEl = document.getElementById('friend-add-status');
+    const target = (nickname || '').trim();
+    if(!target){ statusEl.textContent = '닉네임을 입력해주세요.'; return; }
+    if(target === S.nickname){ statusEl.textContent = '자기 자신에게는 보낼 수 없어요.'; return; }
+    const uid = myUid();
+    if(!uid){ statusEl.textContent = '로그인 처리 중이에요. 잠시 후 다시 시도해주세요.'; return; }
+
+    statusEl.textContent = '확인하는 중...';
+    fbDb().ref('usernames/' + target).once('value').then(snap=>{
+      const targetUid = snap.val();
+      if(!targetUid){ statusEl.textContent = '그런 닉네임의 유저를 찾을 수 없어요.'; return; }
+      if(targetUid === uid){ statusEl.textContent = '자기 자신에게는 보낼 수 없어요.'; return; }
+      return fbDb().ref(`friends/${uid}/${targetUid}`).once('value').then(fsnap=>{
+        if(fsnap.exists()){ statusEl.textContent = '이미 친구예요.'; return; }
+        return fbDb().ref(`friendRequests/${targetUid}/${uid}`).set({
+          fromNickname: S.nickname || '노련한 전투원', timestamp: firebase.database.ServerValue.TIMESTAMP,
+        }).then(()=>{
+          statusEl.textContent = `${target}님에게 친구 요청을 보냈어요.`;
+          document.getElementById('friend-add-input').value = '';
+        });
+      });
+    }).catch(err=>{
+      console.error('친구 요청 실패:', err);
+      statusEl.textContent = '요청 처리 중 오류가 발생했어요.';
+    });
+  }
+
+  function acceptFriendRequest(fromUid, fromNickname){
+    const uid = myUid();
+    if(!uid) return;
+    const now = firebase.database.ServerValue.TIMESTAMP;
+    Promise.all([
+      fbDb().ref(`friends/${uid}/${fromUid}`).set({ nickname: fromNickname, since: now }),
+      fbDb().ref(`friends/${fromUid}/${uid}`).set({ nickname: S.nickname || '노련한 전투원', since: now }),
+      fbDb().ref(`friendRequests/${uid}/${fromUid}`).remove(),
+    ]).then(()=>{
+      showToast(`${fromNickname}님과 친구가 되었어요!`);
+      renderFriendsScreen();
+    }).catch(()=> showToast('친구 요청 수락에 실패했어요'));
+  }
+
+  function declineFriendRequest(fromUid){
+    const uid = myUid();
+    if(!uid) return;
+    fbDb().ref(`friendRequests/${uid}/${fromUid}`).remove().then(renderFriendsScreen);
+  }
+
+  function renderFriendsScreen(){
+    const uid = myUid();
+    if(!uid) return;
+    const reqTitle = document.getElementById('friend-requests-title');
+    const reqList = document.getElementById('friend-requests-list');
+    const listEl = document.getElementById('friend-list');
+    listEl.innerHTML = `<div class="mail-empty">불러오는 중...</div>`;
+
+    fbDb().ref('friendRequests/' + uid).once('value').then(reqSnap=>{
+      const requests = reqSnap.val() || {};
+      const reqEntries = Object.entries(requests);
+      reqTitle.style.display = reqEntries.length > 0 ? 'block' : 'none';
+      reqList.innerHTML = reqEntries.map(([fromUid, req])=>`
+        <div class="friend-card">
+          <span class="dot"></span>
+          <span class="friend-name">${req.fromNickname}</span>
+          <button class="btn btn-primary" data-accept="${fromUid}" data-nick="${req.fromNickname}">수락</button>
+          <button class="btn" data-decline="${fromUid}">거절</button>
+        </div>
+      `).join('');
+      reqList.querySelectorAll('[data-accept]').forEach(btn=>{
+        btn.addEventListener('click', ()=> acceptFriendRequest(btn.dataset.accept, btn.dataset.nick));
+      });
+      reqList.querySelectorAll('[data-decline]').forEach(btn=>{
+        btn.addEventListener('click', ()=> declineFriendRequest(btn.dataset.decline));
+      });
+    });
+
+    fbDb().ref('friends/' + uid).once('value').then(friendSnap=>{
+      const friends = friendSnap.val() || {};
+      const entries = Object.entries(friends);
+      if(entries.length === 0){
+        listEl.innerHTML = `<div class="mail-empty">아직 친구가 없어요. 위에서 닉네임으로 추가해보세요!</div>`;
+        return;
+      }
+      Promise.all(entries.map(([friendUid, info])=>
+        fbDb().ref(`presence/${friendUid}/online`).once('value').then(s=>({ friendUid, nickname: info.nickname, online: !!s.val() }))
+      )).then(list=>{
+        listEl.innerHTML = list.map(f=>`
+          <div class="friend-card">
+            <span class="dot${f.online ? ' online' : ''}"></span>
+            <span class="friend-name">${f.nickname}${f.online ? '' : ' (오프라인)'}</span>
+            <button class="btn btn-primary" data-invite="${f.friendUid}" data-nick="${f.nickname}" ${f.online ? '' : 'disabled'}>대전 신청</button>
+          </div>
+        `).join('');
+        listEl.querySelectorAll('[data-invite]').forEach(btn=>{
+          btn.addEventListener('click', ()=> sendMatchInvite(btn.dataset.invite, btn.dataset.nick));
+        });
+      });
+    });
+  }
+
   function openChallengeBookList(){
     showScreen('screen-challengebook-list');
     renderChallengeBookList();
@@ -2491,6 +2770,11 @@
   document.getElementById('inventory-back').addEventListener('click', ()=> goHome('profile'));
   document.getElementById('challengebook-list-back').addEventListener('click', ()=> goHome('profile'));
   document.getElementById('challengebook-detail-back').addEventListener('click', openChallengeBookList);
+  document.getElementById('friends-back').addEventListener('click', ()=> goHome('profile'));
+  document.getElementById('friend-add-btn').addEventListener('click', ()=> sendFriendRequest(document.getElementById('friend-add-input').value));
+  document.getElementById('friend-add-input').addEventListener('keydown', e=>{
+    if(e.key === 'Enter') sendFriendRequest(document.getElementById('friend-add-input').value);
+  });
 
   /* ============== 선택권 사용: 랜덤이 아니라 직접 골라서 획득 ============== */
   function openTicketPicker(type){
@@ -2898,6 +3182,7 @@
           </div>
           <button class="btn profile-inventory-btn" id="profile-inventory-btn">🎒 인벤토리 열기</button>
           <button class="btn profile-inventory-btn" id="profile-challengebook-btn">📕 챌린지북</button>
+          <button class="btn profile-inventory-btn" id="profile-friends-btn" style="position:relative;">👥 친구<span class="mailbox-badge" id="friends-badge" style="display:none;">0</span></button>
         </div>
         <div class="profile-section-title">칭호</div>
         <div class="title-select-row" id="title-select-row"></div>
@@ -2907,6 +3192,8 @@
       renderProfile();
       document.getElementById('profile-inventory-btn').addEventListener('click', openInventory);
       document.getElementById('profile-challengebook-btn').addEventListener('click', openChallengeBookList);
+      document.getElementById('profile-friends-btn').addEventListener('click', openFriendsScreen);
+      updateFriendsBadge();
     }
   }
 
@@ -2998,17 +3285,7 @@
     avatarImg.src = CHARACTERS[S.profileChar].portraitImg;
     nickInput.value = S.nickname;
 
-    saveBtn.onclick = ()=>{
-      const val = nickInput.value.trim();
-      if(!val){
-        showToast('닉네임을 입력해주세요');
-        return;
-      }
-      S.nickname = val.slice(0, 12);
-      nickInput.value = S.nickname;
-      saveProgress();
-      showToast('닉네임이 저장되었습니다');
-    };
+    saveBtn.onclick = ()=> requestNicknameChange(nickInput);
 
     renderTitleSelectRow();
 
@@ -5747,6 +6024,68 @@
     document.getElementById('multi-menu-status').textContent = '';
     document.getElementById('join-code-input').value = '';
     showScreen('screen-multi-menu');
+    renderOnlineUsersList();
+  }
+
+  function renderOnlineUsersList(){
+    const listEl = document.getElementById('online-users-list');
+    const uid = myUid();
+    if(!uid){ listEl.innerHTML = ''; return; }
+    listEl.innerHTML = `<div class="mail-empty">불러오는 중...</div>`;
+    fbDb().ref('presence').orderByChild('online').equalTo(true).once('value').then(snap=>{
+      const all = snap.val() || {};
+      const others = Object.entries(all).filter(([otherUid]) => otherUid !== uid);
+      if(others.length === 0){
+        listEl.innerHTML = `<div class="mail-empty">지금 접속 중인 다른 유저가 없어요</div>`;
+        return;
+      }
+      listEl.innerHTML = others.slice(0, 30).map(([otherUid, info])=>`
+        <div class="friend-card">
+          <span class="dot online"></span>
+          <span class="friend-name">${info.nickname || '이름없음'}</span>
+          <button class="btn btn-primary" data-invite="${otherUid}" data-nick="${info.nickname||'상대'}">대전 신청</button>
+        </div>
+      `).join('');
+      listEl.querySelectorAll('[data-invite]').forEach(btn=>{
+        btn.addEventListener('click', ()=> sendMatchInvite(btn.dataset.invite, btn.dataset.nick));
+      });
+    }).catch(err=>{
+      console.error('온라인 유저 조회 실패:', err);
+      listEl.innerHTML = `<div class="mail-empty">목록을 불러오지 못했어요</div>`;
+    });
+  }
+
+  // 친구/온라인 유저 목록에서 "대전 신청"을 누르면: 방을 만들어두고, 그 방 코드를 상대의
+  // 알림함(matchInvites)에 넣어준다. 상대가 수락하면 joinRoom으로 바로 그 코드에 들어온다.
+  function sendMatchInvite(targetUid, targetNickname){
+    if(!FIREBASE_READY || !myUid()){ showToast('Firebase 설정이 필요해요'); return; }
+    const code = generateRoomCode();
+    const roomRef = fbDb().ref('rooms/' + code);
+    roomRef.set({
+      status: 'waiting',
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+      players: { p1: { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true } },
+    }).then(()=>{
+      resetMultiState();
+      S.multi.code = code;
+      S.multi.mySlot = 'p1';
+      S.multi.oppSlot = 'p2';
+      S.multi.isCreator = true;
+      S.multi.roomRef = roomRef;
+      roomRef.child('players/p1/connected').onDisconnect().set(false);
+
+      fbDb().ref(`matchInvites/${targetUid}/${myUid()}`).set({
+        fromNickname: S.nickname || '노련한 전투원', roomCode: code, timestamp: firebase.database.ServerValue.TIMESTAMP,
+      });
+
+      document.getElementById('room-code-display').textContent = code;
+      document.getElementById('multi-wait-text').textContent = `${targetNickname}님에게 대전 신청을 보냈어요. 수락을 기다리는 중...`;
+      showScreen('screen-multi-wait');
+      listenForRoomStart();
+    }).catch(err=>{
+      console.error('대전 신청 실패:', err);
+      showToast('대전 신청에 실패했어요');
+    });
   }
 
   function createRoom(){
