@@ -30,6 +30,7 @@
     --col-counter:#B266FF;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  button{ color:inherit; font:inherit; } /* 브라우저 기본 버튼 검정 글자색 방지 */
   html,body{margin:0;padding:0;height:100%;background:#000;}
   body{
     font-family:'Noto Sans KR',sans-serif;
@@ -441,6 +442,9 @@
 
   /* ---------- 난이도 선택 ---------- */
   #screen-difficulty{ padding:26px 22px; overflow-y:auto; }
+  #screen-tower-home, #screen-tower-battle, #screen-tower-shop, #screen-tower-augment{
+    padding:26px 0 40px; overflow-y:auto;
+  }
 
   /* ---------- 멀티대전 ---------- */
   #screen-multi-menu, #screen-multi-wait{ padding:26px 22px; overflow-y:auto; }
@@ -877,6 +881,24 @@
   .cooking-badge.show{ display:inline-block; }
   .cooking-badge .cooking-stack{ color:#FFD166; font-weight:900; }
   .cooking-badge .cooking-turns{ color:#fff; font-weight:900; }
+  .burn-badge{
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:800; color:#FF8C3A;
+    background:#FF5A2222; border:1px solid #FF5A2266; border-radius:8px; padding:1px 6px;
+    white-space:nowrap; display:none; flex:0 0 auto;
+  }
+  .burn-badge.show{ display:inline-block; }
+  .taunt-badge{
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:800; color:#FF8FA3;
+    background:#FF8FA322; border:1px solid #FF8FA366; border-radius:8px; padding:1px 6px;
+    white-space:nowrap; display:none; flex:0 0 auto;
+  }
+  .taunt-badge.show{ display:inline-block; }
+  .shield-total-badge{
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:900; color:#7FB4FF;
+    background:#4D8CFF22; border:1px solid #4D8CFF88; border-radius:8px; padding:1px 7px;
+    white-space:nowrap; display:none; margin-left:6px; vertical-align:middle;
+  }
+  .shield-total-badge.show{ display:inline-block; }
   .hpbar{ height:12px; border-radius:7px; background:#000; border:1px solid var(--panel-line); overflow:hidden; margin-top:5px; position:relative;}
   .hpbar-shield{
     position:absolute; top:0; left:0; height:100%; width:0%; z-index:1;
@@ -965,6 +987,228 @@
     pointer-events:none; transition:opacity .65s ease;
   }
   #blackout.show{ opacity:1; }
+
+  /* ---------- 무한대전타워: 층 카드 / 화면 등장 연출 ---------- */
+  #tower-floor-card{
+    position:absolute; inset:0; z-index:59; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:8px; pointer-events:none;
+    opacity:0; transition:opacity .4s ease;
+  }
+  #tower-floor-card .tfc-num{
+    font-family:'Black Han Sans',sans-serif; font-size:52px; letter-spacing:2px;
+    color:var(--text); text-shadow:0 0 24px rgba(62,230,201,0.45);
+  }
+  #tower-floor-card.boss .tfc-num{ color:var(--accent-hp); text-shadow:0 0 28px rgba(255,70,97,0.55); }
+  #tower-floor-card.event-flash{ background:radial-gradient(circle, rgba(255,214,64,0.35), transparent 70%); }
+  #tower-floor-card .tfc-event-mark{
+    font-family:'Black Han Sans',sans-serif; font-size:80px; color:#FFD54F;
+    text-shadow:0 0 30px #FFD54F, 0 0 60px #FFA000; animation:towerEventShake .5s ease infinite;
+  }
+  @keyframes towerEventShake{
+    0%,100%{ transform:rotate(-4deg) scale(1); }
+    50%{ transform:rotate(4deg) scale(1.08); }
+  }
+  #tower-floor-card .tfc-sub{
+    font-size:14px; font-weight:800; color:var(--accent-hp); letter-spacing:3px;
+  }
+  #tower-floor-card .tfc-roulette-label{
+    font-size:15px; font-weight:800; color:var(--text-dim); letter-spacing:3px;
+  }
+  #tower-floor-card .tfc-roulette-name{
+    font-family:'Black Han Sans',sans-serif; font-size:28px; text-align:center; padding:0 20px;
+    text-shadow:0 0 20px currentColor;
+  }
+  @keyframes towerPopIn{
+    from{ opacity:0; transform:translateY(36px) scale(.98); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  .tower-pop-in{ animation:towerPopIn .5s cubic-bezier(.2,.8,.3,1); }
+  @keyframes towerCardPulse{
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.05); }
+    100%{ transform:scale(1); }
+  }
+  @keyframes towerRerollOut{
+    0%{ opacity:1; transform:scale(1); filter:brightness(1); }
+    100%{ opacity:0; transform:scale(0.86); filter:brightness(3); }
+  }
+  @keyframes towerRerollIn{
+    0%{ opacity:0; transform:scale(0.78); filter:brightness(2.2); }
+    55%{ opacity:1; transform:scale(1.1); filter:brightness(1); }
+    100%{ opacity:1; transform:scale(1); filter:brightness(1); }
+  }
+  .tower-reroll-out{ animation:towerRerollOut .22s ease forwards; }
+  .tower-reroll-in{ animation:towerRerollIn .32s cubic-bezier(.2,.8,.3,1) forwards; }
+  .tower-augment-pick.tower-picked{ animation:towerCardPulse .35s ease; border-color:var(--accent-ap) !important; }
+
+  /* ---------- 무한대전타워: 상점 그리드 ---------- */
+  .tower-shop-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;
+  }
+  .tower-item-card{
+    background:var(--panel); border:1px solid var(--panel-line); border-radius:18px;
+    padding:16px 10px 12px; display:flex; flex-direction:column; align-items:center;
+    text-align:center; gap:6px;
+  }
+  .tower-item-emoji{
+    font-size:38px; line-height:1; margin-bottom:2px;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+  }
+  .tower-item-name{ font-size:12.5px; font-weight:900; }
+  .tower-item-tier{ font-size:10px; color:var(--accent-crit); font-family:'JetBrains Mono',monospace; }
+  .tower-item-desc{
+    font-size:10.5px; color:var(--text-dim); line-height:1.45; min-height:44px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tower-item-buy-btn{
+    width:100%; padding:9px 4px; border-radius:10px; font-size:11.5px; margin-top:4px;
+  }
+  .tower-item-card.tower-item-soldout{
+    border-color:#FF5252; background:rgba(255,82,82,0.07);
+  }
+  .tower-item-card.tower-item-soldout .tower-item-emoji,
+  .tower-item-card.tower-item-soldout .tower-item-name,
+  .tower-item-card.tower-item-soldout .tower-item-desc{
+    opacity:0.4;
+  }
+  .tower-item-soldout-badge{
+    width:100%; margin-top:4px; padding:9px 4px; border-radius:10px;
+    background:#FF5252; color:#1a0505; font-weight:900; font-size:12px; letter-spacing:1px;
+  }
+  .tower-price-tag{
+    font-family:'JetBrains Mono',monospace; font-weight:800; letter-spacing:.3px;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .tower-util-row{ display:flex; gap:10px; margin-bottom:16px; }
+  .tower-util-btn{
+    flex:1; padding:14px 8px; border-radius:16px; display:flex; flex-direction:column;
+    align-items:center; gap:6px; background:var(--panel-alt); border:1px solid var(--panel-line);
+  }
+  .tower-util-btn .tui-ic{ font-size:26px; }
+  .tower-util-btn .tui-label{ font-size:13px; font-weight:900; }
+  .tower-util-btn .tui-cost{ font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; }
+  .tower-action-row{ display:flex; gap:10px; margin-bottom:8px; }
+  .tower-action-row .btn{ flex:1; padding:12px 6px; border-radius:12px; font-size:12.5px; }
+
+  /* ---------- 무한대전타워: 가방(인벤토리) 오버레이 ---------- */
+  #tower-bag-overlay{
+    position:absolute; inset:0; background:#000000ea; z-index:80;
+    display:none; align-items:flex-end; justify-content:center; padding:0;
+  }
+  #tower-bag-overlay.show{ display:flex; }
+  .tower-bag-panel{
+    width:100%; max-width:430px; max-height:82vh;
+    background:var(--panel); border:1px solid var(--panel-line);
+    border-radius:24px 24px 0 0; display:flex; flex-direction:column; overflow:hidden;
+    animation:towerBagSlideUp .32s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes towerBagSlideUp{
+    from{ transform:translateY(60px); opacity:0; }
+    to{ transform:translateY(0); opacity:1; }
+  }
+  .tower-bag-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 12px; border-bottom:1px solid var(--panel-line);
+  }
+  .tower-bag-title{ font-size:16px; font-weight:900; }
+  .tower-bag-hint{ font-size:11.5px; color:var(--text-dim); margin-top:2px; }
+  .tower-bag-close{
+    width:32px; height:32px; border-radius:50%; background:var(--panel-alt);
+    border:1px solid var(--panel-line); font-size:14px; color:var(--text);
+  }
+  .tower-bag-grid{
+    flex:1; overflow-y:auto; padding:16px 20px;
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  }
+  .tower-bag-empty{ color:var(--text-dim); font-size:13px; text-align:center; padding:30px 0; grid-column:1/-1; }
+  .tower-bag-item{
+    background:var(--panel-alt); border:2px solid var(--panel-line); border-radius:14px;
+    padding:12px 8px; display:flex; flex-direction:column; align-items:center; gap:4px;
+    text-align:center; position:relative;
+  }
+  .tower-bag-item .tbi-emoji{ font-size:28px; }
+  .tower-bag-item-soup{ border-color:#FFD54F; background:rgba(255,213,79,0.08); }
+  .tower-bag-item-active{ border-color:#FF5252; position:relative; }
+  .tbi-active-badge{
+    position:absolute; top:6px; right:6px; background:#FF5252; color:#1a0505;
+    font-size:9px; font-weight:900; padding:2px 6px; border-radius:6px; letter-spacing:.3px;
+  }
+  .tower-bag-item .tbi-name{ font-size:11px; font-weight:800; }
+  .tower-bag-item .tbi-tier{ font-size:9.5px; color:var(--accent-crit); font-family:'JetBrains Mono',monospace; }
+  .tower-bag-item.selected{ border-color:var(--accent-ap); background:rgba(62,230,201,0.12); }
+  .tower-bag-item.selected::after{
+    content:'✓'; position:absolute; top:4px; right:6px; font-size:12px; color:var(--accent-ap); font-weight:900;
+  }
+  .tower-bag-item .tbi-sell-btn{
+    width:100%; padding:6px 4px; border-radius:8px; font-size:10px; margin-top:4px;
+    background:var(--panel); border:1px solid var(--panel-line); color:var(--text);
+  }
+  .tower-bag-footer{ padding:14px 20px 20px; border-top:1px solid var(--panel-line); }
+  .tower-bag-confirm-btn{ width:100%; padding:14px; border-radius:14px; font-size:14px; }
+
+  /* ---------- 무한대전타워: 특별 이벤트 (진짜 참가자 조우) ---------- */
+  #tower-event-overlay{
+    position:absolute; inset:0; z-index:90; display:none;
+    flex-direction:column; align-items:center; justify-content:flex-end;
+  }
+  #tower-event-overlay.show{ display:flex; }
+  .tower-event-backdrop{
+    position:absolute; inset:0; background:radial-gradient(circle at 50% 30%, rgba(40,30,10,0.55), #000 85%);
+  }
+  .tower-event-portrait-wrap{
+    position:relative; flex:1; display:flex; align-items:flex-end; justify-content:center;
+    width:100%; overflow:hidden; padding-top:40px;
+  }
+  .tower-event-portrait{
+    max-height:64vh; max-width:88%; object-fit:contain; filter:drop-shadow(0 12px 24px rgba(0,0,0,0.6));
+    opacity:0; transform:translateY(24px) scale(0.96);
+    transition:opacity .45s ease, transform .45s cubic-bezier(.2,.8,.3,1);
+  }
+  .tower-event-portrait.enter{ opacity:1; transform:translateY(0) scale(1); }
+  .tower-event-portrait.talk-bounce{ animation:towerEventTalkBounce .4s ease; }
+  @keyframes towerEventTalkBounce{
+    0%{ transform:translateY(0) scale(1); }
+    40%{ transform:translateY(-8px) scale(1.015); }
+    100%{ transform:translateY(0) scale(1); }
+  }
+  .tower-event-box{
+    position:relative; width:100%; max-width:430px; background:var(--panel);
+    border-top:1px solid var(--panel-line); border-radius:20px 20px 0 0;
+    padding:18px 20px 22px; cursor:pointer; z-index:2;
+  }
+  .tower-event-name{ font-size:14px; font-weight:900; color:var(--accent-ap); margin-bottom:8px; }
+  .tower-event-line{
+    font-size:14.5px; line-height:1.6; min-height:66px; opacity:0;
+    transition:opacity .25s ease;
+  }
+  .tower-event-line.show{ opacity:1; }
+  .tower-event-next{
+    text-align:right; font-size:11px; color:var(--text-dim); margin-top:10px;
+    animation:towerEventNextBlink 1.2s ease-in-out infinite;
+  }
+  @keyframes towerEventNextBlink{ 0%,100%{opacity:.4;} 50%{opacity:1;} }
+  .tower-event-actions{
+    position:relative; width:100%; max-width:430px; background:var(--panel);
+    border-top:1px solid var(--panel-line); padding:14px 20px 22px; display:flex; gap:10px; z-index:2;
+  }
+  .tower-event-actions .btn{ flex:1; padding:13px 6px; border-radius:12px; font-size:13px; }
+  .tower-slot-display{
+    flex:1; text-align:center; font-weight:900; font-size:17px; padding:8px 0;
+  }
+
+  #tower-reward-popup{
+    position:absolute; inset:0; z-index:96; display:none; align-items:center; justify-content:center;
+    background:#000000d9; padding:0 30px;
+  }
+  #tower-reward-popup.show{ display:flex; }
+  .tower-reward-panel{
+    width:100%; max-width:340px; background:var(--panel); border:1px solid var(--panel-line);
+    border-radius:20px; padding:26px 22px; text-align:center;
+    animation:towerPopIn .4s cubic-bezier(.2,.8,.3,1);
+  }
+  .trp-icon{ font-size:48px; margin-bottom:10px; }
+  .trp-title{ font-size:16px; font-weight:900; margin-bottom:10px; }
+  .trp-desc{ font-size:13px; color:var(--text-dim); line-height:1.6; }
 
   /* ---------- 결과 오버레이 ---------- */
   #result-overlay{
@@ -1097,6 +1341,39 @@
       <div class="name">크레이지 AI V2</div>
       <div class="desc">더욱 더 강화되었습니다. 이겨낼 수 있겠나요?</div>
     </button>
+  </div>
+
+  <!-- 무한대전타워: 홈 (시작/이어하기) -->
+  <div class="screen" id="screen-tower-home">
+    <div class="back-row">
+      <button class="back-btn" id="tower-home-back">←</button>
+      <div class="disp" style="font-size:20px;">무한대전타워</div>
+    </div>
+    <div id="tower-home-content" style="padding:0 22px;"></div>
+  </div>
+
+  <!-- 무한대전타워: 전투 (2단계 스텁 - 3단계에서 실제 전투 엔진으로 교체 예정) -->
+  <div class="screen" id="screen-tower-battle">
+    <div class="back-row">
+      <div class="disp" style="font-size:20px;" id="tower-battle-title">전투</div>
+    </div>
+    <div id="tower-battle-content" style="padding:0 22px;"></div>
+  </div>
+
+  <!-- 무한대전타워: 상점 -->
+  <div class="screen" id="screen-tower-shop">
+    <div class="back-row">
+      <div class="disp" style="font-size:20px;" id="tower-shop-title">상점</div>
+    </div>
+    <div id="tower-shop-content" style="padding:0 22px;"></div>
+  </div>
+
+  <!-- 무한대전타워: 증강 선택 -->
+  <div class="screen" id="screen-tower-augment">
+    <div class="back-row">
+      <div class="disp" style="font-size:20px;" id="tower-augment-title">증강 선택</div>
+    </div>
+    <div id="tower-augment-content" style="padding:0 22px;"></div>
   </div>
 
   <!-- 멀티대전 메뉴 -->
@@ -1304,12 +1581,15 @@
             <span class="deathmark-badge" id="me-deathmark-badge"></span>
             <span class="energy-badge" id="me-energy-badge"></span>
             <span class="cooking-badge" id="me-cooking-badge"></span>
+            <span class="burn-badge" id="me-burn-badge"></span>
+            <span class="taunt-badge" id="me-taunt-badge"></span>
           </div>
           <div class="hpbar">
             <div class="hpbar-shield" id="me-hpshield" style="width:0%"></div>
             <div class="hpbar-fill" id="me-hpfill" style="width:100%"></div>
           </div>
           <div class="hp-num" id="me-hpnum">30 / 30</div>
+          <span class="shield-total-badge" id="me-shield-badge"></span>
           <div class="ap-row" id="me-ap"></div>
         </div>
         <div class="vs-mark disp">VS</div>
@@ -1321,6 +1601,8 @@
             <span class="neurotoxin-badge" id="op-neurotoxin-badge"></span>
             <span class="poison-badge" id="op-poison-badge"></span>
             <span class="passive-shield-badge" id="op-passive-badge"></span>
+            <span class="burn-badge" id="op-burn-badge"></span>
+            <span class="taunt-badge" id="op-taunt-badge"></span>
             <span id="op-name">AI</span>
             <img class="fighter-portrait" id="op-portrait" alt="">
           </div>
@@ -1329,6 +1611,7 @@
             <div class="hpbar-fill" id="op-hpfill" style="width:100%"></div>
           </div>
           <div class="hp-num" id="op-hpnum">30 / 30</div>
+          <span class="shield-total-badge" id="op-shield-badge"></span>
           <div class="ap-row" id="op-ap"></div>
         </div>
       </div>
@@ -1410,8 +1693,6 @@
     <div id="danger-vignette"></div>
     <div id="hit-flash"></div>
 
-    <div id="blackout"></div>
-
     <div id="result-overlay">
       <div class="result-title disp" id="result-title">WIN</div>
       <div class="result-sub" id="result-sub">상대를 쓰러뜨렸습니다</div>
@@ -1480,6 +1761,50 @@
       <div class="skill-info-desc" id="skill-info-desc"></div>
     </div>
   </div>
+  <!-- 무한대전타워: 가방(인벤토리) — 보기/정제/융합 재료 선택 공용 -->
+  <div id="tower-bag-overlay">
+    <div class="tower-bag-panel">
+      <div class="tower-bag-head">
+        <div>
+          <div class="tower-bag-title" id="tower-bag-title">보유 장비</div>
+          <div class="tower-bag-hint" id="tower-bag-hint"></div>
+        </div>
+        <button class="tower-bag-close" id="tower-bag-close-btn">✕</button>
+      </div>
+      <div class="tower-bag-grid" id="tower-bag-grid"></div>
+      <div class="tower-bag-footer" id="tower-bag-footer" style="display:none;">
+        <button class="btn btn-primary tower-bag-confirm-btn" id="tower-bag-confirm-btn">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 무한대전타워: 특별 이벤트 (복제품 탑에서 마주치는 진짜 참가자) -->
+  <div id="tower-event-overlay">
+    <div class="tower-event-backdrop"></div>
+    <div class="tower-event-portrait-wrap">
+      <img id="tower-event-portrait" class="tower-event-portrait" alt="">
+    </div>
+    <div class="tower-event-box" id="tower-event-box">
+      <div class="tower-event-name" id="tower-event-name"></div>
+      <div class="tower-event-line" id="tower-event-line"></div>
+      <div class="tower-event-next" id="tower-event-next">▸ 탭하여 계속</div>
+    </div>
+    <div class="tower-event-actions" id="tower-event-actions" style="display:none;"></div>
+  </div>
+
+  <!-- 무한대전타워: 이벤트 보상 결과 팝업 -->
+  <div id="tower-reward-popup">
+    <div class="tower-reward-panel">
+      <div class="trp-icon" id="tower-reward-icon">🎁</div>
+      <div class="trp-title" id="tower-reward-title"></div>
+      <div class="trp-desc" id="tower-reward-desc"></div>
+      <button class="btn btn-primary" id="tower-reward-confirm-btn" style="width:100%; margin-top:14px; padding:13px; border-radius:12px;">확인</button>
+    </div>
+  </div>
+
+  <!-- 화면 전환용 암전 + 무한대전타워 층 카드 (특정 screen에 종속되지 않도록 최상위에 위치) -->
+  <div id="blackout"></div>
+  <div id="tower-floor-card"></div>
 
 </div>
 
@@ -1988,6 +2313,1766 @@
   /* ============== PP(재화) / 보유·장착 상태 ============== */
   // 참고: 세션 내에서만 유지됩니다 (페이지를 새로고침하면 초기화).
   let PP = 0;
+
+  /* ============================================================
+     무한대전타워 (로그라이크 엔드콘텐츠) — 데이터 & 코어 로직
+     ============================================================ */
+
+  /* ---------- 층 사이클 ---------- */
+  // 5층 = 1챕터. [전투,전투,상점,전투,증강] 반복. 짝수 챕터(2,4,6..)의 4번째 슬롯은 보스로 대체 -> 9,19,29층...
+  function towerGetFloorType(floor){
+    const posInChapter = ((floor - 1) % 5) + 1;
+    const chapter = Math.ceil(floor / 5);
+    const pattern = ['battle','battle','shop','battle','augment'];
+    let type = pattern[posInChapter - 1];
+    if(type === 'battle' && posInChapter === 4 && chapter % 2 === 0) type = 'boss';
+    return type;
+  }
+
+  function towerGetStatMultiplier(floor){
+    if(floor <= 8) return 0.6 + 0.03 * (floor - 1); // 첫 보스 전까지는 확실히 약한 "잡몹" 구간 (1층 0.6 ~ 8층 0.81)
+    if(floor === 9) return 1.0; // 첫 보스에서 처음으로 원래 비율 수준까지 확 세짐 — 진짜 보스라는 체감
+    if(floor <= 15) return 1.0 + 0.08 * (floor - 9); // 이후 완만히 상승 (15층 1.48)
+    return 1.0 + 0.08 * 6 + 0.12 * (floor - 15); // 16층부터 가파르게 이어짐
+  }
+  function towerGetSkillUsesBonus(floor){ return Math.floor(floor / 10); }
+  function towerGetAiJudgeLevel(floor){
+    if(floor <= 10) return 'easy';
+    if(floor <= 20) return 'normal';
+    if(floor <= 30) return 'hard';
+    if(floor <= 40) return 'crazy';
+    return 'crazy_v2';
+  }
+  function towerGetFloorReward(floor, isBoss){
+    const base = 35 + 6 * floor;
+    return isBoss ? base * 3 : base;
+  }
+
+  /* ---------- 상점 가격표 ---------- */
+  const TOWER_EQUIP_TIER_PRICE = { 1:80, 2:125, 3:250, 4:400 };
+  const TOWER_EQUIP_SELL_RATIO = 0.4;
+  const TOWER_HP_HEAL_PRICE_PER_POINT = 3;
+  const TOWER_AP_CHARGE_PRICE_PER_POINT = 12;
+  const TOWER_REVIVAL_TICKET_PRICE = 1800;
+  function towerGetSellPrice(tier){ return Math.floor(TOWER_EQUIP_TIER_PRICE[tier] * TOWER_EQUIP_SELL_RATIO); }
+
+  /* ---------- 장비 카탈로그 (무기/방어구/장신구, 각 4티어) ---------- */
+  const TOWER_EQUIPMENT = {
+    // 무기 (공격형)
+    broken_vow_blade: { category:'weapon', name:'부러진 서약의 칼날', tiers:[
+      { tier:1, desc:'공격 피해 +2' , effects:{atk:2} },
+      { tier:2, desc:'공격 피해 +3' , effects:{atk:3} },
+      { tier:3, desc:'공격 피해 +4, 적중 시 10% 확률로 행동력 1 추가 획득', effects:{atk:4, apStealChance:0.10} },
+      { tier:4, desc:'공격 피해 +6, 위 확률 25%로 상승', effects:{atk:6, apStealChance:0.25} },
+    ]},
+    last_greeting: { category:'weapon', name:'마지막 인사', tiers:[
+      { tier:1, desc:'체력 50% 이하일 때 공격 피해 +2', effects:{lowHpAtk:2} },
+      { tier:2, desc:'체력 50% 이하일 때 공격 피해 +4', effects:{lowHpAtk:4} },
+      { tier:3, desc:'체력 50% 이하일 때 공격 피해 +6, 체력 25% 이하 시 다음 공격 1회 필중', effects:{lowHpAtk:6, sureHitCount:1} },
+      { tier:4, desc:'체력 50% 이하일 때 공격 피해 +9, 필중 2회로 증가', effects:{lowHpAtk:9, sureHitCount:2} },
+    ]},
+    judgement_hammer: { category:'weapon', name:'심판의 추', tiers:[
+      { tier:1, desc:'일격 피해 +3', effects:{ultimate:3} },
+      { tier:2, desc:'일격 피해 +5', effects:{ultimate:5} },
+      { tier:3, desc:'일격 피해 +7, 일격 격파 수치 +3', effects:{ultimate:7, ultimateBreak:3} },
+      { tier:4, desc:'일격 피해 +11, 일격 격파 수치 +6', effects:{ultimate:11, ultimateBreak:6} },
+    ]},
+    hungry_shadow: { category:'weapon', name:'굶주린 그림자', tiers:[
+      { tier:1, desc:'공격 적중 시 피해의 10% 흡혈', effects:{lifestealPct:0.10} },
+      { tier:2, desc:'공격 적중 시 피해의 15% 흡혈', effects:{lifestealPct:0.15} },
+      { tier:3, desc:'공격 적중 시 피해의 20% 흡혈, 일격에도 적용', effects:{lifestealPct:0.20, lifestealOnUltimate:true} },
+      { tier:4, desc:'공격 적중 시 피해의 28% 흡혈, 일격에도 적용', effects:{lifestealPct:0.28, lifestealOnUltimate:true} },
+    ]},
+    storm_shard: { category:'weapon', name:'폭풍의 파편', tiers:[
+      { tier:1, desc:'공격 적중 시 15% 확률로 추가타 1회(피해 50%)', effects:{extraHitChance:0.15, extraHitDmgPct:0.5} },
+      { tier:2, desc:'확률 22%로 상승', effects:{extraHitChance:0.22, extraHitDmgPct:0.5} },
+      { tier:3, desc:'확률 30%, 추가타 피해 70%로 상승', effects:{extraHitChance:0.30, extraHitDmgPct:0.7} },
+      { tier:4, desc:'확률 42%, 추가타 피해 100%로 상승', effects:{extraHitChance:0.42, extraHitDmgPct:1.0} },
+    ]},
+    // 방어구 (생존형)
+    old_armor_remnant: { category:'armor', name:'낡은 갑주의 잔재', tiers:[
+      { tier:1, desc:'최대체력 +5', effects:{maxHp:5} },
+      { tier:2, desc:'최대체력 +8', effects:{maxHp:8} },
+      { tier:3, desc:'최대체력 +12, 전투 시작 시 보호막 2', effects:{maxHp:12, startShield:2} },
+      { tier:4, desc:'최대체력 +18, 전투 시작 시 보호막 5', effects:{maxHp:18, startShield:5} },
+    ]},
+    frozen_tears: { category:'armor', name:'얼어붙은 눈물', tiers:[
+      { tier:1, desc:'방어 성공 시 보호막 1', effects:{defendShield:1} },
+      { tier:2, desc:'방어 성공 시 보호막 2', effects:{defendShield:2} },
+      { tier:3, desc:'방어 성공 시 보호막 3, 지속시간 4턴', effects:{defendShield:3, shieldDuration:4} },
+      { tier:4, desc:'방어 성공 시 보호막 5, 지속시간 5턴', effects:{defendShield:5, shieldDuration:5} },
+    ]},
+    silent_tombstone: { category:'armor', name:'침묵의 비석', tiers:[
+      { tier:1, desc:'받는 피해 -1', effects:{dmgReduce:1} },
+      { tier:2, desc:'받는 피해 -2', effects:{dmgReduce:2} },
+      { tier:3, desc:'받는 피해 -3', effects:{dmgReduce:3} },
+      { tier:4, desc:'받는 피해 -5', effects:{dmgReduce:5} },
+    ]},
+    last_breath: { category:'armor', name:'마지막 숨결', tiers:[
+      { tier:1, desc:'체력 20% 이하가 될 때, 전투당 1회 보호막 4 자동 생성', effects:{autoShieldHp:4, autoShieldCount:1} },
+      { tier:2, desc:'보호막 6으로 강화', effects:{autoShieldHp:6, autoShieldCount:1} },
+      { tier:3, desc:'보호막 8, 발동 횟수 2회로 증가', effects:{autoShieldHp:8, autoShieldCount:2} },
+      { tier:4, desc:'보호막 12, 발동 횟수 3회로 증가', effects:{autoShieldHp:12, autoShieldCount:3} },
+    ]},
+    winter_bark: { category:'armor', name:'겨울나무 껍질', tiers:[
+      { tier:1, desc:'지속피해(중독/화상 등) 20% 감소', effects:{dotResistPct:0.20} },
+      { tier:2, desc:'지속피해 35% 감소', effects:{dotResistPct:0.35} },
+      { tier:3, desc:'지속피해 50% 감소', effects:{dotResistPct:0.50} },
+      { tier:4, desc:'지속피해 25% 확률로 완전 면역, 아니면 50% 감소', effects:{dotResistPct:0.50, dotImmuneChance:0.25} },
+    ]},
+    // 장신구 (유틸형)
+    clockwork_charm: { category:'accessory', name:'시계태엽 부적', tiers:[
+      { tier:1, desc:'행동력 최대치 +1', effects:{maxAp:1} },
+      { tier:2, desc:'행동력 최대치 +1, 전투 시작 시 행동력 +1', effects:{maxAp:1, startAp:1} },
+      { tier:3, desc:'행동력 최대치 +2', effects:{maxAp:2} },
+      { tier:4, desc:'행동력 최대치 +2, 전투 시작 시 행동력 +2', effects:{maxAp:2, startAp:2} },
+    ]},
+    merchant_scale: { category:'accessory', name:'상인의 저울', tiers:[
+      { tier:1, desc:'상점 가격 5% 할인', effects:{shopDiscountPct:0.05} },
+      { tier:2, desc:'상점 가격 8% 할인', effects:{shopDiscountPct:0.08} },
+      { tier:3, desc:'상점 가격 10% 할인, 층 클리어 코인 +10%', effects:{shopDiscountPct:0.10, coinBonusPct:0.10} },
+      { tier:4, desc:'상점 가격 15% 할인, 층 클리어 코인 +20%', effects:{shopDiscountPct:0.15, coinBonusPct:0.20} },
+    ]},
+    resewn_time: { category:'accessory', name:'재봉된 시간', tiers:[
+      { tier:1, desc:'전투 시작 시 행동력 +1', effects:{startAp:1} },
+      { tier:2, desc:'전투 시작 시 행동력 +2', effects:{startAp:2} },
+      { tier:3, desc:'전투 시작 시 행동력 +2, 첫 턴 한정 행동력 소모 -1', effects:{startAp:2, firstTurnApDiscount:1} },
+      { tier:4, desc:'전투 시작 시 행동력 +3, 첫 턴 한정 행동력 소모 -1', effects:{startAp:3, firstTurnApDiscount:1} },
+    ]},
+    waning_moon_shard: { category:'accessory', name:'이지러진 달 조각', tiers:[
+      { tier:1, desc:'회복 효과 +1', effects:{healBonus:1} },
+      { tier:2, desc:'회복 효과 +2', effects:{healBonus:2} },
+      { tier:3, desc:'회복 효과 +3, 회복 시 1턴 보호막 2 동반', effects:{healBonus:3, healShield:2} },
+      { tier:4, desc:'회복 효과 +5, 회복 시 1턴 보호막 4 동반', effects:{healBonus:5, healShield:4} },
+    ]},
+    rewound_thread: { category:'accessory', name:'되감긴 실타래', tiers:[
+      { tier:3, desc:'장착 컴뱃스킬 전투당 사용 횟수 +1', effects:{skillUsesBonus:1} },
+      { tier:4, desc:'장착 컴뱃스킬 전투당 사용 횟수 +2', effects:{skillUsesBonus:2} },
+    ]},
+  };
+  const TOWER_EQUIPMENT_NAMES = Object.values(TOWER_EQUIPMENT).map(e=>e.name);
+  const TOWER_EQUIP_EMOJI = {
+    broken_vow_blade:'🗡️', last_greeting:'🔪', judgement_hammer:'🔨', hungry_shadow:'🕶️', storm_shard:'🌀',
+    old_armor_remnant:'🛡️', frozen_tears:'❄️', silent_tombstone:'🪦', last_breath:'💨', winter_bark:'🌲',
+    clockwork_charm:'⏱️', merchant_scale:'⚖️', resewn_time:'🧵', waning_moon_shard:'🌙', rewound_thread:'🧶',
+  };
+  function towerGetEquipEmoji(key){ return TOWER_EQUIP_EMOJI[key] || '📦'; }
+
+  function towerGetEquipData(name, tier){
+    const entry = Object.values(TOWER_EQUIPMENT).find(e=>e.name===name);
+    if(!entry) return null;
+    return entry.tiers.find(t=>t.tier===tier) || null;
+  }
+
+  /* ---------- 증강 카탈로그 ---------- */
+  // 공용 증강 (전 캐릭터 공통, 중복 픽 가능 - 스택)
+  const TOWER_AUGMENTS_GENERAL = [
+    { id:'g_hp_up', name:'체력 강화', grade:'common', desc:'최대체력 +5 (스택당 +5)', effects:{maxHpAdd:5} },
+    { id:'g_hp_pct', name:'생명의 그릇', grade:'common', desc:'최대체력 +5% (곱연산 누적)', effects:{maxHpPct:0.05} },
+    { id:'g_start_shield', name:'수호의 맹세', grade:'common', desc:'전투 시작 시 최대체력의 5%만큼 보호막', effects:{startShieldPct:0.05} },
+    { id:'g_lowhp_dmg', name:'뒷심', grade:'rare', desc:'체력 30% 이하일 때 모든 스킬 피해 +20%', effects:{lowHpDmgPct:0.20} },
+    { id:'g_undying', name:'불굴', grade:'epic', desc:'전투당 1회, 치명적 피해를 받아도 체력 1로 생존', effects:{undyingCount:1} },
+    { id:'g_atk_up', name:'예리함', grade:'common', desc:'[공격] 피해 +1', effects:{atkAdd:1} },
+    { id:'g_ult_up', name:'일격의 무게', grade:'rare', desc:'[일격] 피해 +4, 격파 수치 +3', effects:{ultimateAdd:4, ultimateBreakAdd:3} },
+    { id:'g_poison_proc', name:'독기', grade:'rare', desc:'[공격] 적중 시 25% 확률로 2턴 지속피해 1', effects:{poisonProcChance:0.25} },
+    { id:'g_executioner', name:'처형자', grade:'epic', desc:'체력 20% 이하인 적에게 주는 피해 +30%', effects:{executeDmgPct:0.30} },
+    { id:'g_first_strike', name:'기습', grade:'common', desc:'전투 첫 턴, 공격이 방어를 무시하고 100% 적중', effects:{firstTurnPierce:true} },
+    { id:'g_heal_up', name:'회복력', grade:'common', desc:'[회복] 회복량 +2', effects:{healAdd:2} },
+    { id:'g_ap_max', name:'기민함', grade:'common', desc:'행동력 최대치 +1 (누적 상한 +3)', effects:{maxApAdd:1}, stackCap:3 },
+    { id:'g_ap_start', name:'속전속결', grade:'rare', desc:'전투 시작 시 행동력 +2', effects:{startApAdd:2} },
+    { id:'g_defend_shield', name:'방벽', grade:'common', desc:'[방어] 성공 시 보호막 1', effects:{defendShieldAdd:1} },
+    { id:'g_counter_shield', name:'반격 본능', grade:'epic', desc:'[카운터] 성공 시 보호막 3', effects:{counterShieldAdd:3} },
+    { id:'g_skill_uses', name:'스킬 순환', grade:'rare', desc:'장착 컴뱃스킬 전투당 사용 횟수 +1', effects:{skillUsesAdd:1} },
+    { id:'g_coin_up', name:'기연', grade:'common', desc:'층 클리어 시 타워 코인 획득량 +15%', effects:{coinPct:0.15} },
+    { id:'g_shop_discount', name:'상인의 눈', grade:'rare', desc:'상점 아이템 가격 10% 할인', effects:{shopDiscountPct:0.10} },
+  ];
+
+  // 캐릭터 전용 증강 (해당 캐릭터로 플레이할 때만 후보 풀에 등장, 중복 픽 가능)
+  const TOWER_AUGMENTS_BY_CHAR = {
+    spear: [
+      { id:'spear_crit_deep', name:'급소 심화', grade:'common', desc:'급소 추적 추가 피해 +2', effects:{critTrackBonus:2} },
+      { id:'spear_fast_track', name:'빠른 추적', grade:'rare', desc:'발동에 필요한 적중 횟수 -1 (최소 1)', effects:{critTrackReq:-1} },
+      { id:'spear_bleed_track', name:'출혈 추적', grade:'rare', desc:'급소 추적 발동 시 2턴간 지속피해 2 부여', effects:{critTrackBleed:2} },
+      { id:'spear_perfect_aim', name:'완벽한 조준', grade:'legendary', desc:'급소 추적이 매 공격마다 발동한다', effects:{critTrackReq:2} },
+      { id:'spear_piercing_strike', name:'관철하는 일격', grade:'mythic', desc:'급소 추적 발동 시, 상대 현재 체력의 25%를 보호막 무시 고정 피해로 추가한다', effects:{critTrackTrueDmgPct:0.25} },
+    ],
+    nabi: [
+      { id:'nabi_extra_life', name:'여분의 목숨', grade:'epic', desc:'1UP 발동 횟수 +1 (전투당)', effects:{oneUpCount:1} },
+      { id:'nabi_phoenix', name:'불사조의 저력', grade:'rare', desc:'부활 시 체력 1 대신 최대체력의 15%로 부활', effects:{oneUpHpPct:0.15} },
+      { id:'nabi_final_blow', name:'최후의 일격', grade:'rare', desc:'1UP 발동 중 피해감소 대신 다음 공격 피해 +50%', effects:{oneUpFinalBlow:0.50} },
+      { id:'nabi_undying', name:'불사의 나비', grade:'legendary', desc:'1UP 발동 횟수 제한이 사실상 사라진다 (전투당 98회)', effects:{oneUpCount:98} },
+      { id:'nabi_butterfly_effect', name:'나비 효과', grade:'mythic', desc:'1UP으로 부활할 때마다 상대에게 즉시 15의 고정 피해를 입힌다', effects:{oneUpCounterDmg:15} },
+    ],
+    berry: [
+      { id:'berry_thick_wing', name:'두꺼운 날개', grade:'common', desc:'보호막 획득량 +1, 최대 중첩 +1', effects:{fairyShieldAdd:1, fairyShieldCapAdd:1} },
+      { id:'berry_blessing', name:'요정의 축복', grade:'rare', desc:'보호막 보유 중 매 턴 체력 1 회복', effects:{fairyShieldRegen:1} },
+      { id:'berry_reflect', name:'반사의 날개', grade:'epic', desc:'보호막으로 막은 피해의 20%를 상대에게 반사', effects:{fairyReflectPct:0.20} },
+      { id:'berry_queens_grace', name:'여왕의 가호', grade:'legendary', desc:'보호막 최대 중첩 제한이 사실상 사라진다', effects:{fairyShieldCapAdd:994, fairyShieldAdd:2} },
+      { id:'berry_absolute_wall', name:'절대 방벽', grade:'mythic', desc:'보호막이 남아있는 동안 받는 모든 피해가 절반으로 줄어든다', effects:{shieldHalvePct:0.5} },
+    ],
+    takamura: [
+      { id:'taka_stack_up', name:'죽을 사 강화', grade:'common', desc:'죽을 사 최대 중첩 +1', effects:{deathMarkCapAdd:1} },
+      { id:'taka_quick_exec', name:'신속한 처형', grade:'rare', desc:'처형 발동 시 행동력 +3 회복', effects:{executeApRestore:3} },
+      { id:'taka_blood_mark', name:'피의 각인', grade:'rare', desc:'죽을 사 중첩 보유 적에게 주는 피해, 중첩당 +1', effects:{deathMarkDmgPerStack:1} },
+      { id:'taka_karma', name:'인과응보', grade:'legendary', desc:'죽을 사 중첩 보유 적에게 주는 피해, 중첩당 +5', effects:{deathMarkDmgPerStack:5} },
+      { id:'taka_swift_end', name:'즉결처단', grade:'mythic', desc:'처형에 필요한 죽을 사 중첩이 2로 줄어든다', effects:{deathMarkCapAdd:-2} },
+    ],
+    delta: [
+      { id:'delta_storage', name:'에너지 저장고', grade:'common', desc:'최대 에너지 +2, 획득 조건 50%→60%로 완화', effects:{energyCapAdd:2, energyThreshold:0.60} },
+      { id:'delta_efficiency', name:'고효율 회로', grade:'rare', desc:'에너지 1개당 일격 피해 증가량 +1', effects:{energyDmgPerStackAdd:1} },
+      { id:'delta_generator', name:'비상 발전', grade:'epic', desc:'에너지 최대치일 때 매 턴 종료 시 체력 1 회복', effects:{energyMaxRegen:1} },
+      { id:'delta_infinite_charge', name:'무한 충전', grade:'legendary', desc:'에너지 상한이 사실상 사라지고, 매 획득 시 +2씩 쌓인다', effects:{energyCapAdd:95, energyGainAdd:1} },
+      { id:'delta_overclock', name:'초한계 돌파', grade:'mythic', desc:'에너지 1개당 일격 피해 증가량이 +7로 뛰고, 일격을 써도 에너지가 소모되지 않는다', effects:{energyDmgPerStackAdd:7, energyNoConsume:true} },
+    ],
+    weklein: [
+      { id:'wek_toxin_grow', name:'맹독 배양', grade:'common', desc:'신경독 최대 중첩 +1, 중첩당 피해 비례 증가', effects:{toxinCapAdd:1} },
+      { id:'wek_immune_break', name:'면역 붕괴', grade:'epic', desc:'신경독 최대 중첩 적이 받는 모든 피해 +15%', effects:{toxinMaxDmgPct:0.15} },
+      { id:'wek_toxin_spread', name:'독무 확산', grade:'rare', desc:'신경독 지속시간 3턴→4턴 (스택 시 최대 5턴)', effects:{toxinDurationAdd:1} },
+      { id:'wek_saturation', name:'맹독 포화', grade:'legendary', desc:'신경독 최대 중첩이 6까지 늘어난다', effects:{toxinCapAdd:3} },
+      { id:'wek_collapse', name:'붕괴하는 육체', grade:'mythic', desc:'신경독 최대 중첩 상대는 매 턴 추가로 최대체력의 5%만큼 고정 피해를 받는다', effects:{toxinMythicPct:0.05} },
+    ],
+    usagi: [
+      { id:'usagi_accel', name:'칩월드 가속', grade:'rare', desc:'발동 주기 2턴→1턴 단축 (최소 1턴)', effects:{chipCycleReduce:1} },
+      { id:'usagi_roulette', name:'행운의 룰렛', grade:'common', desc:'스탯 증가량 2→3 (감소량은 그대로 1)', effects:{chipGainAdd:1} },
+      { id:'usagi_stabilize', name:'칩월드 안정화', grade:'common', desc:'감소 수치 하한 50%→70%로 완화', effects:{chipFloorPct:0.20} },
+      { id:'usagi_every_turn', name:'매 턴 룰렛', grade:'legendary', desc:'칩월드가 2턴마다가 아니라 매 턴 발동한다', effects:{chipCycleReduce:1} },
+      { id:'usagi_infinite_odds', name:'무한 확률', grade:'mythic', desc:'칩월드 발동 시 스탯 감소가 사라지고 상승만 남는다', effects:{chipNoDownside:true} },
+    ],
+    hachimi: [
+      { id:'hachi_skill', name:'숙련된 손맛', grade:'common', desc:'중첩 상승 조건들의 상승량 전부 +1', effects:{cookingGainAdd:1} },
+      { id:'hachi_shortcut', name:'단축 조리', grade:'rare', desc:'완성까지 필요한 턴수 5→4 (스택 시 최소 3)', effects:{cookingTurnsReduce:1} },
+      { id:'hachi_feast', name:'진수성찬', grade:'epic', desc:'요리를 먹을 때/던질 때 효과 모두 +50%', effects:{cookingPowerPct:0.50} },
+      { id:'hachi_instant', name:'즉석 요리', grade:'legendary', desc:'조리 완성까지 필요한 턴수가 2로 줄어든다', effects:{cookingTurnsReduce:3} },
+      { id:'hachi_banquet', name:'만찬의 축복', grade:'mythic', desc:'요리를 먹을 때, 동시에 상대에게도 화상 효과를 건다', effects:{cookingMythicBoth:true} },
+    ],
+  };
+
+  function towerGetAugmentPool(charId){
+    const charAug = TOWER_AUGMENTS_BY_CHAR[charId] || [];
+    return TOWER_AUGMENTS_GENERAL.concat(charAug);
+  }
+
+  function towerRollAugmentChoices(charId, floor){
+    const pool = towerGetAugmentPool(charId);
+    // 고층일수록 rare/epic 가중치 상승. legendary/mythic은 층수와 무관하게 항상 극히 희박하다.
+    const weight = (a)=>{
+      if(a.grade==='mythic') return 0.02;
+      if(a.grade==='legendary') return 0.06;
+      return a.grade==='epic' ? (floor>=20?3:1) : a.grade==='rare' ? (floor>=10?2.5:1.5) : 1;
+    };
+    const picks = [];
+    const poolCopy = pool.slice();
+    for(let i=0;i<3 && poolCopy.length>0;i++){
+      const weights = poolCopy.map(weight);
+      const total = weights.reduce((a,b)=>a+b,0);
+      let r = Math.random()*total;
+      let idx = 0;
+      for(;idx<weights.length;idx++){ r -= weights[idx]; if(r<=0) break; }
+      picks.push(poolCopy[idx]);
+      poolCopy.splice(idx,1);
+    }
+    return picks;
+  }
+
+  /* ---------- 정제 / 융합 ---------- */
+  function towerRefineEquipment(equipmentList, itemName, tier){
+    if(tier >= 4) return { ok:false, reason:'최대 티어입니다.' };
+    const matches = equipmentList.filter(e => e.name === itemName && e.tier === tier);
+    if(matches.length < 3) return { ok:false, reason:'재료가 부족합니다 (3개 필요).' };
+    let removed = 0;
+    const remaining = equipmentList.filter(e => {
+      if(removed < 3 && e.name === itemName && e.tier === tier){ removed++; return false; }
+      return true;
+    });
+    remaining.push({ name:itemName, tier:tier+1 });
+    return { ok:true, equipment:remaining };
+  }
+
+  function towerFuseEquipment(equipmentList, indices){
+    if(indices.length !== 3) return { ok:false, reason:'정확히 3개를 선택해야 합니다.' };
+    const items = indices.map(i => equipmentList[i]);
+    const names = new Set(items.map(i => i.name));
+    if(names.size < 3) return { ok:false, reason:'서로 다른 이름의 장비 3개가 필요합니다.' };
+    const tiers = new Set(items.map(i => i.tier));
+    if(tiers.size !== 1) return { ok:false, reason:'같은 티어의 장비끼리만 융합할 수 있습니다.' };
+    const tier = items[0].tier;
+    const remaining = equipmentList.filter((_, i) => !indices.includes(i));
+    const randomName = TOWER_EQUIPMENT_NAMES[Math.floor(Math.random() * TOWER_EQUIPMENT_NAMES.length)];
+    remaining.push({ name:randomName, tier });
+    return { ok:true, equipment:remaining };
+  }
+
+  /* ---------- 상점 라인업 생성 ---------- */
+  function towerRollShopLineup(floor){
+    // 층수에 따라 티어 등장 가중치 조정 (고층일수록 고티어 확률 ↑)
+    const tierWeight = (t)=>{
+      if(t===1) return Math.max(0.2, 1 - floor*0.03);
+      if(t===2) return 1;
+      if(t===3) return Math.min(1.2, floor*0.04);
+      return Math.min(0.8, Math.max(0, (floor-15)*0.03));
+    };
+    const keys = Object.keys(TOWER_EQUIPMENT);
+    const lineup = [];
+    for(let i=0;i<4;i++){
+      const key = keys[Math.floor(Math.random()*keys.length)];
+      const entry = TOWER_EQUIPMENT[key];
+      const availableTiers = entry.tiers.map(t=>t.tier);
+      const weights = availableTiers.map(tierWeight);
+      const total = weights.reduce((a,b)=>a+b,0) || 1;
+      let r = Math.random()*total;
+      let idx = 0;
+      for(;idx<weights.length;idx++){ r -= weights[idx]; if(r<=0) break; }
+      const tier = availableTiers[Math.min(idx, availableTiers.length-1)];
+      lineup.push({ key, name:entry.name, category:entry.category, tier, price:TOWER_EQUIP_TIER_PRICE[tier] });
+    }
+    return lineup;
+  }
+
+  /* ---------- 런 상태 & 저장/불러오기 ---------- */
+  const TOWER_SAVE_KEY = 'towerRunSave';
+
+  function towerCreateNewRun(charId){
+    const base = CHARACTERS[charId];
+    return {
+      floor: 1,
+      charId: charId,
+      hp: base.stats.hp,
+      maxHp: base.stats.hp,
+      ap: 3,
+      coins: 0,
+      equipment: [],
+      augments: {},
+      revivalTicketUsed: false,
+      hasRevivalTicketItem: false,
+      persistentShieldHp: 0, // [무한대전타워] 베리 이벤트 등으로 얻는, 깨지기 전까지 층을 넘어도 유지되는 보호막
+      eternalSoupCount: 0, // [무한대전타워] 하치미 이벤트로 얻는 "만년 수프" — 사망 시 체력 7로 자동 부활
+      activeEvent: null, // [무한대전타워] 현재 진행 중인 특별 이벤트 (재접속 시 이어서 열기 위한 기록)
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+  }
+
+  function towerSaveRun(run){
+    run.updatedAt = Date.now();
+    try{ localStorage.setItem(TOWER_SAVE_KEY, JSON.stringify(run)); return true; }
+    catch(e){ console.error('타워 저장 실패', e); return false; }
+  }
+  function towerLoadRun(){
+    try{
+      const raw = localStorage.getItem(TOWER_SAVE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ console.error('타워 불러오기 실패', e); return null; }
+  }
+  function towerClearRun(){ try{ localStorage.removeItem(TOWER_SAVE_KEY); }catch(e){} }
+
+  /* 현재 진행중인 타워 런 (메모리) */
+  let TS = null; // TowerState
+  let TS_pendingShopLineup = null; // 이번 상점 방문에서 뽑은 라인업 (층 이동 시 갱신)
+  let TS_pendingAugmentChoices = null;
+
+  /* ---------- 타워 홈 화면 ---------- */
+  function openTowerHome(){
+    showScreen('screen-tower-home');
+    renderTowerHome();
+  }
+
+  function renderTowerHome(){
+    const c = document.getElementById('tower-home-content');
+    const saved = towerLoadRun();
+    if(saved){
+      c.innerHTML = `
+        <div class="panel-card">
+          <div style="font-weight:900; font-size:16px; margin-bottom:6px;">진행 중인 런이 있습니다</div>
+          <div style="color:var(--text-dim); font-size:13px; line-height:1.6;">
+            도달 층: <b>${saved.floor}층</b><br>
+            캐릭터: <b>${(CHARACTERS[saved.charId]||{}).name || saved.charId}</b><br>
+            체력: ${saved.hp} / ${saved.maxHp} · 코인: ${saved.coins.toLocaleString()}
+          </div>
+        </div>
+        <button class="btn btn-primary" id="tower-continue-btn" style="width:100%; margin-top:14px; padding:14px; border-radius:12px;">이어하기</button>
+        <button class="btn" id="tower-abandon-btn" style="width:100%; margin-top:10px; padding:12px; border-radius:12px;">런 포기하기</button>
+      `;
+      document.getElementById('tower-continue-btn').onclick = ()=>{
+        TS = saved;
+        towerEnterCurrentFloor();
+      };
+      document.getElementById('tower-abandon-btn').onclick = ()=>{
+        if(!confirm('정말 이번 런을 포기할까요? 도달 층과 진행 내용이 모두 사라집니다.')) return;
+        towerClearRun();
+        renderTowerHome();
+      };
+    } else {
+      const charId = S.selectedCharacter || 'spear';
+      const charName = (CHARACTERS[charId]||{}).name || charId;
+      c.innerHTML = `
+        <div class="panel-card">
+          <div style="font-weight:900; font-size:16px; margin-bottom:6px;">새로운 등반을 시작합니다</div>
+          <div style="color:var(--text-dim); font-size:13px; line-height:1.6;">
+            현재 선택된 캐릭터 <b>${charName}</b>(으)로 도전합니다.<br>
+            캐릭터를 바꾸려면 [캐릭터] 탭에서 먼저 변경해주세요.
+          </div>
+        </div>
+        <div class="panel-card" style="margin-top:12px;">
+          <div style="font-weight:900; font-size:14px; margin-bottom:6px;">부활권 (선택)</div>
+          <div style="color:var(--text-dim); font-size:12px; line-height:1.6; margin-bottom:10px;">
+            런당 1회, 패배 시 체력 50%로 부활합니다. 가격: ${TOWER_REVIVAL_TICKET_PRICE.toLocaleString()} PP
+          </div>
+          <button class="btn" id="tower-buy-revival-btn" style="width:100%; padding:10px; border-radius:10px;"></button>
+        </div>
+        <button class="btn btn-primary" id="tower-start-btn" style="width:100%; margin-top:14px; padding:14px; border-radius:12px;">등반 시작하기</button>
+      `;
+      let willBuyRevival = false;
+      const revivalBtn = document.getElementById('tower-buy-revival-btn');
+      const refreshRevivalBtn = ()=>{
+        revivalBtn.textContent = willBuyRevival ? '✅ 부활권 지참함 (취소하려면 다시 클릭)' : `부활권 구매 (${TOWER_REVIVAL_TICKET_PRICE.toLocaleString()} PP)`;
+      };
+      refreshRevivalBtn();
+      revivalBtn.onclick = ()=>{
+        if(!willBuyRevival){
+          if(PP < TOWER_REVIVAL_TICKET_PRICE){ showToast('PP가 부족합니다'); return; }
+          willBuyRevival = true;
+        } else {
+          willBuyRevival = false;
+        }
+        refreshRevivalBtn();
+      };
+      document.getElementById('tower-start-btn').onclick = ()=>{
+        if(willBuyRevival){ addPP(-TOWER_REVIVAL_TICKET_PRICE); }
+        TS = towerCreateNewRun(charId);
+        TS.hasRevivalTicketItem = willBuyRevival;
+        towerSaveRun(TS);
+        towerEnterCurrentFloor();
+      };
+    }
+  }
+
+  /* ---------- 층 진입 라우팅 (암전 → 다음 화면 자동/수동 전환) ---------- */
+  function towerEnterCurrentFloor(){
+    if(TS.activeEvent){
+      // 이벤트 대사 도중 새로고침/재접속했다면, 새로 뽑지 않고 같은 캐릭터로 처음부터 다시 연다
+      showScreen('screen-tower-battle');
+      towerOpenEventContinuation(TS.activeEvent.charId, TOWER_EVENT_DIALOGUE[TS.activeEvent.charId], null);
+      return;
+    }
+    const type = towerGetFloorType(TS.floor);
+    if(type === 'shop') towerBlackoutThen(()=> towerRenderShop());
+    else if(type === 'augment') towerBlackoutThen(()=> towerRenderAugment());
+    else towerTransitionToBattle(type === 'boss');
+  }
+
+  function towerGoToNextFloor(){
+    TS.floor += 1;
+    towerSaveRun(TS);
+    towerEnterCurrentFloor();
+  }
+
+  function towerEndRun(reason){
+    towerBlackoutThen(()=>{
+      showToast(reason || '런이 종료되었습니다');
+      towerClearRun();
+      TS = null;
+      openTowerHome();
+    });
+  }
+
+  // 화면을 암전시킨 뒤 콜백을 실행하고, 콜백이 새 화면을 다 그리면 다시 밝아진다
+  function towerBlackoutThen(fn, holdMs){
+    const blackout = document.getElementById('blackout');
+    blackout.classList.add('show');
+    setTimeout(()=>{
+      fn();
+      setTimeout(()=> blackout.classList.remove('show'), holdMs || 80);
+    }, 650);
+  }
+
+  // 암전 중앙에 "N층" 카드를 잠깐 띄웠다가 사라지면 콜백 실행 (보스는 별도 서브텍스트)
+  function towerShowFloorCard(floorNum, isBoss, callback){
+    const card = document.getElementById('tower-floor-card');
+    card.className = isBoss ? 'boss' : '';
+    card.innerHTML = `<div class="tfc-num">${floorNum}층</div>${isBoss ? '<div class="tfc-sub">⚔️ 정점층</div>' : ''}`;
+    requestAnimationFrame(()=>{ card.style.opacity = '1'; });
+    setTimeout(()=>{ card.style.opacity = '1'; }, 200); // 일부 브라우저에서 rAF 트랜지션이 안 먹는 경우를 대비한 안전망
+    setTimeout(()=>{
+      card.style.opacity = '0';
+      setTimeout(callback, 400);
+    }, 900);
+  }
+
+  // 전투 층 자동 진입: 암전 → 층 카드 → (카드 사라지며) 전투 자동 시작, 버튼 없음
+  const TOWER_EVENT_CHANCE = 0.15; // 보스가 아닌 전투층에서 특별 이벤트가 뜰 확률
+
+  function towerTransitionToBattle(isBoss){
+    const blackout = document.getElementById('blackout');
+    blackout.classList.add('show');
+    setTimeout(()=>{
+      showScreen('screen-tower-battle');
+      towerShowFloorCard(TS.floor, isBoss, ()=>{
+        if(!isBoss && Math.random() < TOWER_EVENT_CHANCE){
+          towerPlayEventFlash(()=>{
+            blackout.classList.remove('show');
+            towerOpenEvent();
+          });
+        } else {
+          towerStartRealBattle(isBoss);
+          blackout.classList.remove('show');
+        }
+      });
+    }, 650);
+  }
+
+  // 층 카드가 사라진 직후, 화면이 노랗게 번쩍이며 "?!"가 뜨는 짧은 연출
+  function towerPlayEventFlash(callback){
+    const card = document.getElementById('tower-floor-card');
+    card.className = 'event-flash';
+    card.innerHTML = `<div class="tfc-event-mark">?!</div>`;
+    requestAnimationFrame(()=>{ card.style.opacity = '1'; });
+    setTimeout(()=>{ card.style.opacity = '1'; }, 200);
+    setTimeout(()=>{
+      card.style.opacity = '0';
+      setTimeout(callback, 350);
+    }, 750);
+  }
+
+  /* ---------- 전투 층 ---------- */
+  // 보유 장비 + 증강을 합산해 전투에 실제로 적용할 보너스 값을 계산
+  function towerBuildPlayerBonuses(){
+    const b = {
+      atk:0, healBonus:0, ultimate:0, maxHpFlat:0, maxHpPct:0, startAp:0, skillUses:0, coinPct:0,
+      dmgReduce:0, lowHpDmgPct:0, executeDmgPct:0, lifestealPct:0, apStealChance:0, poisonProcChance:0,
+      extraHitChance:0, extraHitDmgPct:0, firstTurnPierce:false, sureHitCount:0,
+      startShieldPct:0, startShieldFlat:0, defendShieldAdd:0, counterShieldAdd:0, healShield:0,
+      autoShieldHp:0, autoShieldCount:0, dotResistPct:0, dotImmuneChance:0, undyingCount:0,
+      // 캐릭터 전용
+      critTrackBonus:0, critTrackReq:0, critTrackBleed:0, critTrackTrueDmgPct:0,
+      oneUpExtra:0, oneUpHpPct:0, oneUpFinalBlow:0, oneUpCounterDmg:0,
+      fairyShieldAdd:0, fairyShieldCapAdd:0, fairyShieldRegen:0, fairyReflectPct:0, shieldHalvePct:0,
+      deathMarkCapAdd:0, executeApRestore:0, deathMarkDmgPerStack:0,
+      energyCapAdd:0, energyThresholdOverride:0, energyDmgPerStackAdd:0, energyMaxRegen:0, energyGainAdd:0, energyNoConsume:false,
+      toxinCapAdd:0, toxinMaxDmgPct:0, toxinDurationAdd:0, toxinMythicPct:0,
+      chipCycleReduce:0, chipGainAdd:0, chipFloorPct:0, chipNoDownside:false,
+      cookingGainAdd:0, cookingTurnsReduce:0, cookingPowerPct:0, cookingMythicBoth:false,
+    };
+    TS.equipment.forEach(item=>{
+      const d = towerGetEquipData(item.name, item.tier);
+      if(!d) return;
+      const e = d.effects;
+      if(e.atk) b.atk += e.atk;
+      if(e.lowHpAtk) b.lowHpDmgAtkFlat = (b.lowHpDmgAtkFlat||0) + e.lowHpAtk; // 체력 낮을 때 공격 피해 고정 가산 (아래 lowHpAtkFlat로 통일)
+      if(e.healBonus) b.healBonus += e.healBonus;
+      if(e.ultimate) b.ultimate += e.ultimate;
+      if(e.maxHp) b.maxHpFlat += e.maxHp;
+      if(e.maxAp) b.startAp += e.maxAp;
+      if(e.startAp) b.startAp += e.startAp;
+      if(e.skillUsesBonus) b.skillUses += e.skillUsesBonus;
+      if(e.coinBonusPct) b.coinPct += e.coinBonusPct;
+      if(e.shopDiscountPct) {} // 상점 쪽에서 별도 집계 (towerGetDiscountPct)
+      if(e.apStealChance) b.apStealChance = Math.max(b.apStealChance, e.apStealChance);
+      if(e.sureHitCount) b.sureHitCount += e.sureHitCount;
+      if(e.lifestealPct) b.lifestealPct = Math.max(b.lifestealPct, e.lifestealPct);
+      if(e.extraHitChance) b.extraHitChance = Math.max(b.extraHitChance, e.extraHitChance);
+      if(e.extraHitDmgPct) b.extraHitDmgPct = Math.max(b.extraHitDmgPct, e.extraHitDmgPct);
+      if(e.maxHp) {} // 위에서 처리됨
+      if(e.startShield) b.startShieldFlat += e.startShield;
+      if(e.defendShield) b.defendShieldAdd += e.defendShield;
+      if(e.dmgReduce) b.dmgReduce += e.dmgReduce;
+      if(e.autoShieldHp) b.autoShieldHp += e.autoShieldHp;
+      if(e.autoShieldCount) b.autoShieldCount += e.autoShieldCount;
+      if(e.dotResistPct) b.dotResistPct = Math.max(b.dotResistPct, e.dotResistPct);
+      if(e.dotImmuneChance) b.dotImmuneChance = Math.max(b.dotImmuneChance, e.dotImmuneChance);
+      if(e.healShield) b.healShield += e.healShield;
+      if(e.skillUsesBonus) {} // 위에서 처리됨
+    });
+    const pool = towerGetAugmentPool(TS.charId);
+    Object.keys(TS.augments).forEach(id=>{
+      const aug = pool.find(a=>a.id===id);
+      if(!aug) return;
+      const rawStack = TS.augments[id];
+      const stack = aug.stackCap ? Math.min(rawStack, aug.stackCap) : rawStack;
+      const e = aug.effects;
+      if(e.atkAdd) b.atk += e.atkAdd * stack;
+      if(e.healAdd) b.healBonus += e.healAdd * stack;
+      if(e.ultimateAdd) b.ultimate += e.ultimateAdd * stack;
+      if(e.ultimateBreakAdd) b.ultimate += e.ultimateBreakAdd * stack;
+      if(e.maxHpAdd) b.maxHpFlat += e.maxHpAdd * stack;
+      if(e.maxHpPct) b.maxHpPct += e.maxHpPct * stack;
+      if(e.maxApAdd) b.startAp += e.maxApAdd * stack;
+      if(e.startApAdd) b.startAp += e.startApAdd * stack;
+      if(e.skillUsesAdd) b.skillUses += e.skillUsesAdd * stack;
+      if(e.coinPct) b.coinPct += e.coinPct * stack;
+      if(e.startShieldPct) b.startShieldPct += e.startShieldPct * stack;
+      if(e.lowHpDmgPct) b.lowHpDmgPct += e.lowHpDmgPct * stack;
+      if(e.undyingCount) b.undyingCount += e.undyingCount * stack;
+      if(e.poisonProcChance) b.poisonProcChance = Math.max(b.poisonProcChance, e.poisonProcChance);
+      if(e.executeDmgPct) b.executeDmgPct += e.executeDmgPct * stack;
+      if(e.firstTurnPierce) b.firstTurnPierce = true;
+      if(e.defendShieldAdd) b.defendShieldAdd += e.defendShieldAdd * stack;
+      if(e.counterShieldAdd) b.counterShieldAdd += e.counterShieldAdd * stack;
+      // 캐릭터 전용
+      if(e.critTrackBonus) b.critTrackBonus += e.critTrackBonus * stack;
+      if(e.critTrackReq) b.critTrackReq += e.critTrackReq * stack;
+      if(e.critTrackBleed) b.critTrackBleed += e.critTrackBleed * stack;
+      if(e.critTrackTrueDmgPct) b.critTrackTrueDmgPct = Math.max(b.critTrackTrueDmgPct, e.critTrackTrueDmgPct);
+      if(e.oneUpCount) b.oneUpExtra += e.oneUpCount * stack;
+      if(e.oneUpHpPct) b.oneUpHpPct = Math.max(b.oneUpHpPct, e.oneUpHpPct);
+      if(e.oneUpFinalBlow) b.oneUpFinalBlow = Math.max(b.oneUpFinalBlow, e.oneUpFinalBlow);
+      if(e.oneUpCounterDmg) b.oneUpCounterDmg += e.oneUpCounterDmg * stack;
+      if(e.fairyShieldAdd) b.fairyShieldAdd += e.fairyShieldAdd * stack;
+      if(e.fairyShieldCapAdd) b.fairyShieldCapAdd += e.fairyShieldCapAdd * stack;
+      if(e.fairyShieldRegen) b.fairyShieldRegen += e.fairyShieldRegen * stack;
+      if(e.fairyReflectPct) b.fairyReflectPct += e.fairyReflectPct * stack;
+      if(e.shieldHalvePct) b.shieldHalvePct = Math.max(b.shieldHalvePct, e.shieldHalvePct);
+      if(e.deathMarkCapAdd) b.deathMarkCapAdd += e.deathMarkCapAdd * stack;
+      if(e.executeApRestore) b.executeApRestore += e.executeApRestore * stack;
+      if(e.deathMarkDmgPerStack) b.deathMarkDmgPerStack += e.deathMarkDmgPerStack * stack;
+      if(e.energyCapAdd) b.energyCapAdd += e.energyCapAdd * stack;
+      if(e.energyThreshold) b.energyThresholdOverride = Math.max(b.energyThresholdOverride, e.energyThreshold);
+      if(e.energyDmgPerStackAdd) b.energyDmgPerStackAdd += e.energyDmgPerStackAdd * stack;
+      if(e.energyMaxRegen) b.energyMaxRegen += e.energyMaxRegen * stack;
+      if(e.energyGainAdd) b.energyGainAdd += e.energyGainAdd * stack;
+      if(e.energyNoConsume) b.energyNoConsume = true;
+      if(e.toxinCapAdd) b.toxinCapAdd += e.toxinCapAdd * stack;
+      if(e.toxinMaxDmgPct) b.toxinMaxDmgPct += e.toxinMaxDmgPct * stack;
+      if(e.toxinDurationAdd) b.toxinDurationAdd += e.toxinDurationAdd * stack;
+      if(e.toxinMythicPct) b.toxinMythicPct = Math.max(b.toxinMythicPct, e.toxinMythicPct);
+      if(e.chipCycleReduce) b.chipCycleReduce += e.chipCycleReduce * stack;
+      if(e.chipGainAdd) b.chipGainAdd += e.chipGainAdd * stack;
+      if(e.chipFloorPct) b.chipFloorPct += e.chipFloorPct * stack;
+      if(e.chipNoDownside) b.chipNoDownside = true;
+      if(e.cookingGainAdd) b.cookingGainAdd += e.cookingGainAdd * stack;
+      if(e.cookingTurnsReduce) b.cookingTurnsReduce += e.cookingTurnsReduce * stack;
+      if(e.cookingPowerPct) b.cookingPowerPct += e.cookingPowerPct * stack;
+      if(e.cookingMythicBoth) b.cookingMythicBoth = true;
+    });
+    return b;
+  }
+
+  // fighter(g.me)에 위 보너스를 실제 필드로 심어서 전투 엔진 각 지점에서 읽게 한다
+  function towerApplyBonusesToFighter(fighter, b){
+    fighter.tw_dmgReduce = b.dmgReduce;
+    fighter.tw_lowHpDmgPct = b.lowHpDmgPct;
+    fighter.tw_lowHpAtkFlat = b.lowHpDmgAtkFlat || 0;
+    fighter.tw_executeDmgPct = b.executeDmgPct;
+    fighter.tw_lifestealPct = b.lifestealPct;
+    fighter.tw_apStealChance = b.apStealChance;
+    fighter.tw_poisonProcChance = b.poisonProcChance;
+    fighter.tw_extraHitChance = b.extraHitChance;
+    fighter.tw_extraHitDmgPct = b.extraHitDmgPct;
+    fighter.tw_firstTurnPierce = b.firstTurnPierce;
+    fighter.tw_sureHitCount = b.sureHitCount;
+    fighter.tw_defendShieldAdd = b.defendShieldAdd;
+    fighter.tw_counterShieldAdd = b.counterShieldAdd;
+    fighter.tw_healShield = b.healShield;
+    fighter.tw_autoShieldHp = b.autoShieldHp;
+    fighter.tw_autoShieldCount = b.autoShieldCount;
+    fighter.tw_dotResistPct = b.dotResistPct;
+    fighter.tw_dotImmuneChance = b.dotImmuneChance;
+    fighter.tw_undyingCount = b.undyingCount;
+    fighter.tw_critTrackBonus = b.critTrackBonus;
+    fighter.tw_critTrackReq = b.critTrackReq;
+    fighter.tw_critTrackBleed = b.critTrackBleed;
+    fighter.tw_critTrackTrueDmgPct = b.critTrackTrueDmgPct;
+    fighter.tw_oneUpExtra = b.oneUpExtra;
+    fighter.tw_oneUpHpPct = b.oneUpHpPct;
+    fighter.tw_oneUpFinalBlow = b.oneUpFinalBlow;
+    fighter.tw_oneUpCounterDmg = b.oneUpCounterDmg;
+    fighter.tw_fairyShieldAdd = b.fairyShieldAdd;
+    fighter.tw_fairyShieldCapAdd = b.fairyShieldCapAdd;
+    fighter.tw_fairyShieldRegen = b.fairyShieldRegen;
+    fighter.tw_fairyReflectPct = b.fairyReflectPct;
+    fighter.tw_shieldHalvePct = b.shieldHalvePct;
+    fighter.tw_deathMarkCapAdd = b.deathMarkCapAdd;
+    fighter.tw_executeApRestore = b.executeApRestore;
+    fighter.tw_deathMarkDmgPerStack = b.deathMarkDmgPerStack;
+    fighter.tw_energyCapAdd = b.energyCapAdd;
+    fighter.tw_energyThresholdOverride = b.energyThresholdOverride;
+    fighter.tw_energyDmgPerStackAdd = b.energyDmgPerStackAdd;
+    fighter.tw_energyMaxRegen = b.energyMaxRegen;
+    fighter.tw_energyGainAdd = b.energyGainAdd;
+    fighter.tw_energyNoConsume = b.energyNoConsume;
+    fighter.tw_toxinCapAdd = b.toxinCapAdd;
+    fighter.tw_toxinMaxDmgPct = b.toxinMaxDmgPct;
+    fighter.tw_toxinDurationAdd = b.toxinDurationAdd;
+    fighter.tw_toxinMythicPct = b.toxinMythicPct;
+    fighter.tw_chipCycleReduce = b.chipCycleReduce;
+    fighter.tw_chipGainAdd = b.chipGainAdd;
+    fighter.tw_chipFloorPct = b.chipFloorPct;
+    fighter.tw_chipNoDownside = b.chipNoDownside;
+    fighter.tw_cookingGainAdd = b.cookingGainAdd;
+    fighter.tw_cookingTurnsReduce = b.cookingTurnsReduce;
+    fighter.tw_cookingPowerPct = b.cookingPowerPct;
+    fighter.tw_cookingMythicBoth = b.cookingMythicBoth;
+    // 전투 시작 시 즉시 보호막 지급 (수호의 맹세 / 낡은 갑주의 잔재 등)
+    const startShieldAmt = Math.round(fighter.maxHp * (b.startShieldPct||0)) + (b.startShieldFlat||0);
+    if(startShieldAmt > 0){
+      fighter.passiveShield = (fighter.passiveShield||0) + startShieldAmt;
+      fighter.passiveShieldTurns = 99; // 전투 종료까지 유지 (매 턴 감소 로직과 무관하게 큰 값으로 시작)
+    }
+  }
+
+
+
+  function towerStartRealBattle(isBoss, forcedOpChar, forcedMultiplier){
+    S.mode = 'tower';
+    S.difficulty = towerGetAiJudgeLevel(TS.floor);
+    const meChar = TS.charId;
+    const meSkillId = getEquippedSkillId(meChar);
+    let opChar, opSkillId;
+    if(forcedOpChar){
+      opChar = forcedOpChar;
+      opSkillId = getEquippedSkillId(forcedOpChar) || AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+    } else if(S.difficulty === 'crazy_v2'){
+      opChar = pickRandomAiOnlyCharacter();
+      opSkillId = buildCrazyV2ComboSkill();
+    } else {
+      opChar = pickRandomCharacter();
+      opSkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+    }
+    enterBattleUI(meChar, opChar, meSkillId, opSkillId);
+
+    const g = S.game;
+    const bonus = towerBuildPlayerBonuses();
+    const skillBonusFromFloor = towerGetSkillUsesBonus(TS.floor);
+
+    // ---- 내 캐릭터: 이월된 체력/행동력 + 장비/증강 보너스 적용 ----
+    const baseMaxHp = CHARACTERS[meChar].stats.hp;
+    const scaledMaxHp = Math.round(baseMaxHp * (1 + bonus.maxHpPct) + bonus.maxHpFlat);
+    g.me.maxHp = scaledMaxHp;
+    TS.maxHp = scaledMaxHp; // 증강으로 최대체력이 늘었으면 저장 상태도 함께 갱신
+    g.me.hp = Math.min(TS.hp, scaledMaxHp);
+    g.me.ap = Math.min(AP_MAX, TS.ap + bonus.startAp);
+    g.me.atkBonus = bonus.atk;
+    g.me.healBonus = bonus.healBonus;
+    g.me.ultimateBonus = bonus.ultimate;
+    g.me.skillMaxUses = 1 + skillBonusFromFloor + bonus.skillUses;
+    towerApplyBonusesToFighter(g.me, bonus);
+    // [무한대전타워] 베리 이벤트 등에서 얻은 "영구 보호막" - 깨지기 전까지 층을 넘어도 유지
+    if(TS.persistentShieldHp > 0){
+      g.me.passiveShield = (g.me.passiveShield||0) + TS.persistentShieldHp;
+      g.me.passiveShieldTurns = 99;
+    }
+
+    // ---- 적: 층수 기반 스탯 배율 (보스는 추가 15%, 강제 배율이 지정되면 그 값을 그대로 사용) ----
+    const mult = forcedMultiplier != null ? forcedMultiplier : towerGetStatMultiplier(TS.floor) * (isBoss ? 1.15 : 1);
+    const opBase = CHARACTERS[opChar].stats;
+    const opMaxHp = Math.round(opBase.hp * mult);
+    g.op.maxHp = opMaxHp;
+    g.op.hp = opMaxHp;
+    g.op.atkBonus = Math.round(opBase.atk * (mult - 1));
+    g.op.healBonus = Math.round(opBase.heal * (mult - 1));
+    g.op.ultimateBonus = Math.round(opBase.ultimate * (mult - 1));
+    g.op.skillMaxUses = 1 + skillBonusFromFloor;
+
+    renderBattle();
+  }
+
+  function towerHandleBattleEnd(win, g){
+    // [무한대전타워] 이벤트에서 얻은 영구 보호막은 전투 종료 시점의 잔량으로 항상 동기화해둔다
+    TS.persistentShieldHp = Math.max(0, g.me.passiveShield||0);
+
+    if(TS_eventFightActive === 'takamura'){
+      TS_eventFightActive = false;
+      if(win){
+        TS.hp = Math.max(1, g.me.hp);
+        TS.ap = g.me.ap;
+        towerSaveRun(TS);
+        towerOpenEventContinuation('takamura', ['...', '...', '훌륭한 승부였다.', '[다카무라는 어디론가 사라졌다.]'], ()=>{
+          TS.coins += 500;
+          towerSaveRun(TS);
+          towerShowRewardPopup('🪙', '500 타워 코인 획득!', '다카무라가 인정의 의미로 코인을 남기고 사라졌습니다.', ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+        });
+      } else {
+        towerHandleBattleLoss();
+      }
+      return;
+    }
+
+    if(win){
+      // 체력/행동력을 실제 전투 종료 시점 값으로 이월
+      TS.hp = Math.max(1, g.me.hp);
+      TS.ap = g.me.ap;
+      const isBoss = towerGetFloorType(TS.floor) === 'boss';
+      const bonus = towerBuildPlayerBonuses();
+      const reward = Math.round(towerGetFloorReward(TS.floor, isBoss) * (1 + bonus.coinPct));
+      TS.coins += reward;
+      let toastMsg = `+${reward} 코인 획득`;
+      if(isBoss){
+        TS.hp = TS.maxHp;
+        TS.ap = AP_MAX;
+        toastMsg += ' · 보스 격파! 체력/행동력 완전 회복';
+      }
+      towerSaveRun(TS);
+      showToast(toastMsg);
+      towerGoToNextFloor(); // 암전 → 다음 층 자동 진행 (전투면 버튼 없이 바로 다음 전투, 상점/증강이면 해당 화면 등장)
+    } else {
+      towerHandleBattleLoss();
+    }
+  }
+
+  // 일반 패배 처리 (부활권 확인 후 없으면 런 종료) — 다카무라 결투 패배 시에도 그대로 재사용
+  function towerHandleBattleLoss(){
+    if(TS.hasRevivalTicketItem && !TS.revivalTicketUsed){
+      TS.revivalTicketUsed = true;
+      TS.hp = Math.round(TS.maxHp * 0.5);
+      TS.ap = 3;
+      towerSaveRun(TS);
+      towerBlackoutThen(()=>{
+        showToast('부활권 발동! 체력 50%로 부활합니다.');
+        towerRenderShop(); // 부활 시 즉시 상점으로 이동
+      });
+    } else {
+      towerEndRun(`${TS.floor}층에서 등반이 끝났습니다.`);
+    }
+  }
+
+  /* ============================================================
+     무한대전타워 — 특별 이벤트: 복제품 탑에서 마주치는 "진짜" 참가자
+     ============================================================ */
+  let TS_eventState = null; // { charId, lineIdx, lines, onFinish }
+  let TS_eventFightActive = false; // 결투가 걸린 이벤트 캐릭터 id (false면 이벤트 결투 아님)
+
+  const TOWER_EVENT_DIALOGUE = {
+    spear: [
+      '...다시 나타나셨군. 지긋지긋한 복제품들.',
+      '...어? 말...을 하는군. 그런가. 나와 같은 또 다른 희생양인가.',
+      '...전쟁의 장기말 출신이라고 해도, 다른 사람을 죽이러 다니고 있진 않아. 나 역시, 이 대회에서 되찾고자 하는 게 있는 거니까.',
+      '이것도 하나의 인연인 셈 치지. 이걸 받아가라.',
+    ],
+    nabi: [
+      '오, 오오오?! 대박 대박 대박이다냐아아앗!!!',
+      '이 탑에서 쓰러져도 물 밖에 안 나오는 복제들 말고 진짜 사람을 만나다니야앗~',
+      '너무너무 기쁘다냐~ 우리 친추하자냐. 응? 응?!',
+    ],
+    berry: [
+      '...와아...! 아, 안녕하세요? 정말... 생존자분이 맞는거죠?',
+      '헤헤... 이 탑에서도 드디어 대화가 통하는 분을 만났어요.',
+      '역시 계속 이 탑을 오르시는 거죠?',
+      '그럼 이걸 받으세요. 도움이 꼭 될 거에요.',
+    ],
+    delta: [
+      '오오, 안녕! 마침 잘 됐어.',
+      '왜 아무것도 아닌 것처럼 대하냐고? 그야... 넌 살아있잖아?',
+      '이 레이더만 있으면 너가 복제품인지 아닌지는 바로 알 수 있어.',
+      '어쨌든 집어치우고... 나, 실은 여기서 특별한 장비를 만들고 있었거든.',
+      '근데 좀... 부작용이 있긴 한데! 흐히, 분명 도움이 될 거야. 어떻게 할래?',
+    ],
+    takamura: ['...', '...', '벤다.'],
+    weklein: [
+      '제길제길제길...!',
+      '전부 다, 끝나지 않아, 죽여도 죽여도 끝나질 않아!!!!!',
+      '그들이 속였어, 그들이 전부 날 속인 거라고!!!!',
+      '너... 너... 연구소. 연구소에 대해 알고 있지...?!',
+    ],
+    usagi: [
+      '뿅뿅, 바니바니 카지노에 오신 걸 환영합니다.',
+      '...여긴 카지노가 아니다...라.',
+      '뭐, 저같은 슈퍼 바니걸이 있는 곳이 곧 카지노죠. 뿅뿅.',
+    ],
+    hachimi: [
+      '어머... 너도 이 탑을 오르는 아이로구나.',
+      '그런데 엄청 굶주려보이는구나. 끼니는 챙겼니?',
+      '...세상에. 어쩔 수 없군. 내가 조금 보태줄게.',
+      '...후후, 완성이란다. 맘에 들면 좋겠구나.',
+    ],
+  };
+
+  function towerOpenEvent(){
+    // _v2(크레이지 AI 전용 강화 변종) 등 aiOnly 캐릭터는 이름은 같지만 대사 데이터가 없어
+    // 뽑히는 즉시 대사 진행이 끊기는 원인이었다 — 실제 플레이 가능한 8명으로만 후보를 제한한다.
+    const candidates = Object.keys(CHARACTERS).filter(id => id !== TS.charId && !CHARACTERS[id].aiOnly);
+    const eventCharId = candidates[Math.floor(Math.random() * candidates.length)];
+    TS.activeEvent = { charId: eventCharId }; // 재접속해도 같은 캐릭터로 이어지도록 기록
+    towerSaveRun(TS);
+    towerOpenEventContinuation(eventCharId, TOWER_EVENT_DIALOGUE[eventCharId], null);
+  }
+
+  // 대화창을 다시 열거나(전투 후 후일담 등) 이어서 다른 대사를 재생할 때 공용으로 쓰는 함수.
+  // onFinish가 있으면 대사가 끝났을 때 그 콜백을, 없으면 캐릭터별 기본 보상 분기(towerDispatchEventCharacter)를 실행한다.
+  function towerOpenEventContinuation(charId, lines, onFinish){
+    // 방어 코드: 혹시라도 대사 데이터가 없는 캐릭터가 들어오면(정의 누락 등),
+    // 예전처럼 화면이 영구히 멈추는 대신 이벤트 자체를 조용히 건너뛰고 다음 층으로 넘어간다.
+    if(!Array.isArray(lines) || lines.length === 0){
+      console.error('타워 이벤트: 대사 데이터 없음 —', charId);
+      TS.activeEvent = null;
+      towerSaveRun(TS);
+      towerGoToNextFloor();
+      return;
+    }
+    const charData = CHARACTERS[charId];
+    const overlay = document.getElementById('tower-event-overlay');
+    const portrait = document.getElementById('tower-event-portrait');
+    const nameEl = document.getElementById('tower-event-name');
+    const lineEl = document.getElementById('tower-event-line');
+    const nextEl = document.getElementById('tower-event-next');
+    const actionsEl = document.getElementById('tower-event-actions');
+
+    portrait.src = charData.fullImg;
+    portrait.classList.remove('enter');
+    nameEl.textContent = `${charData.name} (진짜 참가자)`;
+    lineEl.textContent = '';
+    lineEl.classList.remove('show');
+    actionsEl.style.display = 'none';
+    actionsEl.innerHTML = '';
+    nextEl.style.display = 'block';
+
+    overlay.classList.add('show');
+    requestAnimationFrame(()=> portrait.classList.add('enter'));
+    TS_eventState = { charId, lineIdx: -1, lines, onFinish };
+    towerAdvanceEventLine();
+  }
+
+  // 이미 열려있는 이벤트 창에서 대사만 새로 갈아끼우고 이어가고 싶을 때 (선택지 이후 후속 대사 등)
+  function towerSetEventLines(lines, onFinish){
+    TS_eventState.lines = lines;
+    TS_eventState.lineIdx = -1;
+    TS_eventState.onFinish = onFinish;
+    document.getElementById('tower-event-next').style.display = 'block';
+    document.getElementById('tower-event-actions').style.display = 'none';
+    towerAdvanceEventLine();
+  }
+
+  function towerAdvanceEventLine(){
+    if(!TS_eventState) return;
+    const lineEl = document.getElementById('tower-event-line');
+    const portrait = document.getElementById('tower-event-portrait');
+    TS_eventState.lineIdx++;
+    if(TS_eventState.lineIdx >= TS_eventState.lines.length){
+      document.getElementById('tower-event-next').style.display = 'none';
+      const finishFn = TS_eventState.onFinish;
+      if(finishFn) finishFn();
+      else towerDispatchEventCharacter();
+      return;
+    }
+    // 예전엔 classList remove/add + offsetWidth 강제 리플로우로 페이드를 재생시켰는데,
+    // 일부 안드로이드 브라우저에서 이 리플로우 트릭이 씹히면서 opacity가 0에 멈춰
+    // "대사가 안 뜨고 갇힌 것처럼" 보이는 문제가 있었다. 인라인 스타일을 직접 제어해
+    // 트랜지션 여부와 무관하게 텍스트가 항상 확실히 보이도록 고쳤다.
+    lineEl.style.transition = 'none';
+    lineEl.style.opacity = '0';
+    lineEl.textContent = TS_eventState.lines[TS_eventState.lineIdx];
+    requestAnimationFrame(()=>{
+      lineEl.style.transition = 'opacity .25s ease';
+      requestAnimationFrame(()=>{ lineEl.style.opacity = '1'; });
+    });
+    // 안전망: 위 트랜지션이 어떤 이유로든 실패해도 0.4초 뒤엔 무조건 보이게 강제
+    setTimeout(()=>{ lineEl.style.opacity = '1'; }, 400);
+
+    portrait.classList.remove('talk-bounce');
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{ portrait.classList.add('talk-bounce'); });
+    });
+  }
+
+  function towerCloseEventOverlay(){
+    document.getElementById('tower-event-overlay').classList.remove('show');
+    TS_eventState = null;
+    if(TS.activeEvent){ TS.activeEvent = null; towerSaveRun(TS); }
+  }
+
+  function towerShowRewardPopup(icon, title, desc, onClose){
+    document.getElementById('tower-reward-icon').textContent = icon;
+    document.getElementById('tower-reward-title').textContent = title;
+    document.getElementById('tower-reward-desc').innerHTML = desc;
+    document.getElementById('tower-reward-popup').classList.add('show');
+    document.getElementById('tower-reward-confirm-btn').onclick = ()=>{
+      document.getElementById('tower-reward-popup').classList.remove('show');
+      onClose();
+    };
+  }
+
+  function towerGenerateRandomEquipmentPiece(tier){
+    const keys = Object.keys(TOWER_EQUIPMENT);
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    return { name: TOWER_EQUIPMENT[key].name, tier };
+  }
+
+  // 소지품(부활권 다음 안전망)이 다 떨어졌을 때, 전투 밖에서 일어나는 즉사성 이벤트에도 동일한 구제 절차를 적용
+  function towerHandleEventDeath(reason){
+    if((TS.eternalSoupCount||0) > 0){
+      TS.eternalSoupCount -= 1;
+      TS.hp = 7;
+      towerSaveRun(TS);
+      towerShowRewardPopup('🍲', '만년 수프 소비!', `체력이 7로 회복되며 부활했습니다. (잔여 ${TS.eternalSoupCount}개)`, ()=> towerGoToNextFloor());
+      return;
+    }
+    if(TS.hasRevivalTicketItem && !TS.revivalTicketUsed){
+      TS.revivalTicketUsed = true;
+      TS.hp = Math.round(TS.maxHp * 0.5);
+      towerSaveRun(TS);
+      towerShowRewardPopup('💊', '부활권 발동!', '체력 50%로 부활했습니다.', ()=> towerRenderShop());
+      return;
+    }
+    towerEndRun(reason);
+  }
+
+  /* ---------- 캐릭터별 이벤트 분기 (대사가 끝나면 여기서부터 시작) ---------- */
+  function towerDispatchEventCharacter(){
+    const charId = TS_eventState.charId;
+    if(charId === 'spear') towerResolveSpearEvent();
+    else if(charId === 'nabi') towerShowNabiOptions();
+    else if(charId === 'berry') towerResolveBerryEvent();
+    else if(charId === 'takamura') towerResolveTakamuraStart();
+    else if(charId === 'delta') towerShowDeltaOptions();
+    else if(charId === 'weklein') towerShowWekleinOptions();
+    else if(charId === 'usagi') towerShowUsagiRouletteButton();
+    else if(charId === 'hachimi') towerResolveHachimiEvent();
+  }
+
+  // 스피어: 선택 없음 — 무작위 보라색(영웅) 등급 증강 하나 즉시 지급
+  function towerResolveSpearEvent(){
+    const pool = TOWER_AUGMENTS_GENERAL.filter(a => a.grade === 'epic')
+      .concat(towerGetAugmentPool(TS.charId).filter(a => a.grade === 'epic'));
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    TS.augments[chosen.id] = (TS.augments[chosen.id] || 0) + 1;
+    towerSaveRun(TS);
+    towerShowRewardPopup('💜', '보라색 등급 증강 획득!', `<b>${chosen.name}</b><br>${chosen.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+  }
+
+  // 나비: 장비 세트 중 하나를 골라 받기 (T1×3 / T2×2 / T3×1)
+  function towerShowNabiOptions(){
+    const actionsEl = document.getElementById('tower-event-actions');
+    actionsEl.style.display = 'flex';
+    actionsEl.innerHTML = `
+      <button class="btn" id="nabi-opt-1">T1 장비 3개</button>
+      <button class="btn" id="nabi-opt-2">T2 장비 2개</button>
+      <button class="btn" id="nabi-opt-3">T3 장비 1개</button>
+    `;
+    document.getElementById('nabi-opt-1').onclick = ()=> towerResolveNabiPick(1, 3);
+    document.getElementById('nabi-opt-2').onclick = ()=> towerResolveNabiPick(2, 2);
+    document.getElementById('nabi-opt-3').onclick = ()=> towerResolveNabiPick(3, 1);
+  }
+  function towerResolveNabiPick(tier, count){
+    const names = [];
+    for(let i=0;i<count;i++){
+      const piece = towerGenerateRandomEquipmentPiece(tier);
+      TS.equipment.push(piece);
+      names.push(`${piece.name} (T${piece.tier})`);
+    }
+    towerSaveRun(TS);
+    towerShowRewardPopup('🎁', `장비 ${count}개 획득!`, names.join('<br>'), ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+  }
+
+  // 베리: 선택 없음 — 최대체력 50%만큼 보호막, 층을 넘어가도 유지되는 영구 보호막으로 지급
+  function towerResolveBerryEvent(){
+    const shieldAmt = Math.round(TS.maxHp * 0.5);
+    TS.persistentShieldHp = (TS.persistentShieldHp||0) + shieldAmt;
+    towerSaveRun(TS);
+    towerShowRewardPopup('🧚', '보호막 획득!', `최대체력의 50%(<b>${shieldAmt}</b>)만큼 보호막을 얻었습니다.<br>깨지기 전까지, 층을 넘어가도 사라지지 않아요.`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+  }
+
+  // 델타: 체력을 지불하고 미공개 보상을 뽑거나, 안 받고 넘어가기
+  function towerShowDeltaOptions(){
+    const actionsEl = document.getElementById('tower-event-actions');
+    actionsEl.style.display = 'flex';
+    actionsEl.innerHTML = `
+      <button class="btn" id="delta-opt-cur">현재 체력 10 소모</button>
+      <button class="btn" id="delta-opt-max">최대 체력 10 소모</button>
+      <button class="btn" id="delta-opt-no">안 받기</button>
+    `;
+    document.getElementById('delta-opt-cur').onclick = ()=> towerResolveDeltaChoice('cur');
+    document.getElementById('delta-opt-max').onclick = ()=> towerResolveDeltaChoice('max');
+    document.getElementById('delta-opt-no').onclick = ()=> towerResolveDeltaChoice('no');
+  }
+  function towerResolveDeltaChoice(choice){
+    if(choice === 'no'){
+      towerSetEventLines(['...치, 알았어...'], ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+      return;
+    }
+    if(choice === 'cur') TS.hp = Math.max(1, TS.hp - 10);
+    else { TS.maxHp = Math.max(1, TS.maxHp - 10); TS.hp = Math.min(TS.hp, TS.maxHp); }
+    towerSaveRun(TS);
+    const roll = Math.random();
+    if(roll < 0.4){ // T4 장비
+      const piece = towerGenerateRandomEquipmentPiece(4);
+      TS.equipment.push(piece);
+      towerSaveRun(TS);
+      towerSetEventLines(['고마워! 자, 이거 받아.'], ()=>{
+        towerShowRewardPopup('🛠️', 'T4 장비 획득!', `${piece.name} (T4)`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+      });
+    } else if(roll < 0.8){ // 영웅~신화 증강
+      const pool = towerGetAugmentPool(TS.charId).filter(a => a.grade==='epic' || a.grade==='legendary' || a.grade==='mythic');
+      const chosen = pool[Math.floor(Math.random() * pool.length)];
+      TS.augments[chosen.id] = (TS.augments[chosen.id] || 0) + 1;
+      towerSaveRun(TS);
+      towerSetEventLines(['고마워! 자, 이거 받아.'], ()=>{
+        towerShowRewardPopup('✨', '특별 증강 획득!', `<b>${chosen.name}</b><br>${chosen.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+      });
+    } else { // 꽝
+      towerSetEventLines(['어라... 이번엔 꽝이었네. 미안!'], ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+    }
+  }
+
+  // 다카무라: 선택지 없이 강제 결투 (현재 층 스탯의 0.35배), 승리 시 후일담 + 코인
+  function towerResolveTakamuraStart(){
+    towerCloseEventOverlay();
+    TS_eventFightActive = 'takamura';
+    towerStartRealBattle(false, 'takamura', 0.35);
+  }
+
+  // 위클라인: 예/아니오 선택 — 예는 안전하게 보상, 아니오는 반격당해 피해를 입음(사망 가능)
+  function towerShowWekleinOptions(){
+    const actionsEl = document.getElementById('tower-event-actions');
+    actionsEl.style.display = 'flex';
+    actionsEl.innerHTML = `<button class="btn btn-primary" id="wek-yes">예</button><button class="btn" id="wek-no">아니오</button>`;
+    document.getElementById('wek-yes').onclick = ()=> towerResolveWekleinChoice(true);
+    document.getElementById('wek-no').onclick = ()=> towerResolveWekleinChoice(false);
+  }
+  function towerResolveWekleinChoice(yes){
+    if(yes){
+      towerSetEventLines(['...', '그래.', '알려줘서... 고맙군.'], ()=>{
+        const pool = towerGetAugmentPool(TS.charId).filter(a => a.grade === 'epic');
+        const picks = [];
+        for(let i=0;i<2 && pool.length>0;i++) picks.push(pool[Math.floor(Math.random()*pool.length)]);
+        picks.forEach(p=>{ TS.augments[p.id] = (TS.augments[p.id]||0) + 1; });
+        towerSaveRun(TS);
+        towerShowRewardPopup('💚', '영웅 증강 2개 획득!', picks.map(p=>p.name).join('<br>'), ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+      });
+    } else {
+      towerSetEventLines(['거짓말...거짓말 하지 마!!!', '너도 그 시설에 대해 알고 있잖아!!!!'], ()=>{
+        TS.hp -= 15;
+        towerSaveRun(TS);
+        if(TS.hp <= 0){
+          towerCloseEventOverlay();
+          towerHandleEventDeath(`${TS.floor}층에서 위클라인에게 목숨을 잃었습니다.`);
+        } else {
+          towerShowRewardPopup('💥', '반격당했다!', `체력이 15 감소했습니다. (현재 ${TS.hp}/${TS.maxHp})`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+        }
+      });
+    }
+  }
+
+  // 우사기: 룰렛 — 층수가 높을수록 좋은 등급이 나올 확률이 오르는, 신화/전설을 노리기 가장 좋은 루트
+  const TOWER_USAGI_GRADE_COLOR = { common:'#FFFFFF', rare:'#4ADE80', epic:'#4FC3F7', legendary:'#C084FC', mythic:'#FFD54F' };
+  const TOWER_USAGI_FLICKER_COLORS = ['#FFFFFF', '#4ADE80', '#4FC3F7', '#C084FC', '#FF5252', '#FFD54F']; // 하양-초록-파랑-보라-빨강-노랑
+
+  function towerShowUsagiRouletteButton(){
+    const actionsEl = document.getElementById('tower-event-actions');
+    actionsEl.style.display = 'flex';
+    actionsEl.innerHTML = `<button class="btn btn-primary" id="tower-event-roulette-btn">🎰 룰렛 돌리기</button>`;
+    document.getElementById('tower-event-roulette-btn').onclick = towerStartUsagiRoulette;
+  }
+
+  function towerStartUsagiRoulette(){
+    // 대화창은 잠깐 숨기기만 하고, 보상이 실제로 지급될 때까지는 이벤트 자체를 완전히 끝내지 않는다
+    // (여기서 완전히 닫아버리면 룰렛 도중 새로고침 시 보상 없이 이벤트가 사라져버릴 수 있음)
+    document.getElementById('tower-event-overlay').classList.remove('show');
+    const blackout = document.getElementById('blackout');
+    blackout.classList.add('show');
+    setTimeout(()=> towerPlayUsagiRouletteSpin(), 500);
+  }
+
+  function towerPlayUsagiRouletteSpin(){
+    const pool = towerGetAugmentPool(TS.charId); // 우사기 룰렛만 예외적으로 일반 등급도 포함 (하양 결과)
+    const floorFactor = Math.min(1, TS.floor / 30);
+    const weight = (a)=>{
+      if(a.grade==='mythic') return 0.3 + floorFactor * 1.7;
+      if(a.grade==='legendary') return 1 + floorFactor * 3;
+      if(a.grade==='epic') return 3 + floorFactor * 3;
+      if(a.grade==='rare') return Math.max(0.5, 5 - floorFactor * 2);
+      return Math.max(0.2, 3 - floorFactor * 2.5); // common — 층이 오를수록 더 희박해짐
+    };
+    const weights = pool.map(weight);
+    const total = weights.reduce((a,b)=>a+b, 0);
+    let r = Math.random() * total, idx = 0;
+    for(; idx < weights.length; idx++){ r -= weights[idx]; if(r <= 0) break; }
+    const chosen = pool[Math.min(idx, pool.length - 1)];
+
+    const card = document.getElementById('tower-floor-card');
+    card.className = 'usagi-roulette';
+    card.innerHTML = `<div class="tfc-roulette-label">🎰 룰렛</div><div class="tfc-roulette-name" id="tfc-roulette-name">???</div>`;
+    requestAnimationFrame(()=>{ card.style.opacity = '1'; });
+
+    const nameEl = document.getElementById('tfc-roulette-name');
+    let spins = 0;
+    const maxSpins = 20;
+    const spinInterval = setInterval(()=>{
+      const randomAug = pool[Math.floor(Math.random() * pool.length)];
+      nameEl.textContent = randomAug.name;
+      nameEl.style.color = TOWER_USAGI_FLICKER_COLORS[Math.floor(Math.random() * TOWER_USAGI_FLICKER_COLORS.length)];
+      spins++;
+      if(spins >= maxSpins){
+        clearInterval(spinInterval);
+        nameEl.textContent = `🎉 ${chosen.name}`;
+        nameEl.style.color = TOWER_USAGI_GRADE_COLOR[chosen.grade];
+        TS.augments[chosen.id] = (TS.augments[chosen.id] || 0) + 1;
+        towerSaveRun(TS);
+        setTimeout(()=>{
+          card.style.opacity = '0';
+          setTimeout(()=>{
+            document.getElementById('blackout').classList.remove('show');
+            towerShowRewardPopup('🎰', '룰렛 대박!', `<b style="color:${TOWER_USAGI_GRADE_COLOR[chosen.grade]}">${chosen.name}</b><br>${chosen.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+          }, 400);
+        }, 900);
+      }
+    }, 70);
+  }
+
+  // 하치미: 선택 없음 — 부활 아이템 "만년 수프" 3개 지급
+  function towerResolveHachimiEvent(){
+    TS.eternalSoupCount = (TS.eternalSoupCount||0) + 3;
+    towerSaveRun(TS);
+    towerShowRewardPopup('🍲', '만년 수프 x3 획득!', '체력이 0 이하로 떨어지는 순간, 즉시 체력 7로 부활하며 하나가 소모됩니다.', ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+  }
+
+  document.getElementById('tower-event-box').addEventListener('click', towerAdvanceEventLine);
+
+  /* ---------- 상점 층 ---------- */
+  let TS_shopRerollCount = 0; // 이번 상점에서 몇 번 리롤했는지 (층을 벗어나면 초기화)
+
+  function towerRenderShop(){
+    showScreen('screen-tower-shop');
+    document.getElementById('tower-shop-title').textContent = `${TS.floor}층 · 상점`;
+    const isFirstEntry = !TS_pendingShopLineup;
+    if(isFirstEntry){
+      TS_pendingShopLineup = towerRollShopLineup(TS.floor);
+      TS_shopRerollCount = 0;
+    }
+    renderTowerShopContent();
+    if(isFirstEntry){
+      const c = document.getElementById('tower-shop-content');
+      c.classList.remove('tower-pop-in'); void c.offsetWidth; c.classList.add('tower-pop-in');
+    }
+  }
+
+  // 리롤할수록 상점 아이템 가격 자체가 조금씩 비싸지고(체감 인플레이션), 리롤 비용도 따로 더 가파르게 오른다
+  function towerGetShopPriceMultiplier(){
+    return 1 + 0.15 * TS_shopRerollCount;
+  }
+  function towerGetShopRerollCost(){
+    return Math.round(30 * Math.pow(1.6, TS_shopRerollCount));
+  }
+
+  function towerGetDiscountPct(){
+    // 보유 장비/증강의 상점 할인 효과 합산 (2단계에서는 데이터만 존재, 실제 합산은 장비 effects 순회)
+    let pct = 0;
+    TS.equipment.forEach(e=>{
+      const d = towerGetEquipData(e.name, e.tier);
+      if(d && d.effects.shopDiscountPct) pct += d.effects.shopDiscountPct;
+    });
+    Object.keys(TS.augments).forEach(id=>{
+      const aug = towerGetAugmentPool(TS.charId).find(a=>a.id===id);
+      if(aug && aug.effects.shopDiscountPct) pct += aug.effects.shopDiscountPct * TS.augments[id];
+    });
+    return Math.min(pct, 0.4); // 상한 40%
+  }
+
+  function towerGetEquipKeyByName(name){
+    const found = Object.entries(TOWER_EQUIPMENT).find(([,v])=>v.name===name);
+    return found ? found[0] : null;
+  }
+
+  function towerRerollShop(){
+    const cost = towerGetShopRerollCost();
+    if(TS.coins < cost){ showToast('코인이 부족합니다'); return; }
+    const rerollableIndices = TS_pendingShopLineup
+      .map((item, idx)=> item.sold ? -1 : idx)
+      .filter(idx => idx >= 0);
+    if(rerollableIndices.length === 0){ showToast('품절되지 않은 칸이 없습니다'); return; }
+    TS.coins -= cost;
+    TS_shopRerollCount++;
+    towerSaveRun(TS);
+    const btn = document.getElementById('tower-shop-reroll-btn');
+    if(btn) btn.disabled = true;
+    const freshLineup = towerRollShopLineup(TS.floor); // 새 후보군 (품절 아닌 칸에만 순서대로 사용)
+    const newPriceMult = towerGetShopPriceMultiplier();
+    const discount = towerGetDiscountPct();
+    const keys = Object.keys(TOWER_EQUIPMENT);
+    const allCardEls = Array.from(document.querySelectorAll('#tower-shop-content .tower-item-card'));
+    const cardEls = rerollableIndices.map(idx => allCardEls[idx]); // 품절 칸은 아예 빼고 애니메이션 대상에 넣지 않음
+    towerPlayRerollSequence(
+      cardEls,
+      (seqIdx)=>{
+        const realIdx = rerollableIndices[seqIdx];
+        const randKey = keys[Math.floor(Math.random() * keys.length)];
+        const entry = TOWER_EQUIPMENT[randKey];
+        const emojiEl = document.querySelector(`.titem-emoji-${realIdx}`);
+        const nameEl = document.querySelector(`.titem-name-${realIdx}`);
+        if(emojiEl) emojiEl.textContent = towerGetEquipEmoji(randKey);
+        if(nameEl) nameEl.textContent = entry.name;
+      },
+      (seqIdx)=>{
+        // 화면이 하얗게 가려진 순간 진짜 최종값으로 교체 — 여기서부터는 다시 안 바뀐다
+        const realIdx = rerollableIndices[seqIdx];
+        const item = freshLineup[realIdx];
+        TS_pendingShopLineup[realIdx] = item; // 품절 칸은 손대지 않고, 리롤 대상 칸만 실제 데이터도 교체
+        const finalPrice = Math.max(1, Math.round(item.price * newPriceMult * (1 - discount)));
+        const emojiEl = document.querySelector(`.titem-emoji-${realIdx}`);
+        const nameEl = document.querySelector(`.titem-name-${realIdx}`);
+        const tierEl = document.querySelector(`.titem-tier-${realIdx}`);
+        const descEl = document.querySelector(`.titem-desc-${realIdx}`);
+        const priceEl = document.querySelector(`.titem-price-${realIdx}`);
+        if(emojiEl) emojiEl.textContent = towerGetEquipEmoji(item.key);
+        if(nameEl) nameEl.textContent = item.name;
+        if(tierEl) tierEl.textContent = `T${item.tier}`;
+        if(descEl) descEl.textContent = (towerGetEquipData(item.name, item.tier)||{}).desc || '';
+        if(priceEl) priceEl.textContent = `💰 ${finalPrice.toLocaleString()}`;
+      },
+      ()=>{
+        // 화면에 이미 최종값이 다 반영돼 있으므로, 전체 재렌더링을 해도 시각적으로는 아무것도 안 바뀐다 (버튼 핸들러만 다시 연결)
+        towerSaveRun(TS);
+        renderTowerShopContent();
+      }
+    );
+  }
+
+  function renderTowerShopContent(){
+    const c = document.getElementById('tower-shop-content');
+    const discount = towerGetDiscountPct();
+    const priceMult = towerGetShopPriceMultiplier();
+    const rerollCost = towerGetShopRerollCost();
+    const itemCardsHtml = TS_pendingShopLineup.map((item, idx)=>{
+      const finalPrice = Math.max(1, Math.round(item.price * priceMult * (1 - discount)));
+      const desc = (towerGetEquipData(item.name, item.tier)||{}).desc || '';
+      if(item.sold){
+        return `
+          <div class="tower-item-card tower-item-soldout">
+            <div class="tower-item-emoji titem-emoji-${idx}">${towerGetEquipEmoji(item.key)}</div>
+            <div class="tower-item-name titem-name-${idx}">${item.name}</div>
+            <div class="tower-item-tier titem-tier-${idx}">T${item.tier}</div>
+            <div class="tower-item-desc titem-desc-${idx}">${desc}</div>
+            <div class="tower-item-soldout-badge">품절</div>
+          </div>
+        `;
+      }
+      return `
+        <div class="tower-item-card">
+          <div class="tower-item-emoji titem-emoji-${idx}">${towerGetEquipEmoji(item.key)}</div>
+          <div class="tower-item-name titem-name-${idx}">${item.name}</div>
+          <div class="tower-item-tier titem-tier-${idx}">T${item.tier}</div>
+          <div class="tower-item-desc titem-desc-${idx}">${desc}</div>
+          <button class="btn btn-primary tower-buy-btn" data-idx="${idx}"><span class="tower-price-tag titem-price-${idx}">💰 ${finalPrice.toLocaleString()}</span></button>
+        </div>
+      `;
+    }).join('');
+
+    c.innerHTML = `
+      <div class="panel-card" style="margin-bottom:14px;">
+        <div style="font-weight:900; font-size:16px;"><span class="tower-price-tag">💰 ${TS.coins.toLocaleString()}</span> 코인</div>
+        <div style="color:var(--text-dim); font-size:12px; margin-top:4px;">체력 ${TS.hp}/${TS.maxHp} · 행동력 ${TS.ap}</div>
+      </div>
+
+      <div class="tower-util-row">
+        <button class="tower-util-btn" id="tower-heal-btn">
+          <div class="tui-ic">❤️‍🩹</div>
+          <div class="tui-label">체력 회복</div>
+          <div class="tui-cost">10당 ${TOWER_HP_HEAL_PRICE_PER_POINT*10}코인</div>
+        </button>
+        <button class="tower-util-btn" id="tower-ap-btn">
+          <div class="tui-ic">⚡</div>
+          <div class="tui-label">행동력 충전</div>
+          <div class="tui-cost">1당 ${TOWER_AP_CHARGE_PRICE_PER_POINT}코인</div>
+        </button>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin:4px 0 10px;">
+        <div style="font-weight:900; font-size:14px;">장비 구매</div>
+        <button class="btn" id="tower-shop-reroll-btn" style="padding:8px 12px; border-radius:10px; font-size:11.5px;">🔄 <span class="tower-price-tag">💰${rerollCost.toLocaleString()}</span></button>
+      </div>
+      <div class="tower-shop-grid">${itemCardsHtml}</div>
+
+      <div class="tower-action-row">
+        <button class="btn" id="tower-bag-view-btn">🎒 가방 (${TS.equipment.length + ((TS.eternalSoupCount||0)>0 ? 1 : 0)})</button>
+        <button class="btn" id="tower-refine-open-btn">🔧 정제</button>
+        <button class="btn" id="tower-fuse-open-btn">✨ 융합</button>
+      </div>
+      <div class="tower-action-row">
+        <button class="btn" id="tower-augment-view-btn" style="width:100%;">📜 보유 증강 (${Object.keys(TS.augments).length})</button>
+      </div>
+
+      <button class="btn btn-primary" id="tower-shop-next-btn" style="width:100%; margin-top:14px; padding:14px; border-radius:12px;">다음 층으로</button>
+    `;
+
+    document.getElementById('tower-shop-reroll-btn').onclick = towerRerollShop;
+    document.getElementById('tower-augment-view-btn').onclick = towerOpenAugmentView;
+    c.querySelectorAll('.tower-buy-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        const idx = Number(btn.dataset.idx);
+        const item = TS_pendingShopLineup[idx];
+        if(item.sold) return; // 이미 품절된 칸 (방어적 체크 — 버튼 자체가 안 뜨므로 사실상 도달 안 함)
+        const finalPrice = Math.max(1, Math.round(item.price * priceMult * (1 - discount)));
+        if(TS.coins < finalPrice){ showToast('코인이 부족합니다'); return; }
+        TS.coins -= finalPrice;
+        TS.equipment.push({ name:item.name, tier:item.tier });
+        item.sold = true; // 이 상점에서만 품절 처리 — 다음 상점에 가면 다시 등장 가능
+        towerSaveRun(TS);
+        towerShowRewardPopup('🛍️', '구매 완료!', `<b>${item.name}</b> (T${item.tier})을(를) 구매했습니다!`, ()=> renderTowerShopContent());
+      };
+    });
+    document.getElementById('tower-heal-btn').onclick = ()=>{
+      const missing = TS.maxHp - TS.hp;
+      if(missing <= 0){ showToast('이미 체력이 가득합니다'); return; }
+      const affordable = Math.floor(TS.coins / TOWER_HP_HEAL_PRICE_PER_POINT);
+      const healAmount = Math.min(missing, affordable, 10);
+      if(healAmount <= 0){ showToast('코인이 부족합니다'); return; }
+      TS.coins -= healAmount * TOWER_HP_HEAL_PRICE_PER_POINT;
+      TS.hp += healAmount;
+      towerSaveRun(TS);
+      renderTowerShopContent();
+    };
+    document.getElementById('tower-ap-btn').onclick = ()=>{
+      if(TS.coins < TOWER_AP_CHARGE_PRICE_PER_POINT){ showToast('코인이 부족합니다'); return; }
+      TS.coins -= TOWER_AP_CHARGE_PRICE_PER_POINT;
+      TS.ap += 1;
+      towerSaveRun(TS);
+      renderTowerShopContent();
+    };
+    document.getElementById('tower-bag-view-btn').onclick = ()=> towerOpenBag('view');
+    document.getElementById('tower-refine-open-btn').onclick = ()=> towerOpenBag('refine');
+    document.getElementById('tower-fuse-open-btn').onclick = ()=> towerOpenBag('fuse');
+    document.getElementById('tower-shop-next-btn').onclick = ()=>{
+      TS_pendingShopLineup = null;
+      towerGoToNextFloor();
+    };
+  }
+
+  /* ---------- 가방(인벤토리) 오버레이 : 보기 / 정제 재료 선택 / 융합 재료 선택 공용 ---------- */
+  let TS_bagMode = null; // 'view' | 'refine' | 'fuse'
+  let TS_bagSelected = []; // 선택된 TS.equipment 인덱스 목록 (refine/fuse 전용)
+
+  function towerOpenBag(mode){
+    TS_bagMode = mode;
+    TS_bagSelected = [];
+    const overlay = document.getElementById('tower-bag-overlay');
+    const title = document.getElementById('tower-bag-title');
+    const hint = document.getElementById('tower-bag-hint');
+    const footer = document.getElementById('tower-bag-footer');
+    if(mode === 'view'){
+      title.textContent = '🎒 보유 장비';
+      hint.textContent = '판매할 장비를 선택하세요';
+      footer.style.display = 'none';
+    } else if(mode === 'refine'){
+      title.textContent = '🔧 정제';
+      hint.textContent = '이름과 티어가 같은 장비 3개를 선택하세요';
+      footer.style.display = 'block';
+    } else {
+      title.textContent = '✨ 융합';
+      hint.textContent = '티어가 같은, 서로 다른 이름의 장비 3개를 선택하세요';
+      footer.style.display = 'block';
+    }
+    overlay.classList.add('show');
+    towerRenderBag();
+  }
+
+  function towerCloseBag(){
+    document.getElementById('tower-bag-overlay').classList.remove('show');
+    TS_bagMode = null;
+    TS_bagSelected = [];
+  }
+
+  // 상점에서 "보유 증강 보기" — 가방과 같은 패널을 재사용하되, 선택/판매 없이 목록만 보여준다
+  function towerOpenAugmentView(){
+    TS_bagMode = 'augmentView';
+    const overlay = document.getElementById('tower-bag-overlay');
+    document.getElementById('tower-bag-title').textContent = '📜 보유 증강';
+    document.getElementById('tower-bag-hint').textContent = '지금까지 획득한 증강 목록입니다';
+    document.getElementById('tower-bag-footer').style.display = 'none';
+    overlay.classList.add('show');
+    towerRenderAugmentView();
+  }
+
+  function towerRenderAugmentView(){
+    const grid = document.getElementById('tower-bag-grid');
+    const ids = Object.keys(TS.augments);
+    if(ids.length === 0){
+      grid.innerHTML = `<div class="tower-bag-empty">아직 획득한 증강이 없습니다</div>`;
+      return;
+    }
+    const pool = towerGetAugmentPool(TS.charId);
+    grid.innerHTML = ids.map(id=>{
+      const aug = pool.find(a=>a.id===id);
+      if(!aug) return '';
+      const stack = TS.augments[id];
+      const color = TOWER_GRADE_COLOR[aug.grade];
+      return `
+        <div class="tower-bag-item" style="border-color:${color}; cursor:default;">
+          <div class="tbi-name" style="color:${color};">${aug.name}</div>
+          <div class="tbi-tier">${TOWER_GRADE_LABEL[aug.grade]}${stack>1 ? ` x${stack}` : ''}</div>
+          <div style="font-size:10px; color:var(--text-dim); margin-top:4px; line-height:1.4;">${aug.desc}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const TOWER_SOUP_SELL_PRICE = 200; // 만년 수프 1개 판매가 — 장비보다 비싸게 (그만큼 효과가 강력함)
+
+  function towerRenderBag(){
+    const grid = document.getElementById('tower-bag-grid');
+    const soupHtml = (TS.eternalSoupCount > 0)
+      ? `
+        <div class="tower-bag-item tower-bag-item-soup">
+          <div class="tbi-emoji">🍲</div>
+          <div class="tbi-name">만년 수프</div>
+          <div class="tbi-tier">보유 ${TS.eternalSoupCount}개</div>
+          ${TS_bagMode === 'view' ? `<button class="tbi-sell-btn" data-sell-soup="1"><span class="tower-price-tag">💰 ${TOWER_SOUP_SELL_PRICE.toLocaleString()}</span> 판매</button>` : ''}
+        </div>
+      `
+      : '';
+
+    if(TS.equipment.length === 0 && !soupHtml){
+      grid.innerHTML = `<div class="tower-bag-empty">보유 장비가 없습니다</div>`;
+    } else {
+      const equipHtml = TS.equipment.map((e, idx)=>{
+        const key = towerGetEquipKeyByName(e.name);
+        const selected = TS_bagSelected.includes(idx);
+        const sellBtnHtml = TS_bagMode === 'view'
+          ? `<button class="tbi-sell-btn" data-sell-idx="${idx}"><span class="tower-price-tag">💰 ${towerGetSellPrice(e.tier).toLocaleString()}</span> 판매</button>`
+          : '';
+        // 슬롯 제한 없이 보유 장비는 전부 항상 스탯에 반영되므로, 보기 모드에서는 모든 칸에 "적용 중" 표시를 단다
+        const activeClass = TS_bagMode === 'view' ? ' tower-bag-item-active' : '';
+        const activeBadge = TS_bagMode === 'view' ? `<div class="tbi-active-badge">적용 중</div>` : '';
+        return `
+          <div class="tower-bag-item${selected ? ' selected' : ''}${activeClass}" data-idx="${idx}">
+            ${activeBadge}
+            <div class="tbi-emoji">${towerGetEquipEmoji(key)}</div>
+            <div class="tbi-name">${e.name}</div>
+            <div class="tbi-tier">T${e.tier}</div>
+            ${sellBtnHtml}
+          </div>
+        `;
+      }).join('');
+      grid.innerHTML = soupHtml + equipHtml;
+    }
+
+    if(TS_bagMode === 'view'){
+      const soupSellBtn = grid.querySelector('[data-sell-soup]');
+      if(soupSellBtn){
+        soupSellBtn.onclick = (ev)=>{
+          ev.stopPropagation();
+          TS.eternalSoupCount -= 1;
+          TS.coins += TOWER_SOUP_SELL_PRICE;
+          towerSaveRun(TS);
+          towerRenderBag();
+          renderTowerShopContent();
+        };
+      }
+      grid.querySelectorAll('.tbi-sell-btn[data-sell-idx]').forEach(btn=>{
+        btn.onclick = (ev)=>{
+          ev.stopPropagation();
+          const idx = Number(btn.dataset.sellIdx);
+          const item = TS.equipment[idx];
+          TS.coins += towerGetSellPrice(item.tier);
+          TS.equipment.splice(idx, 1);
+          towerSaveRun(TS);
+          towerRenderBag();
+          renderTowerShopContent();
+        };
+      });
+    } else {
+      // 정제/융합 선택 모드에서는 만년 수프를 재료로 고를 수 없으므로 장비 칸에만 선택 동작을 건다
+      grid.querySelectorAll('.tower-bag-item[data-idx]').forEach(el=>{
+        el.onclick = ()=>{
+          const idx = Number(el.dataset.idx);
+          const pos = TS_bagSelected.indexOf(idx);
+          if(pos >= 0){
+            TS_bagSelected.splice(pos, 1);
+          } else {
+            if(TS_bagSelected.length >= 3){ showToast('최대 3개까지 선택할 수 있습니다'); return; }
+            TS_bagSelected.push(idx);
+          }
+          towerRenderBag();
+        };
+      });
+    }
+  }
+
+  document.getElementById('tower-bag-close-btn').addEventListener('click', towerCloseBag);
+  document.getElementById('tower-bag-confirm-btn').addEventListener('click', ()=>{
+    if(TS_bagSelected.length !== 3){ showToast('정확히 3개를 선택해야 합니다'); return; }
+    if(TS_bagMode === 'refine'){
+      const items = TS_bagSelected.map(i=>TS.equipment[i]);
+      const names = new Set(items.map(i=>i.name));
+      const tiers = new Set(items.map(i=>i.tier));
+      if(names.size !== 1 || tiers.size !== 1){
+        showToast('이름과 티어가 모두 같은 장비 3개를 선택해주세요');
+        return;
+      }
+      const result = towerRefineEquipment(TS.equipment, items[0].name, items[0].tier);
+      if(!result.ok){ showToast(result.reason); return; }
+      TS.equipment = result.equipment;
+      towerSaveRun(TS);
+      showToast(`${items[0].name} 이(가) 티어 ${items[0].tier+1}로 정제되었습니다`);
+      towerCloseBag();
+      renderTowerShopContent();
+    } else if(TS_bagMode === 'fuse'){
+      const result = towerFuseEquipment(TS.equipment, TS_bagSelected);
+      if(!result.ok){ showToast(result.reason); return; }
+      TS.equipment = result.equipment;
+      towerSaveRun(TS);
+      showToast('융합 완료!');
+      towerCloseBag();
+      renderTowerShopContent();
+    }
+  });
+
+  /* ---------- 증강 선택 층 ---------- */
+  let TS_augmentRerollCount = 0; // 이번 증강 층에서 몇 번 리롤했는지 (층을 벗어나면 초기화)
+
+  function towerGetAugmentRerollCost(){
+    return Math.round(25 * Math.pow(1.6, TS_augmentRerollCount));
+  }
+
+  function towerRenderAugment(){
+    showScreen('screen-tower-augment');
+    document.getElementById('tower-augment-title').textContent = `${TS.floor}층 · 증강 선택`;
+    const isFirstEntry = !TS_pendingAugmentChoices;
+    if(isFirstEntry){
+      TS_pendingAugmentChoices = towerRollAugmentChoices(TS.charId, TS.floor);
+      TS_augmentRerollCount = 0;
+    }
+    renderTowerAugmentContent();
+    if(isFirstEntry){
+      const c = document.getElementById('tower-augment-content');
+      c.classList.remove('tower-pop-in'); void c.offsetWidth; c.classList.add('tower-pop-in');
+    }
+  }
+
+  const TOWER_GRADE_COLOR = { common:'#8FA0B3', rare:'#4FC3F7', epic:'#C084FC', legendary:'#FFD54F', mythic:'#FF5252' };
+  const TOWER_GRADE_LABEL = { common:'일반', rare:'희귀', epic:'영웅', legendary:'전설', mythic:'신화' };
+
+  function renderTowerAugmentContent(){
+    const c = document.getElementById('tower-augment-content');
+    delete c.dataset.locked;
+    const rerollCost = towerGetAugmentRerollCost();
+    c.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <div style="font-weight:900; font-size:14px;"><span class="tower-price-tag">💰 ${TS.coins.toLocaleString()}</span></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
+        <div style="color:var(--text-dim); font-size:12.5px; flex:1;">세 가지 중 하나를 선택하세요. (같은 증강을 여러 번 고르면 효과가 누적됩니다)</div>
+        <button class="btn" id="tower-augment-reroll-btn" style="white-space:nowrap; padding:9px 12px; border-radius:10px; font-size:11.5px;">🔄 <span class="tower-price-tag">💰${rerollCost.toLocaleString()}</span></button>
+      </div>
+      ${TS_pendingAugmentChoices.map((aug, idx)=> towerRenderAugmentCardHtml(aug, idx)).join('')}
+    `;
+    c.querySelectorAll('.tower-augment-pick').forEach(btn=>{
+      btn.onclick = ()=>{
+        if(c.dataset.locked) return; // 중복 클릭 방지
+        c.dataset.locked = '1';
+        const idx = Number(btn.dataset.idx);
+        const aug = TS_pendingAugmentChoices[idx];
+        btn.classList.add('tower-picked');
+        c.querySelectorAll('.tower-augment-pick').forEach(other=>{
+          if(other !== btn) other.style.opacity = '0.35';
+        });
+        TS.augments[aug.id] = (TS.augments[aug.id] || 0) + 1;
+        TS_pendingAugmentChoices = null;
+        towerSaveRun(TS);
+        showToast(`[${aug.name}] 획득!`);
+        setTimeout(()=> towerGoToNextFloor(), 450); // 선택 연출이 보이도록 살짝 대기 후 다음 층으로
+      };
+    });
+    document.getElementById('tower-augment-reroll-btn').onclick = towerRerollAugments;
+  }
+
+  function towerRenderAugmentCardHtml(aug, idx){
+    const stack = TS.augments[aug.id] || 0;
+    const isRareGrade = aug.grade === 'legendary' || aug.grade === 'mythic';
+    const glowStyle = isRareGrade
+      ? `box-shadow:0 0 18px ${TOWER_GRADE_COLOR[aug.grade]}66, inset 0 0 0 1px ${TOWER_GRADE_COLOR[aug.grade]}55; animation:towerCardPulse 1.6s ease-in-out infinite;`
+      : '';
+    return `
+      <button class="panel-card tower-augment-pick taug-card-${idx}" data-idx="${idx}" style="width:100%; text-align:left; margin-bottom:10px; border-color:${TOWER_GRADE_COLOR[aug.grade]}; border-width:${isRareGrade?'2px':'1px'}; transition:transform .15s ease, border-color .2s ease, box-shadow .2s ease; ${glowStyle}">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="font-weight:900; font-size:15px;" class="taug-name-${idx}">${isRareGrade ? '✨ ' : ''}${aug.name}</div>
+          <div style="font-size:11px; font-weight:${isRareGrade?'900':'400'}; color:${TOWER_GRADE_COLOR[aug.grade]};" class="taug-grade-${idx}">${TOWER_GRADE_LABEL[aug.grade]}${stack>0 ? ` · 보유 ${stack}스택` : ''}</div>
+        </div>
+        <div style="color:var(--text-dim); font-size:12px; margin-top:6px;" class="taug-desc-${idx}">${aug.desc}</div>
+      </button>
+    `;
+  }
+
+  function towerRerollAugments(){
+    const cost = towerGetAugmentRerollCost();
+    if(TS.coins < cost){ showToast('코인이 부족합니다'); return; }
+    TS.coins -= cost;
+    TS_augmentRerollCount++;
+    towerSaveRun(TS);
+    const btn = document.getElementById('tower-augment-reroll-btn');
+    if(btn) btn.disabled = true;
+    const newChoices = towerRollAugmentChoices(TS.charId, TS.floor);
+    const pool = towerGetAugmentPool(TS.charId);
+    const cardEls = Array.from(document.querySelectorAll('#tower-augment-content .tower-augment-pick'));
+    towerPlayRerollSequence(
+      cardEls,
+      (i)=>{
+        const rand = pool[Math.floor(Math.random() * pool.length)];
+        const nameEl = document.querySelector(`.taug-name-${i}`);
+        const gradeEl = document.querySelector(`.taug-grade-${i}`);
+        if(nameEl) nameEl.textContent = rand.name;
+        if(gradeEl){ gradeEl.textContent = TOWER_GRADE_LABEL[rand.grade]; gradeEl.style.color = TOWER_GRADE_COLOR[rand.grade]; }
+      },
+      (i)=>{
+        // 화면이 하얗게 가려진 순간 진짜 최종값으로 교체 — 색상/테두리까지 전부 여기서 확정 (반짝임 애니메이션은 아직 걸지 않음)
+        const aug = newChoices[i];
+        const stack = TS.augments[aug.id] || 0;
+        const isRareGrade = aug.grade === 'legendary' || aug.grade === 'mythic';
+        const cardEl = document.querySelector(`.taug-card-${i}`);
+        const nameEl = document.querySelector(`.taug-name-${i}`);
+        const gradeEl = document.querySelector(`.taug-grade-${i}`);
+        const descEl = document.querySelector(`.taug-desc-${i}`);
+        if(nameEl) nameEl.textContent = `${isRareGrade ? '✨ ' : ''}${aug.name}`;
+        if(gradeEl){
+          gradeEl.textContent = `${TOWER_GRADE_LABEL[aug.grade]}${stack>0 ? ` · 보유 ${stack}스택` : ''}`;
+          gradeEl.style.color = TOWER_GRADE_COLOR[aug.grade];
+          gradeEl.style.fontWeight = isRareGrade ? '900' : '400';
+        }
+        if(descEl) descEl.textContent = aug.desc;
+        if(cardEl){
+          cardEl.style.borderColor = TOWER_GRADE_COLOR[aug.grade];
+          cardEl.style.borderWidth = isRareGrade ? '2px' : '1px';
+        }
+      },
+      ()=>{
+        // 화면에 이미 최종값이 다 반영돼 있으므로, 전체 재렌더링을 해도 시각적으로는 아무것도 안 바뀐다 (선택 핸들러만 다시 연결)
+        TS_pendingAugmentChoices = newChoices;
+        renderTowerAugmentContent();
+      },
+      (i)=>{
+        // 팝인이 끝난 뒤에만 상시 반짝임 애니메이션을 건다 (리롤 팝인 애니메이션과 겹치지 않도록)
+        const aug = newChoices[i];
+        const isRareGrade = aug.grade === 'legendary' || aug.grade === 'mythic';
+        const cardEl = document.querySelector(`.taug-card-${i}`);
+        if(cardEl && isRareGrade){
+          cardEl.style.boxShadow = `0 0 18px ${TOWER_GRADE_COLOR[aug.grade]}66, inset 0 0 0 1px ${TOWER_GRADE_COLOR[aug.grade]}55`;
+          cardEl.style.animation = 'towerCardPulse 1.6s ease-in-out infinite';
+        }
+      }
+    );
+  }
+
+  // 여러 카드를 순서대로 하나씩: (1) 짧게 무작위 값으로 깜빡이다가 → (2) 하얗게 밝아지며 사라지고
+  // → (3) 그 사이 진짜 최종값으로 내용을 바꿔치기한 뒤 → (4) 확 커졌다 제자리로 팝인.
+  // cardEls: 애니메이션을 줄 카드 DOM 배열. onTick(i)는 스핀 중 무작위 표시, onFinal(i)은 진짜 최종값 반영,
+  // onSettled(i)는 팝인이 다 끝난 뒤(신화/전설 반짝임 같은 상시 애니메이션을 그제서야 걸어야 서로 안 부딪힘), onAllDone은 전부 끝난 뒤.
+  function towerPlayRerollSequence(cardEls, onTick, onFinal, onAllDone, onSettled){
+    let finished = 0;
+    cardEls.forEach((cardEl, i)=>{
+      setTimeout(()=>{
+        let spins = 0;
+        const maxSpins = 5;
+        const interval = setInterval(()=>{
+          onTick(i);
+          spins++;
+          if(spins >= maxSpins){
+            clearInterval(interval);
+            cardEl.classList.add('tower-reroll-out');
+            setTimeout(()=>{
+              onFinal(i); // 화면이 하얗게 가려진 사이에 진짜 최종값으로 교체 — 이후엔 절대 값이 안 바뀜
+              cardEl.classList.remove('tower-reroll-out');
+              void cardEl.offsetWidth; // 애니메이션 재시작을 위한 강제 리플로우
+              cardEl.classList.add('tower-reroll-in');
+              setTimeout(()=>{
+                cardEl.classList.remove('tower-reroll-in');
+                if(onSettled) onSettled(i); // 팝인 애니메이션이 끝난 뒤에만 상시 반짝임을 걸어 animation 속성 충돌을 피한다
+                finished++;
+                if(finished >= cardEls.length) onAllDone();
+              }, 340);
+            }, 230);
+          }
+        }, 55);
+      }, i * 220); // 카드마다 시작 시점을 살짝 늦춰 순서대로 진행되는 느낌을 줌
+    });
+  }
+
+
 
   /* ============== 저장/불러오기 (localStorage) ============== */
   // 참고: Firebase 세션 정보(멀티대전 방 코드 등)는 저장 대상이 아님 — PP/보유/장착 상태만 영구 저장
@@ -3574,6 +5659,10 @@
           <div class="ic">👥</div>
           <div class="txt"><div class="t1">2VS2 <span class="beta-tag">BETA</span></div><div class="t2">2명씩 팀을 이뤄 대결 (AI 또는 온라인)</div></div>
         </button>
+        <button class="mode-btn" id="btn-tower">
+          <div class="ic">🗼</div>
+          <div class="txt"><div class="t1">무한대전타워</div><div class="t2">끝없이 오르는 로그라이크 등반 콘텐츠</div></div>
+        </button>
       `;
       document.getElementById('btn-single').onclick = ()=> showScreen('screen-difficulty');
       document.getElementById('btn-multi').onclick = ()=>{
@@ -3584,6 +5673,7 @@
         openMultiMenu();
       };
       document.getElementById('btn-2v2').onclick = ()=> showScreen('screen-2v2-menu');
+      document.getElementById('btn-tower').onclick = ()=> openTowerHome();
     } else if(S.tab==='shop'){
       desc.textContent = '캐릭터와 컴뱃스킬을 구매할 수 있는 공간';
       c.innerHTML = `
@@ -3879,6 +5969,7 @@
   });
 
   document.getElementById('diff-back').addEventListener('click', ()=> goHome('main'));
+  document.getElementById('tower-home-back').addEventListener('click', ()=> goHome('main'));
   document.querySelectorAll('.diff-card').forEach(card=>{
     card.addEventListener('click', ()=>{
       startBattle(card.dataset.diff);
@@ -3895,7 +5986,7 @@
     return {
       hp:maxHp, maxHp:maxHp, ap:START_AP, defended:false, charKey:charKey, skillId:skillId||null,
       nickname: nickname || null, // 멀티/온라인 2VS2에서 교체돼도 닉네임이 유지되도록 여기 같이 들고 다닌다
-      skillUsed:false, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false,
+      skillUseCount:0, skillMaxUses:1, hitCount:0, dmgDebuff:0, oneUpUsed:false, shieldHp:0, shieldTurns:0, shieldJustGranted:false,
       passiveShield:0, passiveShieldTurns:0, passiveShieldJustGranted:false, poisonTurns:0, poisonJustApplied:false,
       deathMarkStacks:0, energyStacks:0, lastUltimateBonus:0, neurotoxinStacks:0, neurotoxinTurns:0,
       neurotoxinJustApplied:false, lifestealTurns:0, lifestealJustGranted:false, lastHealApplied:0,
@@ -4082,8 +6173,14 @@
 
       setTimeout(()=>{
         // 3. 하락(파랑) 칩도 빠르게 이어서 표시 — 이후 둘 다 보이는 채로 충분히 읽을 시간을 준다
-        blueLabel.textContent = CHIP_STAT_LABEL[effect.downKey];
-        blueLabel.classList.add('show');
+        // [무한대전타워] "무한 확률" 증강 발동 시 downKey가 없으므로 하락 칩 자체를 표시하지 않는다
+        if(effect.downKey){
+          blueLabel.textContent = CHIP_STAT_LABEL[effect.downKey];
+          blueLabel.classList.add('show');
+        } else {
+          blueLabel.textContent = '없음!';
+          blueLabel.classList.add('show');
+        }
       }, 900);
 
       setTimeout(()=>{
@@ -4109,19 +6206,20 @@
     if(!passive || passive.id !== 'cooking_time') return;
 
     let delta = 0, reason = '';
+    const gainAdd = fighter.tw_cookingGainAdd||0; // [무한대전타워] "숙련된 손맛" 증강 반영 (상승량에만 적용, 감소량은 그대로)
     if(ownAct === 'attack'){
-      if(oppAct === 'heal'){ delta = 2; reason = '회복 캔슬 성공'; }
+      if(oppAct === 'heal'){ delta = 2 + gainAdd; reason = '회복 캔슬 성공'; }
       else if(oppAct === 'defend'){ delta = -1; reason = '공격이 방어에 막힘'; }
-      else { delta = 1; reason = '공격 적중'; }
+      else { delta = 1 + gainAdd; reason = '공격 적중'; }
     } else if(ownAct === 'counter'){
-      if(oppAct === 'ultimate'){ delta = 3; reason = '카운터로 일격을 받아침'; }
+      if(oppAct === 'ultimate'){ delta = 3 + gainAdd; reason = '카운터로 일격을 받아침'; }
       else { delta = -1; reason = '카운터 헛스윙'; }
     } else if(ownAct === 'heal' && oppAct === 'attack'){
       delta = -1; reason = '회복이 캔슬당함';
     } else if(ownAct === 'defend' && oppAct === 'attack'){
-      delta = 1; reason = '방어로 공격을 막아냄';
+      delta = 1 + gainAdd; reason = '방어로 공격을 막아냄';
     } else if(ownAct === 'ultimate' && oppAct !== 'counter'){
-      delta = 1; reason = '일격 적중';
+      delta = 1 + gainAdd; reason = '일격 적중';
     }
 
     if(delta !== 0){
@@ -4133,10 +6231,11 @@
       }
     }
 
-    fighter.cookingTurnsLeft = (fighter.cookingTurnsLeft === undefined ? 5 : fighter.cookingTurnsLeft) - 1;
+    const turnsNeeded = Math.max(2, 5 - (fighter.tw_cookingTurnsReduce||0)); // [무한대전타워] "단축 조리"/"즉석 요리" 증강 반영 (최소 2턴)
+    fighter.cookingTurnsLeft = (fighter.cookingTurnsLeft === undefined ? turnsNeeded : fighter.cookingTurnsLeft) - 1;
     if(fighter.cookingTurnsLeft <= 0){
       g.pendingDishEvents.push({ side, stacks: fighter.cookingStacks, turn: g.turn });
-      fighter.cookingTurnsLeft = 5;
+      fighter.cookingTurnsLeft = turnsNeeded;
       fighter.cookingStacks = 0; // 완성된 순간의 스택은 이미 이벤트에 담아뒀으니, 다음 조리는 0부터 다시 시작
     }
   }
@@ -4145,7 +6244,7 @@
   // 디버프도 정확히 그만큼 되돌린다 (dmgDebuff는 다른 효과와 공용 필드라 걸었던 양만큼만 회수).
   function applyHachimiBurnTick(targetKey, g){
     const target = g[targetKey];
-    const dmg = target.hachimiBurnDamage || 0;
+    const dmg = towerApplyDotResist(target, target.hachimiBurnDamage || 0);
     const label = targetKey==='me' ? '내' : '상대';
     if(dmg > 0) dealDamage(targetKey, dmg);
     if(target.hachimiBurnTurns > 0){
@@ -4260,8 +6359,8 @@
         return;
       }
 
-      // 온라인이 아닌 경우(싱글/2VS2 AI전): 로컬에서 조작 가능한 me만 인터랙티브, op는 자동 판단
-      const canChooseInteractively = (event.side === 'me') && (S.mode === 'single' || S.mode === 'ai2v2');
+      // 온라인이 아닌 경우(싱글/2VS2 AI전/무한대전타워): 로컬에서 조작 가능한 me만 인터랙티브, op는 자동 판단
+      const canChooseInteractively = (event.side === 'me') && (S.mode === 'single' || S.mode === 'ai2v2' || S.mode === 'tower');
 
       if(canChooseInteractively){
         choiceRow.style.display = 'flex';
@@ -4309,24 +6408,41 @@
     }
 
     if(eaten){
-      const healAmt = HACHIMI_HEAL_TABLE[stacks];
+      const powerMult = 1 + (self.tw_cookingPowerPct||0); // [무한대전타워] "진수성찬" 증강 반영
+      const healAmt = Math.round(HACHIMI_HEAL_TABLE[stacks] * powerMult);
       self.hp = Math.min(self.maxHp, self.hp + healAmt);
       spawnPopup(side, `+${healAmt}`, 'heal');
       pushLog('sys', `🍲 ${label} [조리 시간] 요리를 직접 먹었다! 체력 +${healAmt}`);
       if(stacks >= 3){
-        self.shieldHp = HACHIMI_SHIELD_TABLE[stacks];
+        self.shieldHp = Math.round(HACHIMI_SHIELD_TABLE[stacks] * powerMult);
         self.shieldTurns = 3;
         self.shieldJustGranted = true;
-        pushLog('sys', `🛡️ ${label} 보호막 +${HACHIMI_SHIELD_TABLE[stacks]} (3턴)`);
+        pushLog('sys', `🛡️ ${label} 보호막 +${self.shieldHp} (3턴)`);
+      }
+      // [무한대전타워] "만찬의 축복" 신화 증강 - 먹으면서 동시에 상대에게도 화상 부여
+      if(self.tw_cookingMythicBoth && stacks >= 3){
+        const opp = g[oppKey];
+        const oppLabel = oppKey === 'me' ? '내' : '상대';
+        if(opp.hp > 0){
+          const burnDmg = Math.round(HACHIMI_BURN_DMG_TABLE[stacks] * powerMult);
+          opp.hachimiBurnTurns = 3;
+          opp.hachimiBurnDamage = burnDmg;
+          opp.hachimiBurnJustApplied = true;
+          opp.dmgDebuff = (opp.dmgDebuff||0) + 1;
+          opp.hachimiBurnDebuffApplied = (opp.hachimiBurnDebuffApplied||0) + 1;
+          pushLog('sys', `🍽️ ${label} [만찬의 축복] 발동! ${oppLabel}에게도 화상 상태 부여 (3턴간 매 턴 ${burnDmg} 피해)`);
+        }
       }
     } else {
+      const powerMult = 1 + (self.tw_cookingPowerPct||0); // [무한대전타워] "진수성찬" 증강 반영
       const target = g[oppKey];
       const targetLabel = oppKey === 'me' ? '내' : '상대';
-      const dmg = applyOnHitPassive(side, HACHIMI_DMG_TABLE[stacks], g, side==='me' ? 'me-act' : 'op-act');
+      const dmg = applyOnHitPassive(side, Math.round(HACHIMI_DMG_TABLE[stacks] * powerMult), g, side==='me' ? 'me-act' : 'op-act');
+      towerDamageSourceKey = side;
       if(dmg > 0) dealDamage(oppKey, dmg);
       pushLog('sys', `🍲 ${label} [조리 시간] 요리를 상대에게 던졌다! ${dmg}의 피해`);
       if(stacks >= 3 && target.hp > 0){
-        const burnDmg = HACHIMI_BURN_DMG_TABLE[stacks];
+        const burnDmg = Math.round(HACHIMI_BURN_DMG_TABLE[stacks] * powerMult);
         target.hachimiBurnTurns = 3;
         target.hachimiBurnDamage = burnDmg;
         target.hachimiBurnJustApplied = true;
@@ -4531,7 +6647,7 @@
     if(hpRatio < 0.25) chance = 0.6;
     // 행동력도 없고 스킬도 다 써서 이번 턴에 딱히 할 게 없다면, 판을 갈아엎는 것도 매력적인 선택
     const skill = SKILLS[active.skillId];
-    const outOfOptions = active.ap <= 0 && (!skill || active.skillUsed);
+    const outOfOptions = active.ap <= 0 && (!skill || !skillAvailable(active));
     if(outOfOptions) chance = Math.max(chance, 0.35);
     return Math.random() < chance;
   }
@@ -4912,12 +7028,21 @@
   }
 
   // 체력바 위 푸른 보호막 게이지 (컴뱃스킬 보호막 + 패시브 보호막 합산, 체력바 밖으로는 넘치지 않음)
-  function renderShieldGauge(entity, fillElId, shieldElId){
+  function renderShieldGauge(entity, fillElId, shieldElId, shieldBadgeId){
     const totalShield = (entity.shieldHp||0) + (entity.passiveShield||0);
     const hpPct = Math.max(0, entity.hp/entity.maxHp*100);
     const shieldPct = Math.min(100, hpPct + (totalShield/entity.maxHp*100));
     document.getElementById(fillElId).style.width = hpPct + '%';
     document.getElementById(shieldElId).style.width = shieldPct + '%';
+    // 체력이 꽉 찼거나 보호막이 최대체력을 넘어서면 막대 위에서는 안 보이거나 잘릴 수 있어,
+    // HP바 크기와 무관하게 언제나 정확한 보호막 총량을 보여주는 숫자 배지를 따로 둔다.
+    const badge = document.getElementById(shieldBadgeId);
+    if(totalShield > 0){
+      badge.textContent = `🛡+${totalShield}`;
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
   }
 
   // 베리의 [요정날개] 패시브 보호막 잔여 턴수를 이름 옆에 작은 푸른 숫자로 표시
@@ -4991,10 +7116,32 @@
     }
   }
 
+  // [조리 시간] 던진 요리로 걸린 화상 잔여 턴수를 이름 옆에 불꽃 배지로 표시
+  function renderBurnBadge(entity, badgeElId){
+    const badge = document.getElementById(badgeElId);
+    if(entity.hachimiBurnTurns > 0){
+      badge.textContent = `🔥${entity.hachimiBurnTurns}턴`;
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
+  }
+
+  // [도발] 컴뱃스킬로 걸린 방어/회복 봉인 잔여 턴수를 이름 옆에 표시
+  function renderTauntBadge(entity, badgeElId){
+    const badge = document.getElementById(badgeElId);
+    if(entity.actionSealTurns > 0){
+      badge.textContent = `😤${entity.actionSealTurns}턴`;
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
+  }
+
   function renderBattle(){
     const g = S.game;
-    renderShieldGauge(g.me, 'me-hpfill', 'me-hpshield');
-    renderShieldGauge(g.op, 'op-hpfill', 'op-hpshield');
+    renderShieldGauge(g.me, 'me-hpfill', 'me-hpshield', 'me-shield-badge');
+    renderShieldGauge(g.op, 'op-hpfill', 'op-hpshield', 'op-shield-badge');
     renderPassiveBadge(g.me, 'me-passive-badge');
     renderPassiveBadge(g.op, 'op-passive-badge');
     if(is2v2Mode()) renderTeam2v2Bench();
@@ -5008,6 +7155,10 @@
     renderEnergyBadge(g.op, 'op-energy-badge');
     renderCookingBadge(g.me, 'me-cooking-badge');
     renderCookingBadge(g.op, 'op-cooking-badge');
+    renderBurnBadge(g.me, 'me-burn-badge');
+    renderBurnBadge(g.op, 'op-burn-badge');
+    renderTauntBadge(g.me, 'me-taunt-badge');
+    renderTauntBadge(g.op, 'op-taunt-badge');
     document.getElementById('me-hpnum').textContent = `${Math.max(0,g.me.hp)} / ${g.me.maxHp}`;
     document.getElementById('op-hpnum').textContent = `${Math.max(0,g.op.hp)} / ${g.op.maxHp}`;
     const roundInfo = (S.mode === 'multi' && S.multi) ? ` · R${S.multi.roundNum} · ${S.multi.myWins}:${S.multi.oppWins}` : '';
@@ -5035,8 +7186,9 @@
       // 직접 겪어봐야 하는 페널티라, 아예 못 누르게 막는 건 아니다).
       const sealed = (g.me.actionSealTurns > 0) && (act === 'defend' || act === 'heal');
       if(act === 'skill'){
-        btn.disabled = g.locked || g.me.skillUsed || !g.me.skillId;
-        document.getElementById('skill-cost').textContent = !g.me.skillId ? '장착 필요' : (g.me.skillUsed ? '사용완료' : '1회용');
+        btn.disabled = g.locked || !skillAvailable(g.me) || !g.me.skillId;
+        const usesLeft = g.me.skillId ? Math.max(0, (g.me.skillMaxUses||1) - (g.me.skillUseCount||0)) : 0;
+        document.getElementById('skill-cost').textContent = !g.me.skillId ? '장착 필요' : (usesLeft<=0 ? '사용완료' : ((g.me.skillMaxUses||1)>1 ? `잔여 ${usesLeft}회` : '1회용'));
       } else {
         const cost = COST[act];
         btn.disabled = g.locked || g.me.ap < cost;
@@ -5080,7 +7232,7 @@
       const g = S.game;
       if(!g || g.locked) return;
       const act = btn.dataset.act;
-      if(act === 'skill' && (g.me.skillUsed || !g.me.skillId)) return;
+      if(act === 'skill' && (!skillAvailable(g.me) || !g.me.skillId)) return;
       if(g.me.ap < COST[act]) return;
       // 시간이 끝날 때까지는 몇 번이든 마음을 바꿀 수 있다 (마지막 선택이 최종 판정)
       g.pendingMeAct = (g.pendingMeAct === act) ? null : act;
@@ -5151,8 +7303,8 @@
     g.op.ap -= COST[opAct];
     g.me.defended = false;
     g.op.defended = false;
-    if(meAct === 'skill') g.me.skillUsed = true;
-    if(opAct === 'skill') g.op.skillUsed = true;
+    if(meAct === 'skill') g.me.skillUseCount = (g.me.skillUseCount||0) + 1;
+    if(opAct === 'skill') g.op.skillUseCount = (g.op.skillUseCount||0) + 1;
 
     // 1. 회복 최우선 처리
     g.me.lastHealApplied = 0; // [도발]이 이번 턴 회복을 되돌릴 때 참조하기 위해 매 턴 초기화
@@ -5173,6 +7325,12 @@
         g.me.lastHealApplied = healAmt;
         spawnPopup('me','+'+healAmt,'heal');
         pushLog('me-act',`ㄴ 내가 <b>회복</b>: HP +${healAmt}, AP +2`);
+        // [무한대전타워] 장비 "이지러진 달 조각" - 회복 시 동반 보호막
+        if(g.me.tw_healShield){
+          g.me.passiveShield = (g.me.passiveShield||0) + g.me.tw_healShield;
+          g.me.passiveShieldTurns = Math.max(g.me.passiveShieldTurns||0, 1);
+          pushLog('me-act', `ㄴ 회복 효과로 보호막 +${g.me.tw_healShield}도 함께 얻었다`);
+        }
       }
       }
     }
@@ -5257,6 +7415,12 @@
           g[k].passiveShield = 0;
         }
       }
+      // [무한대전타워] "요정의 축복" 증강 - 보호막 보유 중 매 턴 체력 회복
+      if(g[k].tw_fairyShieldRegen && g[k].passiveShield > 0 && g[k].hp > 0){
+        const healAmt = g[k].tw_fairyShieldRegen;
+        g[k].hp = Math.min(g[k].maxHp, g[k].hp + healAmt);
+        pushLog('sys', `🧚 ${k==='me'?'내':'상대'} [요정의 축복] 효과로 ${healAmt} 회복`);
+      }
       // [독 다트] 맹독 처리 (매 턴 고정 1피해, 보호막 무시 · 적중한 바로 그 턴은 카운트하지 않음)
       if(g[k].poisonJustApplied){
         g[k].poisonJustApplied = false; // 이번 턴은 건너뛰고 다음 턴부터 정상적으로 감소
@@ -5295,21 +7459,32 @@
       // [비상충전 프로토콜] 턴 종료 시 체력이 최대 체력의 50% 이하라면 에너지 중첩 1 획득 (최대 5)
       {
         const kPassive = CHARACTERS[g[k].charKey].passive;
-        if(kPassive && kPassive.id === 'overcharge_protocol' && g[k].hp > 0 && g[k].hp <= g[k].maxHp * 0.5){
+        const energyCap = 5 + (g[k].tw_energyCapAdd||0); // [무한대전타워] "에너지 저장고"/"무한 충전" 증강 반영
+        const energyThreshold = g[k].tw_energyThresholdOverride || 0.5; // 획득 조건 완화 (50%→60% 등)
+        const energyGain = 1 + (g[k].tw_energyGainAdd||0); // [무한대전타워] "무한 충전" 증강 반영
+        if(kPassive && kPassive.id === 'overcharge_protocol' && g[k].hp > 0 && g[k].hp <= g[k].maxHp * energyThreshold){
           const before = g[k].energyStacks||0;
-          g[k].energyStacks = Math.min(5, before + 1);
+          g[k].energyStacks = Math.min(energyCap, before + energyGain);
           if(g[k].energyStacks > before){
-            pushLog('sys', `⚡ ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! 에너지 획득 (현재 ${g[k].energyStacks}/5)`);
+            pushLog('sys', `⚡ ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! 에너지 획득 (현재 ${g[k].energyStacks}/${energyCap})`);
           }
+        }
+        // [무한대전타워] "비상 발전" 증강 - 에너지가 최대치일 때 매 턴 종료 시 체력 회복
+        if(g[k].tw_energyMaxRegen && (g[k].energyStacks||0) >= energyCap && g[k].hp > 0){
+          g[k].hp = Math.min(g[k].maxHp, g[k].hp + g[k].tw_energyMaxRegen);
+          pushLog('sys', `⚡ ${k==='me'?'내':'상대'} [비상 발전] 효과로 ${g[k].tw_energyMaxRegen} 회복`);
         }
         // [뿅뿅 바니 칩월드] 2턴에 한 번, 스탯 하나 +2 / 다른 스탯 하나 -1 (원수치의 50% 밑으로는 안 내려감)
         if(kPassive && kPassive.id === 'chip_world' && g[k].hp > 0){
+          const cycleLen = Math.max(1, 2 - (g[k].tw_chipCycleReduce||0)); // [무한대전타워] "칩월드 가속" 증강 반영
           g[k].chipTurnCounter = (g[k].chipTurnCounter||0) + 1;
-          if(g[k].chipTurnCounter >= 2){
+          if(g[k].chipTurnCounter >= cycleLen){
             g[k].chipTurnCounter = 0;
             const { upKey, downKey } = applyChipWorldPassive(g[k], g);
             if(k === 'me') bumpCharStat('passiveTriggers', 1);
-            pushLog('sys', `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`);
+            pushLog('sys', downKey
+              ? `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
+              : `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
             g.pendingChipEffects.push({ side: k, upKey, downKey });
           }
         }
@@ -5405,11 +7580,27 @@
     dv.classList.toggle('active', g.me.hp > 0 && g.me.hp <= dangerHp);
   }
 
+  // [무한대전타워] dealDamage 호출 직전에 세팅하는 "이번 피해를 누가 입혔는지" 1회성 플래그.
+  // 반사 계산(반사의 날개)에만 쓰이고, dealDamage 진입 즉시 소비 후 리셋되어 재귀 반사가 무한루프로 번지지 않는다.
+  // 지속피해(독/신경독/화상) 틱처럼 "가해자"가 없는 호출은 이 값을 건드리지 않으면 자동으로 null 취급된다.
+  let towerDamageSourceKey = null;
+
   function dealDamage(targetKey, amount){
     const g = S.game;
     const target = g[targetKey];
     let remaining = amount;
     const label = targetKey==='me' ? '내' : '상대';
+    const sourceKey = towerDamageSourceKey;
+    towerDamageSourceKey = null; // 즉시 소비 — 이 dealDamage 실행 도중 재귀 호출되는 다른 dealDamage에 잘못 물려쓰이지 않도록
+
+    // [무한대전타워] 장비 "침묵의 비석" 등 - 받는 피해 고정 감소 (플레이어에게만 적용)
+    if(remaining > 0 && target.tw_dmgReduce){
+      remaining = Math.max(0, remaining - target.tw_dmgReduce);
+    }
+    // [무한대전타워] 신화 증강 "절대 방벽" - 보호막이 남아있는 동안 받는 피해 절반
+    if(remaining > 0 && target.tw_shieldHalvePct && (target.shieldHp > 0 || target.passiveShield > 0)){
+      remaining = Math.ceil(remaining * (1 - target.tw_shieldHalvePct));
+    }
 
     // 1. 컴뱃스킬(에너지 쉴드)로 얻은 임시 보호막을 먼저 소모
     if(remaining > 0 && target.shieldHp > 0){
@@ -5427,6 +7618,14 @@
       remaining -= absorbed;
       pushLog('sys', `🧚 ${label} 패시브 보호막이 ${absorbed}의 피해를 흡수했다${target.passiveShield<=0 ? ' (보호막 소진)' : ` (잔여 ${target.passiveShield})`}`);
       spawnPopup(targetKey, `SHIELD -${absorbed}`, 'block');
+      // [무한대전타워] 증강 "반사의 날개" - 보호막으로 막은 피해의 일부를 가해자에게 반사
+      if(target.tw_fairyReflectPct && sourceKey && sourceKey !== targetKey){
+        const reflectDmg = Math.round(absorbed * target.tw_fairyReflectPct);
+        if(reflectDmg > 0){
+          pushLog('sys', `🪞 ${label} [반사의 날개]로 ${reflectDmg} 피해를 반사했다!`);
+          dealDamage(sourceKey, reflectDmg);
+        }
+      }
     }
 
     target.hp -= remaining;
@@ -5436,7 +7635,35 @@
       shakeScreen();
       if(targetKey === 'me') flashHit(); // 내가 맞을 때만 붉은 피격 플래시
     }
+
+    // [무한대전타워] 장비 "마지막 숨결" - 체력 20% 이하로 떨어지는 순간 전투당 제한 횟수만큼 자동 보호막
+    if(target.tw_autoShieldHp && (target.tw_autoShieldCount||0) > 0 && target.hp > 0 && target.hp <= target.maxHp * 0.2 && !target.tw_autoShieldTriggeredThisDrop){
+      target.passiveShield = (target.passiveShield||0) + target.tw_autoShieldHp;
+      target.passiveShieldTurns = Math.max(target.passiveShieldTurns||0, 3);
+      target.tw_autoShieldCount -= 1;
+      target.tw_autoShieldTriggeredThisDrop = true;
+      pushLog('sys', `🛡️ ${label} [마지막 숨결] 발동! 보호막 ${target.tw_autoShieldHp} 획득`);
+      spawnPopup(targetKey, 'AUTO SHIELD', 'heal');
+    }
+    if(target.hp > target.maxHp * 0.25) target.tw_autoShieldTriggeredThisDrop = false; // 체력을 회복해 위험 구간을 벗어나면 다시 발동 가능
+
+    // [무한대전타워] 증강 "불굴" - 치명적 피해로 사망 시 전투당 제한 횟수만큼 체력 1로 생존 (1UP보다 먼저 체크)
+    if(target.hp <= 0 && (target.tw_undyingCount||0) > 0){
+      target.tw_undyingCount -= 1;
+      target.hp = 1;
+      pushLog('sys', `✨ ${label} [불굴] 발동! 체력 1로 버텨냈다`);
+      spawnPopup(targetKey, 'SURVIVE!', 'heal');
+    }
+
     checkOneUpRevive(targetKey, g);
+
+    // [무한대전타워] 아이템 "만년 수프" - 1UP/불굴 등을 다 써도 쓰러졌다면, 마지막 안전망으로 체력 7 부활 (전투 중 즉시 처리)
+    if(target.hp <= 0 && targetKey === 'me' && typeof TS !== 'undefined' && TS && (TS.eternalSoupCount||0) > 0){
+      TS.eternalSoupCount -= 1;
+      target.hp = 7;
+      pushLog('sys', `🍲 [만년 수프]를 사용해 체력 7로 부활했다! (잔여 ${TS.eternalSoupCount}개)`);
+      spawnPopup(targetKey, 'SOUP REVIVE!', 'heal');
+    }
   }
 
   // [요정날개] 패시브 처리: [방어]로 상대의 [공격]을 성공적으로 막아냈을 때 보호막 2 획득 (최대 6 중첩)
@@ -5445,15 +7672,24 @@
     const defender = g[defenderKey];
     const passive = CHARACTERS[defender.charKey].passive;
     if(passive && passive.id === 'fairy_wings'){
+      const gainAmt = 2 + (defender.tw_fairyShieldAdd||0); // [무한대전타워] "두꺼운 날개" 증강 반영
+      const cap = 6 + (defender.tw_fairyShieldCapAdd||0);
       const before = defender.passiveShield || 0;
-      defender.passiveShield = Math.min(6, before + 2);
+      defender.passiveShield = Math.min(cap, before + gainAmt);
       const gained = defender.passiveShield - before;
       defender.passiveShieldTurns = 3; // 새 보호막 발생 시 지속시간 갱신
       defender.passiveShieldJustGranted = true; // 획득한 바로 이번 턴은 지속시간 카운트에서 제외
       const label = defenderKey==='me' ? '내' : '상대';
-      if(defenderKey === 'me' && defender.passiveShield >= 6) bumpCharStat('shieldMaxCount', 1);
+      if(defenderKey === 'me' && defender.passiveShield >= cap) bumpCharStat('shieldMaxCount', 1);
       pushLog(cls, `ㄴ ${label} [${passive.name}] 발동! 보호막 +${gained} (현재 ${defender.passiveShield}, ${defender.passiveShieldTurns}턴 유지)`);
       spawnPopup(defenderKey, gained>0 ? `SHIELD +${gained}` : 'SHIELD 갱신', 'heal');
+    }
+    // [무한대전타워] 장비 "얼어붙은 눈물" - 방어 성공 시 추가 보호막 (캐릭터 무관 공용)
+    if(defender.tw_defendShieldAdd){
+      defender.passiveShield = (defender.passiveShield||0) + defender.tw_defendShieldAdd;
+      defender.passiveShieldTurns = Math.max(defender.passiveShieldTurns||0, 3);
+      const label = defenderKey==='me' ? '내' : '상대';
+      pushLog(cls, `ㄴ ${label} 장비 효과로 방어 보호막 +${defender.tw_defendShieldAdd}`);
     }
   }
 
@@ -5465,17 +7701,22 @@
     if(!(passive && passive.id === 'decisive_slash')) return;
     if(target.hp <= 0) return; // 이미 쓰러진 대상에게는 처리하지 않음
     const label = actorKey==='me' ? '내' : '상대';
-    if((target.deathMarkStacks||0) >= 4){
+    const cap = 4 + (actor.tw_deathMarkCapAdd||0); // [무한대전타워] "죽을 사 강화" 증강 반영
+    if((target.deathMarkStacks||0) >= cap){
       target.hp = 0; // 즉시 처형
       pushLog(cls, `ㄴ ${label} [${passive.name}] 발동! [죽을 사] 최대 중첩 — 상대를 즉시 처형했다`);
       spawnPopup(targetKey, '처형!', null);
       if(actorKey === 'me') bumpCharStat('executionWins', 1);
+      if(actor.tw_executeApRestore){ // [무한대전타워] "신속한 처형" 증강 반영
+        actor.ap = Math.min(AP_MAX, actor.ap + actor.tw_executeApRestore);
+        pushLog(cls, `ㄴ ${label} [신속한 처형] 효과로 행동력 ${actor.tw_executeApRestore} 회복`);
+      }
       checkOneUpRevive(targetKey, g); // [1UP] 등 부활 패시브가 있다면 여기서도 발동 가능
       return;
     }
-    target.deathMarkStacks = Math.min(4, (target.deathMarkStacks||0) + 1);
+    target.deathMarkStacks = Math.min(cap, (target.deathMarkStacks||0) + 1);
     if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
-    pushLog(cls, `ㄴ ${label} [${passive.name}]! [죽을 사] 중첩 새김 (현재 ${target.deathMarkStacks}/4)`);
+    pushLog(cls, `ㄴ ${label} [${passive.name}]! [죽을 사] 중첩 새김 (현재 ${target.deathMarkStacks}/${cap})`);
     spawnPopup(targetKey, `☠${target.deathMarkStacks}`, 'poison');
   }
 
@@ -5488,11 +7729,13 @@
     if(!(passive && passive.id === 'neurotoxin_creep')) return;
     if(target.hp <= 0) return; // 이미 쓰러진 대상에게는 처리하지 않음
     const label = actorKey==='me' ? '내' : '상대';
-    target.neurotoxinStacks = Math.min(3, (target.neurotoxinStacks||0) + 1);
-    target.neurotoxinTurns = 3;
-    target.neurotoxinJustApplied = true; // 적중한 이번 턴은 틱 카운트에서 제외, 다음 턴부터 3턴간 진행
-    if(actorKey === 'me' && target.neurotoxinStacks >= 3) bumpCharStat('neurotoxinMaxStacks', 1);
-    pushLog(cls, `ㄴ ${label} [${passive.name}]! [신경독] 중첩 ${target.neurotoxinStacks}단계 부여 (3턴, 받는 회복 50% 감소)`);
+    const cap = 3 + (actor.tw_toxinCapAdd||0); // [무한대전타워] "맹독 배양" 증강 반영
+    const duration = 3 + (actor.tw_toxinDurationAdd||0); // [무한대전타워] "독무 확산" 증강 반영
+    target.neurotoxinStacks = Math.min(cap, (target.neurotoxinStacks||0) + 1);
+    target.neurotoxinTurns = duration;
+    target.neurotoxinJustApplied = true; // 적중한 이번 턴은 틱 카운트에서 제외, 다음 턴부터 진행
+    if(actorKey === 'me' && target.neurotoxinStacks >= cap) bumpCharStat('neurotoxinMaxStacks', 1);
+    pushLog(cls, `ㄴ ${label} [${passive.name}]! [신경독] 중첩 ${target.neurotoxinStacks}단계 부여 (${duration}턴, 받는 회복 50% 감소)`);
     spawnPopup(targetKey, `🟣${target.neurotoxinStacks}`, 'poison');
   }
 
@@ -5502,15 +7745,45 @@
     const target = g[targetKey];
     if(target.hp > 0) return;
     const passive = CHARACTERS[target.charKey].passive;
-    if(passive && passive.id === 'one_up' && !target.oneUpUsed){
-      target.oneUpUsed = true;
-      target.hp = 1;
-      target.dmgDebuff = (target.dmgDebuff||0) + 2;
+    const maxUses = 1 + (target.tw_oneUpExtra||0); // [무한대전타워] "여분의 목숨" 증강 반영
+    const usedCount = target.oneUpUsedCount||0;
+    if(passive && passive.id === 'one_up' && usedCount < maxUses){
+      target.oneUpUsedCount = usedCount + 1;
+      target.oneUpUsed = true; // 기존 코드 호환용 (다른 곳에서 boolean으로 참조할 가능성 대비)
       const label = targetKey==='me' ? '내' : '상대';
+      if(target.tw_oneUpHpPct){ // [무한대전타워] "불사조의 저력" 증강 반영
+        target.hp = Math.max(1, Math.round(target.maxHp * target.tw_oneUpHpPct));
+        pushLog('sys', `💫 ${label} [${passive.name}] 발동! 체력 ${target.hp}로 부활`);
+      } else {
+        target.hp = 1;
+        pushLog('sys', `💫 ${label} [${passive.name}] 발동! 1의 체력으로 부활 (이후 공격/일격 피해 -2)`);
+      }
+      if(target.tw_oneUpFinalBlow){ // [무한대전타워] "최후의 일격" 증강 반영 - 페널티 대신 다음 공격 강화
+        target.tw_oneUpFinalBlowActive = target.tw_oneUpFinalBlow;
+      } else {
+        target.dmgDebuff = (target.dmgDebuff||0) + 2;
+      }
       if(targetKey === 'me') bumpCharStat('oneUpRevives', 1);
-      pushLog('sys', `💫 ${label} [${passive.name}] 발동! 1의 체력으로 부활 (이후 공격/일격 피해 -2)`);
       spawnPopup(targetKey, 'REVIVE!', 'heal');
+      if(target.tw_oneUpCounterDmg){ // [무한대전타워] "나비 효과" 신화 증강 반영
+        const oppKey = targetKey === 'me' ? 'op' : 'me';
+        const opp = g[oppKey];
+        if(opp.hp > 0){
+          towerDamageSourceKey = targetKey;
+          dealDamage(oppKey, target.tw_oneUpCounterDmg);
+          pushLog('sys', `🦋 ${label} [나비 효과] 발동! 상대에게 ${target.tw_oneUpCounterDmg}의 고정 피해`);
+          spawnPopup(oppKey, `-${target.tw_oneUpCounterDmg}`, null);
+        }
+      }
     }
+  }
+
+  // [무한대전타워] 장비 "겨울나무 껍질" - 지속피해(독/신경독/화상)를 확률 면역 또는 비율 감소시킨다
+  function towerApplyDotResist(target, dmg){
+    if(dmg <= 0) return dmg;
+    if(target.tw_dotImmuneChance && Math.random() < target.tw_dotImmuneChance) return 0;
+    if(target.tw_dotResistPct) return Math.max(0, Math.round(dmg * (1 - target.tw_dotResistPct)));
+    return dmg;
   }
 
   // [독 다트] 맹독 상태 처리: 매 턴 고정 1 피해. 보호막(에너지 쉴드/요정날개)이 남아있다면 그것부터 먼저 깎이고,
@@ -5518,28 +7791,39 @@
   function applyPoisonTick(targetKey, g){
     const target = g[targetKey];
     const label = targetKey==='me' ? '내' : '상대';
-    dealDamage(targetKey, 1);
+    const dmg = towerApplyDotResist(target, 1);
+    dealDamage(targetKey, dmg);
     if(target.poisonTurns > 0){
-      pushLog('sys', `☠️ ${label} 맹독으로 1의 피해를 입었다 (잔여 ${target.poisonTurns}턴)`);
+      pushLog('sys', `☠️ ${label} 맹독으로 ${dmg}의 피해를 입었다 (잔여 ${target.poisonTurns}턴)`);
     } else {
-      pushLog('sys', `☠️ ${label} 맹독으로 1의 피해를 입고, 맹독 효과가 해제되었다`);
+      pushLog('sys', `☠️ ${label} 맹독으로 ${dmg}의 피해를 입고, 맹독 효과가 해제되었다`);
     }
   }
 
   // [파고드는 신경독] 턴 종료 시 처리: 중첩 수에 따라 1 / 2 / 4의 고정 피해 (독 다트와 별개, 보호막 무시).
-  const NEUROTOXIN_TICK_DAMAGE = [0, 1, 2, 4];
+  const NEUROTOXIN_TICK_DAMAGE = [0, 1, 2, 4, 6]; // 4번째 값(4단계)은 [무한대전타워] "맹독 배양" 증강으로만 도달 가능
   function applyNeurotoxinTick(targetKey, g){
     const target = g[targetKey];
     const stacks = target.neurotoxinStacks||0;
     if(stacks <= 0) return;
     const label = targetKey==='me' ? '내' : '상대';
-    const dmg = NEUROTOXIN_TICK_DAMAGE[stacks] || 0;
+    const dmg = towerApplyDotResist(target, NEUROTOXIN_TICK_DAMAGE[stacks] || 0);
     dealDamage(targetKey, dmg);
     if(target.neurotoxinTurns > 0){
       pushLog('sys', `🟣 ${label} 신경독으로 ${dmg}의 피해를 입었다 (중첩 ${stacks}, 잔여 ${target.neurotoxinTurns}턴)`);
     } else {
       pushLog('sys', `🟣 ${label} 신경독으로 ${dmg}의 피해를 입고, 신경독 효과가 해제되었다`);
       target.neurotoxinStacks = 0;
+    }
+    // [무한대전타워] "붕괴하는 육체" 신화 증강 - 최대 중첩 상대에게 매 턴 최대체력 비례 추가 고정피해
+    if(targetKey === 'op' && g.me.tw_toxinMythicPct && target.hp > 0){
+      const cap = 3 + (g.me.tw_toxinCapAdd||0);
+      if(stacks >= cap){
+        const extraDmg = Math.max(1, Math.round(target.maxHp * g.me.tw_toxinMythicPct));
+        towerDamageSourceKey = 'me';
+        dealDamage(targetKey, extraDmg);
+        pushLog('sys', `🟣 ${label} [붕괴하는 육체] 발동! 최대체력 비례 ${extraDmg} 추가 피해`);
+      }
     }
   }
 
@@ -5562,6 +7846,8 @@
   function getEffectiveHeal(entity){ return CHARACTERS[entity.charKey].stats.heal + (entity.healBonus||0); }
   function getEffectiveUltimate(entity){ return CHARACTERS[entity.charKey].stats.ultimate + (entity.ultimateBonus||0); }
   function getEffectiveUltimateBreak(entity){ return CHARACTERS[entity.charKey].stats.ultimateBreak + (entity.ultimateBonus||0); }
+  // 컴뱃스킬 사용 가능 여부 (skillMaxUses로 전투당 재사용 횟수를 늘릴 수 있음 - 무한대전타워 증강/장비용)
+  function skillAvailable(entity){ return !!entity.skillId && (entity.skillUseCount||0) < (entity.skillMaxUses||1); }
 
   const CHIP_STAT_KEYS = ['maxHp', 'atk', 'heal', 'ultimate'];
   const CHIP_STAT_LABEL = { maxHp:'최대체력', atk:'공격', heal:'회복량', ultimate:'일격 피해' };
@@ -5616,14 +7902,20 @@
     const base = CHARACTERS[entity.charKey].stats;
     const upKey = CHIP_STAT_KEYS[Math.floor(turnRandom(g) * CHIP_STAT_KEYS.length)];
     const downKey = CHIP_STAT_KEYS.filter(k => k !== upKey)[Math.floor(turnRandom(g) * (CHIP_STAT_KEYS.length - 1))];
+    const gainAmt = 2 + (entity.tw_chipGainAdd||0); // [무한대전타워] "행운의 룰렛" 증강 반영
+    const floorPct = 0.5 + (entity.tw_chipFloorPct||0); // [무한대전타워] "칩월드 안정화" 증강 반영
 
-    if(upKey === 'maxHp'){ entity.maxHp += 2; entity.hp = Math.min(entity.maxHp, entity.hp + 2); }
-    else if(upKey === 'atk'){ entity.atkBonus = (entity.atkBonus||0) + 2; }
-    else if(upKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + 2; }
-    else if(upKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + 2; }
+    if(upKey === 'maxHp'){ entity.maxHp += gainAmt; entity.hp = Math.min(entity.maxHp, entity.hp + gainAmt); }
+    else if(upKey === 'atk'){ entity.atkBonus = (entity.atkBonus||0) + gainAmt; }
+    else if(upKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + gainAmt; }
+    else if(upKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + gainAmt; }
+
+    if(entity.tw_chipNoDownside){ // [무한대전타워] "무한 확률" 증강 - 하락 스탯 자체가 사라짐
+      return { upKey, downKey: null };
+    }
 
     const baseVal = downKey === 'maxHp' ? base.hp : base[downKey];
-    const floor = Math.ceil(baseVal * 0.5);
+    const floor = Math.ceil(baseVal * floorPct);
     if(downKey === 'maxHp'){
       entity.maxHp = Math.max(floor, entity.maxHp - 1);
       entity.hp = Math.min(entity.hp, entity.maxHp);
@@ -5637,16 +7929,33 @@
 
   function applyOnHitPassive(actorKey, baseAmount, g, cls){
     const actor = g[actorKey];
+    const targetKey = actorKey === 'me' ? 'op' : 'me'; // 타워는 항상 1:1이라 상대측을 이렇게 바로 구할 수 있다
+    const target = g[targetKey];
+    const actorLabel = actorKey==='me' ? '내' : '상대';
     const passive = CHARACTERS[actor.charKey].passive;
     let amount = baseAmount;
     if(passive && passive.id === 'crit_track'){
+      const req = Math.max(1, 3 - (actor.tw_critTrackReq||0)); // [무한대전타워] "빠른 추적" 증강 반영
       actor.hitCount = (actor.hitCount||0) + 1;
-      if(actor.hitCount >= 3){
-        amount += 2;
+      if(actor.hitCount >= req){
+        const bonusDmg = 2 + (actor.tw_critTrackBonus||0); // [무한대전타워] "급소 심화" 증강 반영
+        amount += bonusDmg;
         actor.hitCount = 0;
-        const actorLabel = actorKey==='me' ? '내' : '상대';
         if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
-        pushLog(cls, `ㄴ ${actorLabel} [${passive.name}] 발동! 추가 2 피해`);
+        pushLog(cls, `ㄴ ${actorLabel} [${passive.name}] 발동! 추가 ${bonusDmg} 피해`);
+        if(actor.tw_critTrackBleed){ // [무한대전타워] "출혈 추적" 증강 반영
+          target.poisonTurns = Math.max(target.poisonTurns||0, 2);
+          target.poisonJustApplied = true;
+          pushLog(cls, `ㄴ ${actorLabel} [${passive.name}]의 여파로 상대에게 출혈을 새겼다`);
+        }
+        if(actor.tw_critTrackTrueDmgPct && target.hp > 0){ // [무한대전타워] "관철하는 일격" 신화 증강 반영
+          const trueDmg = Math.max(1, Math.round(target.hp * actor.tw_critTrackTrueDmgPct));
+          towerDamageSourceKey = actorKey;
+          dealDamage(targetKey, trueDmg);
+          towerDamageSourceKey = actorKey; // 위 dealDamage 호출로 소비된 플래그를, 뒤이어 실행될 원래 공격의 dealDamage를 위해 복구
+          pushLog(cls, `ㄴ ${actorLabel} [관철하는 일격] 발동! 상대 체력의 ${Math.round(actor.tw_critTrackTrueDmgPct*100)}%인 ${trueDmg}의 고정 피해`);
+          spawnPopup(targetKey, `-${trueDmg}`, null);
+        }
       }
     }
     // [흡혈마] 컴뱃스킬 버프: 활성 중이라면 지금 가하는 모든 피해의 50%만큼 회복한다 (소수점 버림).
@@ -5656,12 +7965,58 @@
       const healAmt = Math.floor(amount * 0.5);
       if(healAmt > 0){
         actor.hp = Math.min(actor.maxHp, actor.hp + healAmt);
-        const actorLabel = actorKey==='me' ? '내' : '상대';
         pushLog(cls, `ㄴ ${actorLabel} [흡혈마] 효과로 ${healAmt} 흡혈 회복 (잔여 ${actor.lifestealTurns}턴)`);
         spawnPopup(actorKey, `+${healAmt}`, 'heal');
       }
     }
+
+    // [무한대전타워] 체력 낮을 때 피해 증가 ("뒷심" 증강)
+    if(actor.tw_lowHpDmgPct && actor.hp <= actor.maxHp * 0.3){
+      amount = Math.round(amount * (1 + actor.tw_lowHpDmgPct));
+    }
+    // [무한대전타워] 처형자 - 상대 체력이 낮으면 추가 피해
+    if(actor.tw_executeDmgPct && target.hp <= target.maxHp * 0.2){
+      amount = Math.round(amount * (1 + actor.tw_executeDmgPct));
+    }
+    // [무한대전타워] 죽을 사 중첩 비례 추가 피해 ("피의 각인" 증강)
+    if(actor.tw_deathMarkDmgPerStack && (target.deathMarkStacks||0) > 0){
+      amount += actor.tw_deathMarkDmgPerStack * target.deathMarkStacks;
+    }
+    // [무한대전타워] 신경독 최대 중첩 상대 추가 피해 ("면역 붕괴" 증강)
+    if(actor.tw_toxinMaxDmgPct && (target.neurotoxinStacks||0) >= (3 + (actor.tw_toxinCapAdd||0))){
+      amount = Math.round(amount * (1 + actor.tw_toxinMaxDmgPct));
+    }
+
+    // [무한대전타워] "최후의 일격" 증강 - 1UP 직후 다음 공격 피해 강화 (1회 소모)
+    if(actor.tw_oneUpFinalBlowActive && amount > 0){
+      amount = Math.round(amount * (1 + actor.tw_oneUpFinalBlowActive));
+      pushLog(cls, `ㄴ ${actorLabel} [최후의 일격] 효과로 피해 증폭!`);
+      actor.tw_oneUpFinalBlowActive = 0;
+    }
+
     amount += get2v2SuddenDeathBonus(); // 2VS2가 질질 끌리지 않도록, 턴이 오래 갈수록 모든 피해에 보너스가 붙는다
+
+    // [무한대전타워] 장비 "굶주린 그림자" - 가한 피해의 일부만큼 흡혈
+    if(actor.tw_lifestealPct && amount > 0){
+      const healAmt = Math.floor(amount * actor.tw_lifestealPct);
+      if(healAmt > 0){
+        actor.hp = Math.min(actor.maxHp, actor.hp + healAmt);
+        pushLog(cls, `ㄴ ${actorLabel} [굶주린 그림자] 효과로 ${healAmt} 흡혈`);
+        spawnPopup(actorKey, `+${healAmt}`, 'heal');
+      }
+    }
+    // [무한대전타워] 장비 "부러진 서약의 칼날" - 적중 시 확률로 행동력 1 추가 획득
+    if(actor.tw_apStealChance && Math.random() < actor.tw_apStealChance){
+      actor.ap = Math.min(AP_MAX, actor.ap + 1);
+      pushLog(cls, `ㄴ ${actorLabel} 무기 효과로 행동력 1 추가 획득`);
+      spawnPopup(actorKey, 'AP+1', 'heal');
+    }
+    // [무한대전타워] 증강 "독기" - 적중 시 확률로 2턴 지속피해 부여
+    if(actor.tw_poisonProcChance && Math.random() < actor.tw_poisonProcChance){
+      target.poisonTurns = Math.max(target.poisonTurns||0, 2);
+      target.poisonJustApplied = true;
+      pushLog(cls, `ㄴ ${actorLabel} [독기] 발동! 상대에게 중독을 부여했다`);
+    }
     return amount;
   }
 
@@ -5830,7 +8185,9 @@
           const { upKey, downKey } = applyChipWorldPassive(actor, g);
           actor.chipTurnCounter = 0; // 방금 수동으로 발동시켰으니 자동 발동 타이밍도 여기서부터 다시 센다
           if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
-          pushLog(cls, `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`);
+          pushLog(cls, downKey
+            ? `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
+            : `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
           g.pendingChipEffects.push({ side: actorKey, upKey, downKey });
         }
         break;
@@ -5868,30 +8225,58 @@
     const actor = g[actorKey], target = g[targetKey];
     const actorLabel = actorKey==='me' ? '내' : '상대';
     const cls = actorKey==='me' ? 'me-act' : 'op-act';
+    towerDamageSourceKey = actorKey; // [무한대전타워] 반사의 날개 등에서 "누가 때렸는지" 알기 위한 표시
 
     if(actorAct==='attack'){
-      if(target.defended){
+      // [무한대전타워] "기습" 증강 - 전투 첫 턴엔 방어를 무시하고 100% 적중
+      // [무한대전타워] 증강 "뒷심"과 별개로, 체력이 낮을 때 한정 필중 횟수가 남아있으면 이번 공격도 방어 무시
+      const pierceDefense = target.defended && (
+        (actor.tw_firstTurnPierce && g.turn === 1) ||
+        (actor.tw_sureHitCount > 0 && actor.hp <= actor.maxHp * 0.25)
+      );
+      if(pierceDefense && actor.tw_sureHitCount > 0 && actor.hp <= actor.maxHp * 0.25 && !(actor.tw_firstTurnPierce && g.turn === 1)){
+        actor.tw_sureHitCount -= 1; // 기습으로 뚫은 경우는 소모하지 않고, 필중으로 뚫은 경우만 소모
+      }
+      if(target.defended && !pierceDefense){
         spawnPopup(targetKey, 'BLOCK', 'block');
         pushLog(cls, `ㄴ ${actorLabel} 공격이 상대 방어에 막혔다`);
         applyBlockPassive(targetKey, g, cls); // [요정날개] 등 "방어로 공격을 받아쳐냄" 트리거
       } else {
-        const base = Math.max(0, getEffectiveAtk(actor) - (actor.dmgDebuff||0));
+        if(pierceDefense){
+          pushLog(cls, `ㄴ ${actorLabel} 공격이 방어를 무시하고 명중했다!`);
+        }
+        const lowHpFlat = (actor.hp <= actor.maxHp * 0.5) ? (actor.tw_lowHpAtkFlat||0) : 0; // [무한대전타워] "마지막 인사" 장비 반영
+        const base = Math.max(0, getEffectiveAtk(actor) + lowHpFlat - (actor.dmgDebuff||0));
         const dmg = applyOnHitPassive(actorKey, base, g, cls);
         dealDamage(targetKey, dmg);
         pushLog(cls, `ㄴ ${actorLabel} 공격! ${dmg} 피해`);
         if(actorKey === 'me') bumpCharStat('attackHits', 1);
         applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [결단일섬] 등 "공격 적중" 트리거
         applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "공격 적중" 트리거
+        // [무한대전타워] 장비 "폭풍의 파편" - 확률로 추가타 1회
+        if(actor.tw_extraHitChance && Math.random() < actor.tw_extraHitChance && target.hp > 0){
+          const extraDmg = Math.round(getEffectiveAtk(actor) * (actor.tw_extraHitDmgPct||0.5));
+          const dmg2 = applyOnHitPassive(actorKey, extraDmg, g, cls);
+          towerDamageSourceKey = actorKey; // 첫 타에서 이미 소비된 플래그를 추가타를 위해 재세팅
+          dealDamage(targetKey, dmg2);
+          pushLog(cls, `ㄴ ${actorLabel} 추가타! ${dmg2} 피해`);
+          spawnPopup(actorKey, 'EXTRA HIT', null);
+        }
       }
     } else if(actorAct==='ultimate'){
       // [비상충전 프로토콜] 등 "일격 사용" 자체에 반응하는 패시브. 카운터에 막히더라도 "사용"은 한 것이므로 소모는 그대로 진행된다.
       let energyBonus = 0;
       const actorPassive = CHARACTERS[actor.charKey].passive;
+      const energyPerStack = 3 + (actor.tw_energyDmgPerStackAdd||0); // [무한대전타워] "고효율 회로" 증강 반영
       const hadFullEnergy = actorPassive && actorPassive.id === 'overcharge_protocol' && (actor.energyStacks||0) >= 5;
       if(actorPassive && actorPassive.id === 'overcharge_protocol' && (actor.energyStacks||0) > 0){
-        energyBonus = actor.energyStacks * 3;
-        pushLog(cls, `ㄴ ${actorLabel} [${actorPassive.name}] 발동! 에너지 ${actor.energyStacks} 소모, 일격 피해 +${energyBonus}`);
-        actor.energyStacks = 0;
+        energyBonus = actor.energyStacks * energyPerStack;
+        if(actor.tw_energyNoConsume){
+          pushLog(cls, `ㄴ ${actorLabel} [${actorPassive.name}] 발동! 에너지 ${actor.energyStacks} 유지, 일격 피해 +${energyBonus}`);
+        } else {
+          pushLog(cls, `ㄴ ${actorLabel} [${actorPassive.name}] 발동! 에너지 ${actor.energyStacks} 소모, 일격 피해 +${energyBonus}`);
+          actor.energyStacks = 0;
+        }
       }
       actor.lastUltimateBonus = energyBonus; // 카운터로 반사당할 경우, 반사 피해에도 이 보너스가 그대로 실리도록 기억해둔다
       if(targetAct==='counter'){
@@ -5919,6 +8304,12 @@
         const dmg = applyOnHitPassive(actorKey, getEffectiveUltimate(target) + reflectBonus, g, cls);
         dealDamage(targetKey, dmg);
         pushLog(cls, `ㄴ ${actorLabel} 카운터 성공! 일격을 그대로 반사, ${dmg} 피해`);
+        // [무한대전타워] 증강 "반격 본능" - 카운터 성공 시 보호막
+        if(actor.tw_counterShieldAdd){
+          actor.passiveShield = (actor.passiveShield||0) + actor.tw_counterShieldAdd;
+          actor.passiveShieldTurns = Math.max(actor.passiveShieldTurns||0, 3);
+          pushLog(cls, `ㄴ ${actorLabel} [반격 본능] 효과로 보호막 +${actor.tw_counterShieldAdd}`);
+        }
       } else if(targetAct==='attack'){
         // 공격 피해는 위쪽 'attack' 분기에서 이미 처리됨 — 여기서 또 넣으면 중복 피해 버그가 됨
         pushLog(cls, `ㄴ ${actorLabel} 카운터가 빗나갔다 (상대는 일격을 쓰지 않음)`);
@@ -5982,6 +8373,18 @@
 
     const { win, loserKey, subtext } = computeRoundResult(meDead, opDead, g);
     pushLog('sys', win===null ? '🤝 무승부' : (win? '🏆 승리!' : '💀 패배...'));
+
+    // 무한대전타워 전투는 챌린지북/티어리스트 집계 대상이 아니라 여기서 바로 분기해 처리한다
+    if(S.mode === 'tower'){
+      if(loserKey){
+        const el = document.querySelector(loserKey==='me' ? '.fighter.me' : '.fighter.op');
+        if(el) el.classList.add('exploding');
+        spawnPopup(loserKey, '💥', 'boom');
+        if(loserKey==='me') shakeScreen();
+      }
+      setTimeout(()=> towerHandleBattleEnd(win, g), 1400);
+      return;
+    }
 
     // 챌린지북 진행도 집계 (싱글/1v1 멀티에서 실제로 조작한 캐릭터 기준, 2VS2는 제외)
     bumpCharStat('battles', 1);
@@ -6134,7 +8537,7 @@
   // 해당 플레이어(entity: g.me 또는 g.op)가 지금 낼 수 있는 모든 행동 (컴뱃스킬의 1회 제한 포함)
   function legalActionsFor(entity){
     return ['attack','defend','heal','ultimate','counter','skill'].filter(a=>{
-      if(a === 'skill') return !!entity.skillId && !entity.skillUsed;
+      if(a === 'skill') return skillAvailable(entity);
       return COST[a] <= entity.ap;
     });
   }
@@ -6160,7 +8563,7 @@
     const ap = g.op.ap;
     const w = { attack:35, defend:20, heal:20, ultimate: ap>=5?15:0, counter: ap>=3?10:0 };
     if(g.op.hp <= 10) w.heal += 15;
-    if(g.op.skillId && !g.op.skillUsed) w.skill = 22; // 공짜로 피해+행동력 강탈이라 초급도 곧잘 씀
+    if(g.op.skillId && skillAvailable(g.op)) w.skill = 22; // 공짜로 피해+행동력 강탈이라 초급도 곧잘 씀
     Object.keys(w).forEach(k => { if(!affordable(k, ap)) w[k] = 0; }); // AP 부족한 행동은 선택하지 않도록 최종 안전장치
     return weightedPick(w);
   }
@@ -6183,7 +8586,7 @@
     if(me.hp <= 12){ w.heal += 25; w.defend += 10; }
     if(me.hp <= 6){ w.heal += 20; w.attack = Math.max(2,w.attack-15); }
     if(opp.hp <= 6 && affordable('attack', me.ap)){ w.attack += 20; } // 확정 킬 각
-    if(me.skillId && !me.skillUsed){
+    if(me.skillId && skillAvailable(me)){
       w.skill = 20; // AP 소모 없이 나가는 순수 이득이라 기본적으로 자주 고려
       if(opp.hp <= 8) w.skill += 15; // 마무리 각
     }
@@ -6242,7 +8645,7 @@
     }
 
     // 컴뱃스킬은 방어로 막히므로, 상대가 방어를 자주 쓸수록 타이밍을 아껴둔다
-    if(me.skillId && !me.skillUsed){
+    if(me.skillId && skillAvailable(me)){
       w.skill = 26 * (1 - defendRate * 0.6);
       if(opp.hp <= 8) w.skill += 25; // 마무리 각이면 방어 여부와 상관없이 노림
     }
@@ -6383,7 +8786,8 @@
       // [비상충전 프로토콜] 보유 시 에너지 보너스를 근사치로 반영 (AI 판단용)
       let energyBonus = 0;
       if(actorChar.passive && actorChar.passive.id === 'overcharge_protocol'){
-        energyBonus = (gReal[actorKey].energyStacks||0) * 3;
+        const energyPerStack = 3 + (gReal[actorKey].tw_energyDmgPerStackAdd||0);
+        energyBonus = (gReal[actorKey].energyStacks||0) * energyPerStack;
       }
       if(targetAct === 'counter'){ /* 완전 무효화 */ }
       else if(target.defended){ simDamage(target, Math.max(0, actorChar.stats.ultimateBreak - debuff) + energyBonus, targetKey, targetAct, gReal); }
@@ -6393,7 +8797,8 @@
         // 상대가 [비상충전 프로토콜] 등으로 일격에 보너스를 실었다면 반사 피해 예측에도 반영
         let reflectBonus = 0;
         if(targetChar.passive && targetChar.passive.id === 'overcharge_protocol'){
-          reflectBonus = (gReal[targetKey].energyStacks||0) * 3;
+          const energyPerStack = 3 + (gReal[targetKey].tw_energyDmgPerStackAdd||0);
+          reflectBonus = (gReal[targetKey].energyStacks||0) * energyPerStack;
         }
         simDamage(target, targetChar.stats.ultimate + reflectBonus, targetKey, targetAct, gReal); // 상대 일격 스탯을 그대로 반사
       }
