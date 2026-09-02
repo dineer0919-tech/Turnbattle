@@ -1040,6 +1040,12 @@
   .tower-reroll-out{ animation:towerRerollOut .22s ease forwards; }
   .tower-reroll-in{ animation:towerRerollIn .32s cubic-bezier(.2,.8,.3,1) forwards; }
   .tower-augment-pick.tower-picked{ animation:towerCardPulse .35s ease; border-color:var(--accent-ap) !important; }
+  .taug-char-bg{
+    position:absolute; right:-6px; top:0; height:100%; width:auto; max-width:60%;
+    object-fit:cover; object-position:top; opacity:0.22; pointer-events:none; z-index:0;
+    -webkit-mask-image:linear-gradient(to left, black 35%, transparent 95%);
+    mask-image:linear-gradient(to left, black 35%, transparent 95%);
+  }
 
   /* ---------- 무한대전타워: 상점 그리드 ---------- */
   .tower-shop-grid{
@@ -2344,7 +2350,7 @@
     return 'crazy_v2';
   }
   function towerGetFloorReward(floor, isBoss){
-    const base = 35 + 6 * floor;
+    const base = 55 + 9 * floor; // 기존(35+6f) 대비 초반 체감 수급을 넉넉하게 올림
     return isBoss ? base * 3 : base;
   }
 
@@ -2363,7 +2369,7 @@
       { tier:1, desc:'공격 피해 +2' , effects:{atk:2} },
       { tier:2, desc:'공격 피해 +3' , effects:{atk:3} },
       { tier:3, desc:'공격 피해 +4, 적중 시 10% 확률로 행동력 1 추가 획득', effects:{atk:4, apStealChance:0.10} },
-      { tier:4, desc:'공격 피해 +6, 위 확률 25%로 상승', effects:{atk:6, apStealChance:0.25} },
+      { tier:4, desc:'공격 피해 +6, 적중 시 25% 확률로 행동력 1 추가 획득', effects:{atk:6, apStealChance:0.25} },
     ]},
     last_greeting: { category:'weapon', name:'마지막 인사', tiers:[
       { tier:1, desc:'체력 50% 이하일 때 공격 피해 +2', effects:{lowHpAtk:2} },
@@ -2385,9 +2391,9 @@
     ]},
     storm_shard: { category:'weapon', name:'폭풍의 파편', tiers:[
       { tier:1, desc:'공격 적중 시 15% 확률로 추가타 1회(피해 50%)', effects:{extraHitChance:0.15, extraHitDmgPct:0.5} },
-      { tier:2, desc:'확률 22%로 상승', effects:{extraHitChance:0.22, extraHitDmgPct:0.5} },
-      { tier:3, desc:'확률 30%, 추가타 피해 70%로 상승', effects:{extraHitChance:0.30, extraHitDmgPct:0.7} },
-      { tier:4, desc:'확률 42%, 추가타 피해 100%로 상승', effects:{extraHitChance:0.42, extraHitDmgPct:1.0} },
+      { tier:2, desc:'공격 적중 시 22% 확률로 추가타 1회(피해 50%)', effects:{extraHitChance:0.22, extraHitDmgPct:0.5} },
+      { tier:3, desc:'공격 적중 시 30% 확률로 추가타 1회(피해 70%)', effects:{extraHitChance:0.30, extraHitDmgPct:0.7} },
+      { tier:4, desc:'공격 적중 시 42% 확률로 추가타 1회(피해 100%)', effects:{extraHitChance:0.42, extraHitDmgPct:1.0} },
     ]},
     // 방어구 (생존형)
     old_armor_remnant: { category:'armor', name:'낡은 갑주의 잔재', tiers:[
@@ -2410,9 +2416,9 @@
     ]},
     last_breath: { category:'armor', name:'마지막 숨결', tiers:[
       { tier:1, desc:'체력 20% 이하가 될 때, 전투당 1회 보호막 4 자동 생성', effects:{autoShieldHp:4, autoShieldCount:1} },
-      { tier:2, desc:'보호막 6으로 강화', effects:{autoShieldHp:6, autoShieldCount:1} },
-      { tier:3, desc:'보호막 8, 발동 횟수 2회로 증가', effects:{autoShieldHp:8, autoShieldCount:2} },
-      { tier:4, desc:'보호막 12, 발동 횟수 3회로 증가', effects:{autoShieldHp:12, autoShieldCount:3} },
+      { tier:2, desc:'체력 20% 이하가 될 때, 전투당 1회 보호막 6 자동 생성', effects:{autoShieldHp:6, autoShieldCount:1} },
+      { tier:3, desc:'체력 20% 이하가 될 때 보호막 8 자동 생성, 전투당 2회까지 발동', effects:{autoShieldHp:8, autoShieldCount:2} },
+      { tier:4, desc:'체력 20% 이하가 될 때 보호막 12 자동 생성, 전투당 3회까지 발동', effects:{autoShieldHp:12, autoShieldCount:3} },
     ]},
     winter_bark: { category:'armor', name:'겨울나무 껍질', tiers:[
       { tier:1, desc:'지속피해(중독/화상 등) 20% 감소', effects:{dotResistPct:0.20} },
@@ -2741,7 +2747,7 @@
         TS = towerCreateNewRun(charId);
         TS.hasRevivalTicketItem = willBuyRevival;
         towerSaveRun(TS);
-        towerEnterCurrentFloor();
+        towerOpenStarterPack(); // 0층: 시작 전 스타터팩 증강 선택 (무료 무제한 리롤, 영웅 등급까지만)
       };
     }
   }
@@ -3905,9 +3911,38 @@
 
   /* ---------- 증강 선택 층 ---------- */
   let TS_augmentRerollCount = 0; // 이번 증강 층에서 몇 번 리롤했는지 (층을 벗어나면 초기화)
+  let TS_starterPackActive = false; // 0층 스타터팩 진행 중 여부 (무료 무제한 리롤 + 영웅 등급 이하만 등장)
 
   function towerGetAugmentRerollCost(){
     return Math.round(25 * Math.pow(1.6, TS_augmentRerollCount));
+  }
+
+  // 0층 스타터팩 전용 후보 생성 — 전설/신화는 아예 등장하지 않고, 공용+캐릭터전용 증강 중에서만 고른다
+  function towerRollStarterChoices(charId){
+    const pool = towerGetAugmentPool(charId).filter(a => a.grade !== 'legendary' && a.grade !== 'mythic');
+    const weight = (a)=> a.grade==='epic' ? 2 : a.grade==='rare' ? 1.5 : 1;
+    const picks = [];
+    const poolCopy = pool.slice();
+    for(let i=0;i<3 && poolCopy.length>0;i++){
+      const weights = poolCopy.map(weight);
+      const total = weights.reduce((a,b)=>a+b, 0);
+      let r = Math.random() * total, idx = 0;
+      for(; idx < weights.length; idx++){ r -= weights[idx]; if(r <= 0) break; }
+      picks.push(poolCopy[idx]);
+      poolCopy.splice(idx, 1);
+    }
+    return picks;
+  }
+
+  function towerOpenStarterPack(){
+    TS_starterPackActive = true;
+    TS_augmentRerollCount = 0;
+    showScreen('screen-tower-augment');
+    document.getElementById('tower-augment-title').textContent = `0층 · 스타터팩`;
+    TS_pendingAugmentChoices = towerRollStarterChoices(TS.charId);
+    renderTowerAugmentContent();
+    const c = document.getElementById('tower-augment-content');
+    c.classList.remove('tower-pop-in'); void c.offsetWidth; c.classList.add('tower-pop-in');
   }
 
   function towerRenderAugment(){
@@ -3931,14 +3966,22 @@
   function renderTowerAugmentContent(){
     const c = document.getElementById('tower-augment-content');
     delete c.dataset.locked;
-    const rerollCost = towerGetAugmentRerollCost();
-    c.innerHTML = `
+    const rerollCost = TS_starterPackActive ? 0 : towerGetAugmentRerollCost();
+    const rerollBtnHtml = TS_starterPackActive
+      ? `🔄 무료`
+      : `🔄 <span class="tower-price-tag">💰${rerollCost.toLocaleString()}</span>`;
+    const coinRowHtml = TS_starterPackActive ? '' : `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
         <div style="font-weight:900; font-size:14px;"><span class="tower-price-tag">💰 ${TS.coins.toLocaleString()}</span></div>
-      </div>
+      </div>`;
+    const hintHtml = TS_starterPackActive
+      ? '출발 전 무료 스타터팩! 영웅 등급까지만 등장하고, 리롤은 무제한 무료입니다.'
+      : '세 가지 중 하나를 선택하세요. (같은 증강을 여러 번 고르면 효과가 누적됩니다)';
+    c.innerHTML = `
+      ${coinRowHtml}
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px;">
-        <div style="color:var(--text-dim); font-size:12.5px; flex:1;">세 가지 중 하나를 선택하세요. (같은 증강을 여러 번 고르면 효과가 누적됩니다)</div>
-        <button class="btn" id="tower-augment-reroll-btn" style="white-space:nowrap; padding:9px 12px; border-radius:10px; font-size:11.5px;">🔄 <span class="tower-price-tag">💰${rerollCost.toLocaleString()}</span></button>
+        <div style="color:var(--text-dim); font-size:12.5px; flex:1;">${hintHtml}</div>
+        <button class="btn" id="tower-augment-reroll-btn" style="white-space:nowrap; padding:9px 12px; border-radius:10px; font-size:11.5px;">${rerollBtnHtml}</button>
       </div>
       ${TS_pendingAugmentChoices.map((aug, idx)=> towerRenderAugmentCardHtml(aug, idx)).join('')}
     `;
@@ -3956,10 +3999,22 @@
         TS_pendingAugmentChoices = null;
         towerSaveRun(TS);
         showToast(`[${aug.name}] 획득!`);
-        setTimeout(()=> towerGoToNextFloor(), 450); // 선택 연출이 보이도록 살짝 대기 후 다음 층으로
+        setTimeout(()=>{
+          if(TS_starterPackActive){
+            TS_starterPackActive = false;
+            towerEnterCurrentFloor(); // 0층 스타터팩 종료 → 진짜 1층부터 시작
+          } else {
+            towerGoToNextFloor();
+          }
+        }, 450); // 선택 연출이 보이도록 살짝 대기 후 다음으로
       };
     });
     document.getElementById('tower-augment-reroll-btn').onclick = towerRerollAugments;
+  }
+
+  // 공용 증강 풀에 없으면 캐릭터 전용 증강 — 조우 풀은 항상 TS.charId 하나뿐이라 소유 캐릭터를 바로 특정할 수 있다
+  function towerIsCharSpecificAugment(aug){
+    return TOWER_AUGMENTS_GENERAL.every(a => a.id !== aug.id);
   }
 
   function towerRenderAugmentCardHtml(aug, idx){
@@ -3968,27 +4023,39 @@
     const glowStyle = isRareGrade
       ? `box-shadow:0 0 18px ${TOWER_GRADE_COLOR[aug.grade]}66, inset 0 0 0 1px ${TOWER_GRADE_COLOR[aug.grade]}55; animation:towerCardPulse 1.6s ease-in-out infinite;`
       : '';
+    // 캐릭터 전용 증강이면, 설명만으로 애매할 수 있으니 오른쪽에 반투명 상반신 일러스트를 깔아 한눈에 소속을 알 수 있게 한다
+    const isCharSpecific = towerIsCharSpecificAugment(aug);
+    const charImgHtml = isCharSpecific
+      ? `<img class="taug-char-bg" src="${CHARACTERS[TS.charId].portraitImg}" alt="">`
+      : '';
     return `
-      <button class="panel-card tower-augment-pick taug-card-${idx}" data-idx="${idx}" style="width:100%; text-align:left; margin-bottom:10px; border-color:${TOWER_GRADE_COLOR[aug.grade]}; border-width:${isRareGrade?'2px':'1px'}; transition:transform .15s ease, border-color .2s ease, box-shadow .2s ease; ${glowStyle}">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="font-weight:900; font-size:15px;" class="taug-name-${idx}">${isRareGrade ? '✨ ' : ''}${aug.name}</div>
-          <div style="font-size:11px; font-weight:${isRareGrade?'900':'400'}; color:${TOWER_GRADE_COLOR[aug.grade]};" class="taug-grade-${idx}">${TOWER_GRADE_LABEL[aug.grade]}${stack>0 ? ` · 보유 ${stack}스택` : ''}</div>
+      <button class="panel-card tower-augment-pick taug-card-${idx}" data-idx="${idx}" style="width:100%; text-align:left; margin-bottom:10px; border-color:${TOWER_GRADE_COLOR[aug.grade]}; border-width:${isRareGrade?'2px':'1px'}; transition:transform .15s ease, border-color .2s ease, box-shadow .2s ease; position:relative; overflow:hidden; ${glowStyle}">
+        ${charImgHtml}
+        <div style="position:relative; z-index:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-weight:900; font-size:15px;" class="taug-name-${idx}">${isRareGrade ? '✨ ' : ''}${aug.name}</div>
+            <div style="font-size:11px; font-weight:${isRareGrade?'900':'400'}; color:${TOWER_GRADE_COLOR[aug.grade]};" class="taug-grade-${idx}">${TOWER_GRADE_LABEL[aug.grade]}${stack>0 ? ` · 보유 ${stack}스택` : ''}</div>
+          </div>
+          <div style="color:var(--text-dim); font-size:12px; margin-top:6px;" class="taug-desc-${idx}">${aug.desc}</div>
         </div>
-        <div style="color:var(--text-dim); font-size:12px; margin-top:6px;" class="taug-desc-${idx}">${aug.desc}</div>
       </button>
     `;
   }
 
   function towerRerollAugments(){
-    const cost = towerGetAugmentRerollCost();
-    if(TS.coins < cost){ showToast('코인이 부족합니다'); return; }
-    TS.coins -= cost;
-    TS_augmentRerollCount++;
-    towerSaveRun(TS);
+    if(!TS_starterPackActive){
+      const cost = towerGetAugmentRerollCost();
+      if(TS.coins < cost){ showToast('코인이 부족합니다'); return; }
+      TS.coins -= cost;
+      TS_augmentRerollCount++;
+      towerSaveRun(TS);
+    }
     const btn = document.getElementById('tower-augment-reroll-btn');
     if(btn) btn.disabled = true;
-    const newChoices = towerRollAugmentChoices(TS.charId, TS.floor);
-    const pool = towerGetAugmentPool(TS.charId);
+    const newChoices = TS_starterPackActive ? towerRollStarterChoices(TS.charId) : towerRollAugmentChoices(TS.charId, TS.floor);
+    const pool = TS_starterPackActive
+      ? towerGetAugmentPool(TS.charId).filter(a => a.grade !== 'legendary' && a.grade !== 'mythic')
+      : towerGetAugmentPool(TS.charId);
     const cardEls = Array.from(document.querySelectorAll('#tower-augment-content .tower-augment-pick'));
     towerPlayRerollSequence(
       cardEls,
@@ -4018,6 +4085,14 @@
         if(cardEl){
           cardEl.style.borderColor = TOWER_GRADE_COLOR[aug.grade];
           cardEl.style.borderWidth = isRareGrade ? '2px' : '1px';
+          // 리롤로 일반↔캐릭터전용 증강이 뒤바뀔 수 있으니, 배경 일러스트도 새 결과에 맞춰 있다/없다를 다시 맞춘다
+          const existingImg = cardEl.querySelector('.taug-char-bg');
+          if(towerIsCharSpecificAugment(aug)){
+            if(existingImg) existingImg.src = CHARACTERS[TS.charId].portraitImg;
+            else cardEl.insertAdjacentHTML('afterbegin', `<img class="taug-char-bg" src="${CHARACTERS[TS.charId].portraitImg}" alt="">`);
+          } else if(existingImg){
+            existingImg.remove();
+          }
         }
       },
       ()=>{
