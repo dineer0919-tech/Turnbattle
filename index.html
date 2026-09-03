@@ -558,8 +558,8 @@
   /* ---------- 배틀 ---------- */
   #screen-battle{ background:linear-gradient(180deg,#171325 0%,#0F0D16 40%); }
   .battle-top{ padding:14px 16px 6px; }
-  .fighter-row{ display:flex; align-items:center; justify-content:space-between; gap:10px;}
-  .fighter{ flex:1; position:relative; }
+  .fighter-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+  .fighter{ flex:1; min-width:0; max-width:calc(50% - 14px); position:relative; }
 
   /* 화면 흔들림 (랜덤 방향으로 튕겼다 원위치) */
   #app{ --sx:8px; --sy:0px; }
@@ -841,13 +841,16 @@
   .switch-toggle-btn.active{ background:#38E1C6; color:#08151A; }
   .switch-toggle-btn.pulse{ animation: switchPulse .8s infinite; }
   @keyframes switchPulse{ 0%,100%{ box-shadow:0 0 0 0 #38E1C688; } 50%{ box-shadow:0 0 0 10px #38E1C600; } }
-  .fighter .name{ font-size:12px; font-weight:700; color:var(--text-dim); display:flex; align-items:center; gap:6px; justify-content:flex-start; }
+  .fighter .name{ font-size:12px; font-weight:700; color:var(--text-dim); display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; justify-content:flex-start; min-width:0; }
   .fighter.op .name{ justify-content:flex-end; }
   .fighter-portrait{
     width:26px; height:26px; border-radius:50%; object-fit:cover; object-position:top center;
     background:var(--panel-alt); border:1px solid var(--panel-line); flex:0 0 auto;
   }
-  .fighter .name span{ font-size:13px; color:var(--text); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fighter .name .fighter-name-text{
+    font-size:13px; color:var(--text); font-weight:800; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; min-width:0; max-width:100%; flex:0 1 auto;
+  }
   .passive-shield-badge{
     font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:800; color:#7FB4FF;
     background:#4D8CFF22; border:1px solid #4D8CFF66; border-radius:8px; padding:1px 6px;
@@ -917,7 +920,7 @@
   .hp-num{ font-size:11px; margin-top:3px; font-family:'JetBrains Mono',monospace; color:var(--text-dim); }
   .fighter.op .hp-num{ text-align:right; }
 
-  .ap-row{ display:flex; gap:5px; margin-top:8px; }
+  .ap-row{ display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
   .fighter.op .ap-row{ justify-content:flex-end; }
   .ap-pip{ width:15px; height:8px; border-radius:3px; background:#2a2640; border:1px solid var(--panel-line); }
   .ap-pip.filled{ background:var(--accent-ap); border-color:var(--accent-ap); box-shadow:0 0 6px #38e1c688; }
@@ -1721,7 +1724,7 @@
         <div class="fighter me">
           <div class="name">
             <img class="fighter-portrait" id="me-portrait" alt="">
-            <span id="me-name">나</span>
+            <span id="me-name" class="fighter-name-text">나</span>
             <span class="passive-shield-badge" id="me-passive-badge"></span>
             <span class="poison-badge" id="me-poison-badge"></span>
             <span class="neurotoxin-badge" id="me-neurotoxin-badge"></span>
@@ -1750,7 +1753,7 @@
             <span class="passive-shield-badge" id="op-passive-badge"></span>
             <span class="burn-badge" id="op-burn-badge"></span>
             <span class="taunt-badge" id="op-taunt-badge"></span>
-            <span id="op-name">AI</span>
+            <span id="op-name" class="fighter-name-text">AI</span>
             <img class="fighter-portrait" id="op-portrait" alt="">
           </div>
           <div class="hpbar">
