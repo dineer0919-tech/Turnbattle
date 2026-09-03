@@ -1011,6 +1011,16 @@
     font-family:'Black Han Sans',sans-serif; font-size:80px; color:#FFD54F;
     text-shadow:0 0 30px #FFD54F, 0 0 60px #FFA000; animation:towerEventShake .5s ease infinite;
   }
+  /* [무한대전타워] 100층부터 확률로 뜨는 히든보스 — 화면 전체가 붉게 번쩍인다 */
+  #tower-floor-card.hiddenboss-flash{ background:radial-gradient(circle, rgba(255,23,23,0.55), rgba(120,0,0,0.25) 60%, transparent 85%); }
+  #tower-floor-card .tfc-hiddenboss-mark{
+    font-family:'Black Han Sans',sans-serif; font-size:56px; color:#FF3B3B; text-align:center; line-height:1.25;
+    text-shadow:0 0 30px #FF1717, 0 0 70px #FF1717; animation:towerHiddenBossShake .35s ease infinite;
+  }
+  @keyframes towerHiddenBossShake{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.06); }
+  }
   @keyframes towerEventShake{
     0%,100%{ transform:rotate(-4deg) scale(1); }
     50%{ transform:rotate(4deg) scale(1.08); }
@@ -2479,6 +2489,17 @@
     if(floor <= 15) return 1.0 + 0.08 * (floor - 9); // 이후 완만히 상승 (15층 1.48)
     return 1.0 + 0.08 * 6 + 0.12 * (floor - 15); // 16층부터 가파르게 이어짐
   }
+  // [무한대전타워] 100층부터 "보스"에게만 추가로 곱해지는 지수함수 배율.
+  // 100층에서는 1배(변화 없음)이고, 한 층 오를 때마다 1.12배씩 복리로 불어나 급격히 강해진다.
+  function towerGetBossExponentialMultiplier(floor){
+    if(floor < 100) return 1;
+    return Math.pow(1.12, floor - 100);
+  }
+  // [무한대전타워] 100층부터 적(잡몹/보스 공통)이 들고 나오는 부활 횟수. 10층마다 1회씩 늘어난다.
+  function towerGetEnemyReviveCount(floor){
+    if(floor < 100) return 0;
+    return 1 + Math.floor((floor - 100) / 10);
+  }
   function towerGetSkillUsesBonus(floor){ return Math.floor(floor / 10); }
   function towerGetAiJudgeLevel(floor){
     if(floor <= 10) return 'easy';
@@ -2498,8 +2519,10 @@
   const TOWER_HP_HEAL_PRICE_PER_POINT = 3;
   const TOWER_AP_CHARGE_PRICE_PER_POINT = 12;
   const TOWER_REVIVAL_TICKET_PRICE = 1800;
+  const TOWER_SUPER_REROLL_PRICE = 2000;
   function towerGetSellPrice(tier){
     if(tier === 5) return TOWER_ARTIFACT_SELL_PRICE;
+    if(tier === 'wish') return Math.floor(TOWER_EQUIP_TIER_PRICE[4] * TOWER_EQUIP_SELL_RATIO * 3); // [소망의 조각] — T4 3개의 가치를 담고 있는 재료
     return Math.floor(TOWER_EQUIP_TIER_PRICE[tier] * TOWER_EQUIP_SELL_RATIO);
   }
 
@@ -2655,7 +2678,9 @@
   const TOWER_ARTIFACT_NAMES = Object.values(TOWER_ARTIFACTS).map(a=>a.name);
   const TOWER_ARTIFACT_SELL_PRICE = 2500; // 융합/상점 외엔 구할 방법이 없는 만큼 판매가도 파격적으로
   const TOWER_ARTIFACT_PRICE = 1000; // 상점에서 직접 뜨는 경우의 구매가
-  const TOWER_ARTIFACT_SHOP_CHANCE = 0.02; // 상점 슬롯 하나당 T5가 대신 뜰 확률 (리롤 포함)
+  const TOWER_ARTIFACT_SHOP_CHANCE = 0.006; // 상점 슬롯 하나당 T5가 대신 뜰 확률 (너무 자주 나온다는 피드백으로 하향)
+  const TOWER_WISH_SHARD_NAME = '소망의 조각'; // T4 3개 융합 시 나오는 중간 재료 — 이걸 3개 다시 융합해야 T5가 나온다
+  const TOWER_WISH_SHARD_DESC = '전설의 기운이 깃든 조각. 이 조각을 3개 모아 융합하면 T5 아티팩트를 확정으로 얻을 수 있다.';
 
   function towerGetArtifactByName(name){
     return Object.values(TOWER_ARTIFACTS).find(a=>a.name===name) || null;
@@ -2709,6 +2734,7 @@
     { id:'gl_platinum_hand', name:'백금의 손', grade:'legendary', desc:'층 클리어 시 타워 코인 획득량 +80%', effects:{coinPct:0.80} },
     { id:'gl_steel_heart', name:'강철 심장', grade:'legendary', desc:'전투 시작 시 최대체력의 25%만큼 보호막, [방어] 성공 시 보호막 +5', effects:{startShieldPct:0.25, defendShieldAdd:5} },
     { id:'gl_mastery', name:'절대 숙련', grade:'legendary', desc:'컴뱃스킬 효과/피해량 +100%, 전투당 사용 횟수 +1', effects:{skillPowerPct:1.0, skillUsesAdd:1} },
+    { id:'gl_phantom_weapon', name:'환영 무기', grade:'legendary', desc:'장착한 컴뱃스킬도 [공격] 판정을 받는다 (죽을 사·신경독 등 "공격 적중" 트리거가 함께 발동)', effects:{skillIsAttack:true} },
     // ---- 신화(빨강) ----
     { id:'gm_titan_heart', name:'거신의 심장', grade:'mythic', desc:'최대체력이 100% 증가한다 (사실상 2배)', effects:{maxHpPct:1.0} },
     { id:'gm_immortal', name:'불멸자', grade:'mythic', desc:'전투당 1회, 죽음 직전 최대체력의 100%로 부활한다', effects:{undyingHpPct:1.0} },
@@ -2830,22 +2856,28 @@
     return { ok:true, equipment:remaining };
   }
 
-  const TOWER_ARTIFACT_FUSE_CHANCE = 1.0; // T4 3개 융합 시 T5 아티팩트가 나올 확률 (T4 모으기+융합 자체가 이미 큰 진입장벽이라 확정 지급)
-
   function towerFuseEquipment(equipmentList, indices){
     if(indices.length !== 3) return { ok:false, reason:'정확히 3개를 선택해야 합니다.' };
     const items = indices.map(i => equipmentList[i]);
+    const remaining = equipmentList.filter((_, i) => !indices.includes(i));
+
+    // [소망의 조각] 3개를 융합하면 확정으로 T5 아티팩트를 얻는다 (T4 3개 → 조각 1개 → 조각 3개 → T5)
+    const isAllWishShard = items.every(it => it.name === TOWER_WISH_SHARD_NAME && it.tier === 'wish');
+    if(isAllWishShard){
+      const artifactName = TOWER_ARTIFACT_NAMES[Math.floor(Math.random() * TOWER_ARTIFACT_NAMES.length)];
+      remaining.push({ name:artifactName, tier:5 });
+      return { ok:true, equipment:remaining, gotArtifact:true };
+    }
+
     const names = new Set(items.map(i => i.name));
     if(names.size < 3) return { ok:false, reason:'서로 다른 이름의 장비 3개가 필요합니다.' };
     const tiers = new Set(items.map(i => i.tier));
     if(tiers.size !== 1) return { ok:false, reason:'같은 티어의 장비끼리만 융합할 수 있습니다.' };
     const tier = items[0].tier;
-    const remaining = equipmentList.filter((_, i) => !indices.includes(i));
-    // T4 장비 3개를 융합하면, 아주 낮은 확률로 T5 아티팩트가 대신 나온다
-    if(tier === 4 && Math.random() < TOWER_ARTIFACT_FUSE_CHANCE){
-      const artifactName = TOWER_ARTIFACT_NAMES[Math.floor(Math.random() * TOWER_ARTIFACT_NAMES.length)];
-      remaining.push({ name:artifactName, tier:5 });
-      return { ok:true, equipment:remaining, gotArtifact:true };
+    // T4 장비 3개(서로 다른 이름)를 융합하면 [소망의 조각]을 확정으로 얻는다. T5는 조각을 다시 3개 모아 융합해야 나온다
+    if(tier === 4){
+      remaining.push({ name:TOWER_WISH_SHARD_NAME, tier:'wish' });
+      return { ok:true, equipment:remaining, gotWishShard:true };
     }
     const randomName = TOWER_EQUIPMENT_NAMES[Math.floor(Math.random() * TOWER_EQUIPMENT_NAMES.length)];
     remaining.push({ name:randomName, tier });
@@ -3141,6 +3173,7 @@
 
   // 전투 층 자동 진입: 암전 → 층 카드 → (카드 사라지며) 전투 자동 시작, 버튼 없음
   const TOWER_EVENT_CHANCE = 0.15; // 보스가 아닌 전투층에서 특별 이벤트가 뜰 확률
+  const TOWER_HIDDEN_BOSS_CHANCE = 0.05; // [무한대전타워] 100층부터, 보스가 아닌 전투층에서 히든보스가 뜰 확률
 
   function towerTransitionToBattle(isBoss){
     const blackout = document.getElementById('blackout');
@@ -3148,7 +3181,12 @@
     setTimeout(()=>{
       showScreen('screen-tower-battle');
       towerShowFloorCard(TS.floor, isBoss, ()=>{
-        if(!isBoss && Math.random() < TOWER_EVENT_CHANCE){
+        if(!isBoss && TS.floor >= 100 && Math.random() < TOWER_HIDDEN_BOSS_CHANCE){
+          towerPlayHiddenBossFlash(()=>{
+            blackout.classList.remove('show');
+            towerStartHiddenBossEvent();
+          });
+        } else if(!isBoss && Math.random() < TOWER_EVENT_CHANCE){
           towerPlayEventFlash(()=>{
             blackout.classList.remove('show');
             towerOpenEvent();
@@ -3172,6 +3210,32 @@
       card.style.opacity = '0';
       setTimeout(callback, 350);
     }, 750);
+  }
+
+  // [무한대전타워] 100층부터 등장하는 히든보스 — 층 카드가 사라진 직후 화면이 붉게 번쩍인다
+  function towerPlayHiddenBossFlash(callback){
+    const card = document.getElementById('tower-floor-card');
+    card.className = 'hiddenboss-flash';
+    card.innerHTML = `<div class="tfc-hiddenboss-mark">⚠ 히든보스<br>출현 ⚠</div>`;
+    requestAnimationFrame(()=>{ card.style.opacity = '1'; });
+    setTimeout(()=>{ card.style.opacity = '1'; }, 200);
+    setTimeout(()=>{
+      card.style.opacity = '0';
+      setTimeout(callback, 350);
+    }, 900);
+  }
+
+  // [무한대전타워] 히든보스 전투 시작 — 일반 층 배율보다 훨씬 강한 강제 배율 + 행동력 풀 + 부활 2회를 들고 나온다.
+  // 승리하면 T5 아티팩트를 확정으로 지급한다.
+  function towerStartHiddenBossEvent(){
+    TS_eventFightActive = 'hiddenboss';
+    const opChar = pickRandomCharacter();
+    const forcedMult = towerGetStatMultiplier(TS.floor) * 2.5 * towerGetBossExponentialMultiplier(TS.floor);
+    towerStartRealBattle(false, opChar, forcedMult);
+    const g = S.game;
+    g.op.ap = AP_MAX;
+    g.op.reviveMax = 2;
+    g.op.reviveCount = 0;
   }
 
   /* ---------- 전투 층 ---------- */
@@ -3207,6 +3271,7 @@
       usagiRouletteOnWin:false,
       cookingGainAdd:0, cookingTurnsReduce:0, cookingPowerPct:0, cookingMythicBoth:false,
       cookingStartStacks:0, cookingMythicPowerPct:0,
+      skillCountsAsAttack:false, // [환영 무기] 전설 증강 - 컴뱃스킬도 [공격] 판정을 받게 함
     };
     towerGetActiveEquipment().forEach(item=>{
       const d = towerGetEquipData(item.name, item.tier);
@@ -3317,6 +3382,7 @@
       if(e.chipNoDownside) b.chipNoDownside = true;
       if(e.chipDoubleUp) b.chipDoubleUp = true;
       if(e.usagiRouletteOnWin) b.usagiRouletteOnWin = true;
+      if(e.skillIsAttack) b.skillCountsAsAttack = true;
       if(e.cookingGainAdd) b.cookingGainAdd += e.cookingGainAdd * stack;
       if(e.cookingTurnsReduce) b.cookingTurnsReduce += e.cookingTurnsReduce * stack;
       if(e.cookingPowerPct) b.cookingPowerPct += e.cookingPowerPct * stack;
@@ -3401,6 +3467,7 @@
     fighter.tw_cookingMythicBoth = b.cookingMythicBoth;
     fighter.tw_cookingStartStacks = b.cookingStartStacks;
     fighter.tw_cookingMythicPowerPct = b.cookingMythicPowerPct;
+    fighter.tw_skillCountsAsAttack = b.skillCountsAsAttack; // [환영 무기] 전설 증강
     // 전투 시작 시 즉시 보호막 지급 (수호의 맹세 / 낡은 갑주의 잔재 등)
     const startShieldAmt = Math.round(fighter.maxHp * (b.startShieldPct||0)) + (b.startShieldFlat||0);
     if(startShieldAmt > 0){
@@ -3454,8 +3521,9 @@
       g.me.passiveShieldTurns = 99;
     }
 
-    // ---- 적: 층수 기반 스탯 배율 (보스는 추가 15%, 강제 배율이 지정되면 그 값을 그대로 사용) ----
-    const mult = forcedMultiplier != null ? forcedMultiplier : towerGetStatMultiplier(TS.floor) * (isBoss ? 1.15 : 1);
+    // ---- 적: 층수 기반 스탯 배율 (보스는 추가 15%, 100층부터는 보스에게 지수함수 배율까지 추가, 강제 배율이 지정되면 그 값을 그대로 사용) ----
+    const bossExpMult = isBoss ? towerGetBossExponentialMultiplier(TS.floor) : 1;
+    const mult = forcedMultiplier != null ? forcedMultiplier : towerGetStatMultiplier(TS.floor) * (isBoss ? 1.15 : 1) * bossExpMult;
     const opBase = CHARACTERS[opChar].stats;
     const opMaxHp = Math.round(opBase.hp * mult);
     g.op.maxHp = opMaxHp;
@@ -3464,6 +3532,13 @@
     g.op.healBonus = Math.round(opBase.heal * (mult - 1));
     g.op.ultimateBonus = Math.round(opBase.ultimate * (mult - 1));
     g.op.skillMaxUses = 1 + skillBonusFromFloor;
+    // [무한대전타워] 100층부터는 보스가 행동력을 가득 채운 채로 전투를 시작한다
+    if(isBoss && TS.floor >= 100 && forcedMultiplier == null){
+      g.op.ap = AP_MAX;
+    }
+    // [무한대전타워] 100층부터는 적(잡몹/보스 공통)이 부활 횟수를 들고 나온다 (10층마다 1회씩 증가)
+    g.op.reviveCount = 0;
+    g.op.reviveMax = (forcedMultiplier == null) ? towerGetEnemyReviveCount(TS.floor) : 0;
 
     renderBattle();
   }
@@ -3483,6 +3558,22 @@
           towerSaveRun(TS);
           towerShowRewardPopup('🪙', '500 타워 코인 획득!', '다카무라가 인정의 의미로 코인을 남기고 사라졌습니다.', ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
         });
+      } else {
+        towerHandleBattleLoss();
+      }
+      return;
+    }
+
+    if(TS_eventFightActive === 'hiddenboss'){
+      TS_eventFightActive = false;
+      if(win){
+        TS.hp = Math.max(1, g.me.hp);
+        TS.ap = g.me.ap;
+        const artifactName = TOWER_ARTIFACT_NAMES[Math.floor(Math.random() * TOWER_ARTIFACT_NAMES.length)];
+        TS.equipment.push({ name:artifactName, tier:5 });
+        towerSaveRun(TS);
+        const artifact = towerGetArtifactByName(artifactName);
+        towerShowRewardPopup('🌋', '히든보스 격파!!', `<b style="color:#FFD54F;">${artifactName}</b><br>${artifact.desc}<br><br>보상으로 T5 아티팩트를 획득했다!`, ()=> towerGoToNextFloor());
       } else {
         towerHandleBattleLoss();
       }
@@ -4170,7 +4261,14 @@
       </div>
 
       <button class="btn btn-primary" id="tower-shop-next-btn" style="width:100%; margin-top:14px; padding:14px; border-radius:12px;">다음 층으로</button>
+      <button class="btn" id="tower-shop-settle-btn" style="width:100%; margin-top:10px; padding:12px; border-radius:12px;">🏁 정산하기 (등반 종료 후 보상 수령)</button>
     `;
+
+    document.getElementById('tower-shop-settle-btn').onclick = ()=>{
+      if(!confirm(`정말 여기서 등반을 마치고 정산할까요? (현재 ${TS.floor}층 도달)\n더 이상 이 런을 이어갈 수 없습니다.`)) return;
+      TS_pendingShopLineup = null;
+      towerEndRun(`${TS.floor}층에서 정산하고 등반을 마쳤습니다.`);
+    };
 
     document.getElementById('tower-shop-reroll-btn').onclick = towerRerollShop;
     document.getElementById('tower-augment-view-btn').onclick = towerOpenAugmentView;
@@ -4236,7 +4334,7 @@
       footer.style.display = 'block';
     } else {
       title.textContent = '✨ 융합';
-      hint.textContent = '티어가 같은, 서로 다른 이름의 장비 3개를 선택하세요';
+      hint.textContent = '티어가 같은, 서로 다른 이름의 장비 3개(또는 [소망의 조각] 3개)를 선택하세요';
       footer.style.display = 'block';
     }
     overlay.classList.add('show');
@@ -4315,14 +4413,17 @@
         const activeBadge = TS_bagMode === 'view'
           ? (isActive ? `<div class="tbi-active-badge">적용 중</div>` : `<div class="tbi-inactive-badge">미적용</div>`)
           : '';
-        const effectDesc = (towerGetEquipData(e.name, e.tier)||{}).desc || '';
+        const isWishShard = e.name === TOWER_WISH_SHARD_NAME;
+        const effectDesc = isWishShard ? TOWER_WISH_SHARD_DESC : ((towerGetEquipData(e.name, e.tier)||{}).desc || '');
         const artifactClass = e.tier === 5 ? ' tower-item-artifact' : '';
+        const tierLabel = isWishShard ? '조각' : `T${e.tier}`;
+        const emoji = isWishShard ? '💠' : towerGetEquipEmoji(key);
         return `
           <div class="tower-bag-item${selected ? ' selected' : ''}${activeClass}${artifactClass}" data-idx="${idx}">
             ${activeBadge}
-            <div class="tbi-emoji">${towerGetEquipEmoji(key)}</div>
+            <div class="tbi-emoji">${emoji}</div>
             <div class="tbi-name">${e.name}</div>
-            <div class="tbi-tier">T${e.tier}</div>
+            <div class="tbi-tier">${tierLabel}</div>
             <div class="tbi-desc">${effectDesc}</div>
             ${sellBtnHtml}
           </div>
@@ -4401,6 +4502,8 @@
         const gained = result.equipment[result.equipment.length - 1];
         const artifact = towerGetArtifactByName(gained.name);
         towerShowRewardPopup('✨', 'T5 아티팩트 융합 성공!!', `<b style="color:#FFD54F;">${gained.name}</b><br>${artifact.desc}`, ()=> renderTowerShopContent());
+      } else if(result.gotWishShard){
+        towerShowRewardPopup('💠', '소망의 조각 획득!', `${TOWER_WISH_SHARD_DESC}`, ()=> renderTowerShopContent());
       } else {
         showToast('융합 완료!');
         renderTowerShopContent();
@@ -4498,6 +4601,11 @@
         ${rerollBtnHtml}
       </div>
       ${TS_pendingAugmentChoices.map((aug, idx)=> towerRenderAugmentCardHtml(aug, idx)).join('')}
+      ${TS_starterPackActive ? `
+        <button class="btn" id="tower-super-reroll-btn" style="width:100%; margin-top:14px; padding:13px; border-radius:12px; background:linear-gradient(135deg,#FFD54F,#FF5252); color:#1a0505; font-weight:900; border:none;">
+          🌈 슈퍼 리롤 — <span style="font-family:'JetBrains Mono',monospace;">💰 2,000 PP</span> (전설·초월만 등장)
+        </button>
+      ` : ''}
     `;
     c.querySelectorAll('.tower-augment-pick').forEach(btn=>{
       btn.onclick = ()=>{
@@ -4526,6 +4634,8 @@
     });
     const rerollBtn = document.getElementById('tower-augment-reroll-btn');
     if(rerollBtn) rerollBtn.onclick = towerRerollAugments;
+    const superRerollBtn = document.getElementById('tower-super-reroll-btn');
+    if(superRerollBtn) superRerollBtn.onclick = towerOfferSuperReroll;
   }
 
   // 공용 증강 풀에 없으면 캐릭터 전용 증강 — 조우 풀은 항상 TS.charId 하나뿐이라 소유 캐릭터를 바로 특정할 수 있다
@@ -4568,6 +4678,8 @@
     }
     const btn = document.getElementById('tower-augment-reroll-btn');
     if(btn) btn.disabled = true;
+    const superBtnGuard = document.getElementById('tower-super-reroll-btn');
+    if(superBtnGuard) superBtnGuard.disabled = true;
     const newChoices = TS_starterPackActive ? towerRollStarterChoices(TS.charId) : towerRollAugmentChoices(TS.charId, TS.floor);
     const pool = TS_starterPackActive
       ? towerGetSelectableAugmentPool(TS.charId).filter(a => a.grade !== 'legendary' && a.grade !== 'mythic')
@@ -4622,6 +4734,104 @@
         const isRareGrade = aug.grade === 'legendary' || aug.grade === 'mythic';
         const cardEl = document.querySelector(`.taug-card-${i}`);
         if(cardEl && isRareGrade){
+          cardEl.style.boxShadow = `0 0 18px ${TOWER_GRADE_COLOR[aug.grade]}66, inset 0 0 0 1px ${TOWER_GRADE_COLOR[aug.grade]}55`;
+          cardEl.style.animation = 'towerCardPulse 1.6s ease-in-out infinite';
+        }
+      }
+    );
+  }
+
+  // 슈퍼 리롤: 전설·신화만 등장하는 유료(PP) 리롤. 실행 전 반드시 확인 팝업을 띄운다.
+  function towerOfferSuperReroll(){
+    const icon = document.getElementById('tower-reward-icon');
+    const title = document.getElementById('tower-reward-title');
+    const desc = document.getElementById('tower-reward-desc');
+    const confirmBtn = document.getElementById('tower-reward-confirm-btn');
+    const declineBtn = document.getElementById('tower-reward-decline-btn');
+    const canAfford = PP >= TOWER_SUPER_REROLL_PRICE;
+
+    icon.textContent = '🌈';
+    title.textContent = '슈퍼 리롤';
+    desc.innerHTML = `전설·신화 등급만 뜨는 특별 리롤입니다.<br>${TOWER_SUPER_REROLL_PRICE.toLocaleString()} PP를 사용해 정말 돌리시겠습니까?<br><span style="color:var(--text-dim); font-size:11px;">현재 보유 PP: ${PP.toLocaleString()}</span>`;
+    confirmBtn.textContent = canAfford ? `🌈 돌리기 (${TOWER_SUPER_REROLL_PRICE.toLocaleString()} PP)` : 'PP 부족';
+    confirmBtn.disabled = !canAfford;
+    confirmBtn.style.opacity = canAfford ? '1' : '0.4';
+    declineBtn.style.display = 'block';
+    declineBtn.textContent = '그만두기';
+    document.getElementById('tower-reward-popup').classList.add('show');
+
+    confirmBtn.onclick = ()=>{
+      if(!canAfford) return;
+      addPP(-TOWER_SUPER_REROLL_PRICE);
+      document.getElementById('tower-reward-popup').classList.remove('show');
+      declineBtn.style.display = 'none';
+      towerExecuteSuperReroll();
+    };
+    declineBtn.onclick = ()=>{
+      document.getElementById('tower-reward-popup').classList.remove('show');
+      declineBtn.style.display = 'none';
+    };
+  }
+
+  function towerExecuteSuperReroll(){
+    const rarePool = towerGetSelectableAugmentPool(TS.charId).filter(a => a.grade === 'legendary' || a.grade === 'mythic');
+    if(rarePool.length < 3){ showToast('뽑을 수 있는 전설·신화 증강이 부족합니다'); return; }
+    // 서로 다른 3개가 나오도록 뽑는다 (스타터팩 특성상 전설/신화 개수가 적어 겹칠 수 있어, 하나씩 제거하며 추출)
+    const poolCopy = rarePool.slice();
+    const newChoices = [];
+    for(let i=0;i<3 && poolCopy.length>0;i++){
+      const idx = Math.floor(Math.random() * poolCopy.length);
+      newChoices.push(poolCopy[idx]);
+      poolCopy.splice(idx, 1);
+    }
+    const superBtn = document.getElementById('tower-super-reroll-btn');
+    if(superBtn) superBtn.disabled = true;
+    const normalBtnGuard = document.getElementById('tower-augment-reroll-btn');
+    if(normalBtnGuard) normalBtnGuard.disabled = true;
+    const cardEls = Array.from(document.querySelectorAll('#tower-augment-content .tower-augment-pick'));
+    towerPlayRerollSequence(
+      cardEls,
+      (i)=>{
+        const rand = rarePool[Math.floor(Math.random() * rarePool.length)];
+        const nameEl = document.querySelector(`.taug-name-${i}`);
+        const gradeEl = document.querySelector(`.taug-grade-${i}`);
+        if(nameEl) nameEl.textContent = rand.name;
+        if(gradeEl){ gradeEl.textContent = TOWER_GRADE_LABEL[rand.grade]; gradeEl.style.color = TOWER_GRADE_COLOR[rand.grade]; }
+      },
+      (i)=>{
+        const aug = newChoices[i];
+        const stack = TS.augments[aug.id] || 0;
+        const cardEl = document.querySelector(`.taug-card-${i}`);
+        const nameEl = document.querySelector(`.taug-name-${i}`);
+        const gradeEl = document.querySelector(`.taug-grade-${i}`);
+        const descEl = document.querySelector(`.taug-desc-${i}`);
+        if(nameEl) nameEl.textContent = `✨ ${aug.name}`;
+        if(gradeEl){
+          gradeEl.textContent = `${TOWER_GRADE_LABEL[aug.grade]}${stack>0 ? ` · 보유 ${stack}스택` : ''}`;
+          gradeEl.style.color = TOWER_GRADE_COLOR[aug.grade];
+          gradeEl.style.fontWeight = '900';
+        }
+        if(descEl) descEl.textContent = aug.desc;
+        if(cardEl){
+          cardEl.style.borderColor = TOWER_GRADE_COLOR[aug.grade];
+          cardEl.style.borderWidth = '2px';
+          const existingImg = cardEl.querySelector('.taug-char-bg');
+          if(towerIsCharSpecificAugment(aug)){
+            if(existingImg) existingImg.src = CHARACTERS[TS.charId].portraitImg;
+            else cardEl.insertAdjacentHTML('afterbegin', `<img class="taug-char-bg" src="${CHARACTERS[TS.charId].portraitImg}" alt="">`);
+          } else if(existingImg){
+            existingImg.remove();
+          }
+        }
+      },
+      ()=>{
+        TS_pendingAugmentChoices = newChoices;
+        renderTowerAugmentContent();
+      },
+      (i)=>{
+        const aug = newChoices[i];
+        const cardEl = document.querySelector(`.taug-card-${i}`);
+        if(cardEl){
           cardEl.style.boxShadow = `0 0 18px ${TOWER_GRADE_COLOR[aug.grade]}66, inset 0 0 0 1px ${TOWER_GRADE_COLOR[aug.grade]}55`;
           cardEl.style.animation = 'towerCardPulse 1.6s ease-in-out infinite';
         }
@@ -8233,6 +8443,15 @@
     // 종료 판정
     let meDead = g.me.hp<=0, opDead = g.op.hp<=0;
 
+    // [무한대전타워] 100층부터 적이 들고 나오는 부활 — 쓰러져도 남은 부활 횟수가 있으면 체력 50%로 되살아나 전투가 계속된다
+    if(opDead && S.mode === 'tower' && (g.op.reviveCount||0) < (g.op.reviveMax||0)){
+      g.op.reviveCount = (g.op.reviveCount||0) + 1;
+      g.op.hp = Math.max(1, Math.round(g.op.maxHp * 0.5));
+      opDead = false;
+      pushLog('sys', `💀➡️❤️ 상대가 부활했다! (남은 부활 ${g.op.reviveMax - g.op.reviveCount}회)`);
+      spawnPopup('op', '부활!', 'heal');
+    }
+
     // 2VS2: 선봉이 쓰러져도 벤치가 살아있으면 그 자리에서 강제 교체되고, 팀 전체가 전멸했을 때만 진짜 패배
     if(is2v2Mode() && S.team2v2){
       if(meDead && S.team2v2.meBench.alive){ forceSwitch2v2('me'); meDead = false; }
@@ -9013,8 +9232,12 @@
             const dmg = applyOnHitPassive(actorKey, towerSkillPower(actor, perShotDmg), g, cls);
             dealDamage(targetKey, dmg);
             totalDmg += dmg;
-            applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [결단일섬] 등 "공격 적중" 트리거 (한 발마다 각각 발동)
-            applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "공격 적중" 트리거 (한 발마다 각각 발동)
+            // [무한대전타워] 전설 증강 "환영 무기"가 있어야만 이 컴뱃스킬도 [공격] 판정을 받아
+            // 죽을 사/신경독 같은 "공격 적중" 트리거가 발동한다 (기본값은 공격 판정 없음)
+            if(actor.tw_skillCountsAsAttack){
+              applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls);
+              applyNeurotoxinOnHit(actorKey, targetKey, g, cls);
+            }
           }
           pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]! 총 ${totalShots}발 명중, ${totalDmg} 피해`);
         }
