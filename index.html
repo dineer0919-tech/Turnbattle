@@ -1095,6 +1095,24 @@
   .tower-util-btn .tui-cost{ font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; }
   .tower-action-row{ display:flex; gap:10px; margin-bottom:8px; }
   .tower-action-row .btn{ flex:1; padding:12px 6px; border-radius:12px; font-size:12.5px; }
+  .tower-pick-char-row{
+    display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch;
+  }
+  .tower-pick-char-btn{
+    flex:0 0 auto; width:64px; display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:var(--panel-alt); border:2px solid var(--panel-line); border-radius:14px; padding:8px 4px;
+  }
+  .tower-pick-char-btn.picked{ border-color:var(--accent-ap); background:rgba(62,230,201,0.10); }
+  .tower-pick-char-btn img{ width:44px; height:44px; border-radius:10px; object-fit:cover; }
+  .tower-pick-char-btn .tpc-name{ font-size:10.5px; font-weight:700; color:var(--text); white-space:nowrap; }
+  .tower-pick-skill-list{ display:flex; flex-direction:column; gap:8px; }
+  .tower-pick-skill-btn{
+    width:100%; text-align:left; background:var(--panel-alt); border:2px solid var(--panel-line);
+    border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:3px;
+  }
+  .tower-pick-skill-btn.picked{ border-color:var(--accent-ap); background:rgba(62,230,201,0.10); }
+  .tower-pick-skill-btn .tps-name{ font-size:13px; font-weight:900; }
+  .tower-pick-skill-btn .tps-desc{ font-size:10.5px; color:var(--text-dim); line-height:1.4; }
 
   /* ---------- 무한대전타워: 가방(인벤토리) 오버레이 ---------- */
   #tower-bag-overlay{
@@ -1868,6 +1886,7 @@
       <div class="trp-title" id="tower-reward-title"></div>
       <div class="trp-desc" id="tower-reward-desc"></div>
       <button class="btn btn-primary" id="tower-reward-confirm-btn" style="width:100%; margin-top:14px; padding:13px; border-radius:12px;">확인</button>
+      <button class="btn" id="tower-reward-decline-btn" style="width:100%; margin-top:8px; padding:13px; border-radius:12px; display:none;">포기하고 종료</button>
     </div>
   </div>
 
@@ -2068,7 +2087,7 @@
       passive: {
         id:'neurotoxin_creep',
         name:'파고드는 신경독',
-        desc:'적에게 [공격] 혹은 [일격]을 적중할 시, 적에게 [신경독]을 3턴동안 부여하며 지속시간을 갱신합니다. 최대 세 번까지 중첩 가능하며, 중첩당 턴이 끝날때마다 1 / 2 / 4의 피해를 입히며 받는 회복 효과를 50% 감소시킵니다. (소수점 버림) 독 다트의 맹독과는 별개의 효과입니다.',
+        desc:'적에게 [공격] 혹은 [일격]을 적중할 시, 적에게 [신경독]을 부여합니다. 한 번 부여되면 지속시간 없이 영구히 유지되며, 최대 세 번까지 중첩됩니다. 중첩당 턴이 끝날때마다 1 / 2 / 4의 피해를 입히며 받는 회복 효과를 50% 감소시킵니다. 최대 중첩에 도달하면 매 턴 추가로 상대 최대체력의 10%만큼 고정 피해를 입힙니다. (소수점 버림) 독 다트의 맹독과는 별개의 효과입니다.',
         color:'#A855F7',
       },
       story: `나는 원래 그저 평범하게, 아니 남들보다도 조금 더 예쁘게 태어난 소녀였을 뿐이다.
@@ -2544,13 +2563,19 @@
       { tier:3, desc:'전투 승리 시 35% 확률로 추가 증강 선택 기회 획득', effects:{augmentExtractChance:0.35} },
       { tier:4, desc:'전투 승리 시 50% 확률로 추가 증강 선택 기회 획득', effects:{augmentExtractChance:0.50} },
     ]},
+    corroded_bandage: { category:'accessory', name:'부식된 붕대', tiers:[
+      { tier:1, desc:'적중 시 15% 확률로 상대 회복 효과 30% 감소 (2턴)', effects:{healDebuffChance:0.15, healDebuffPct:0.30, healDebuffTurns:2} },
+      { tier:2, desc:'적중 시 25% 확률로 상대 회복 효과 40% 감소 (2턴)', effects:{healDebuffChance:0.25, healDebuffPct:0.40, healDebuffTurns:2} },
+      { tier:3, desc:'적중 시 35% 확률로 회복 효과 55% 감소(3턴), 5% 확률로 회복 완전 봉인(1턴)', effects:{healDebuffChance:0.35, healDebuffPct:0.55, healDebuffTurns:3, healSealChance:0.05, healSealTurns:1} },
+      { tier:4, desc:'적중 시 50% 확률로 회복 효과 70% 감소(3턴), 15% 확률로 회복 완전 봉인(2턴)', effects:{healDebuffChance:0.50, healDebuffPct:0.70, healDebuffTurns:3, healSealChance:0.15, healSealTurns:2} },
+    ]},
   };
   const TOWER_EQUIPMENT_NAMES = Object.values(TOWER_EQUIPMENT).map(e=>e.name);
   const TOWER_EQUIP_EMOJI = {
     broken_vow_blade:'🗡️', last_greeting:'🔪', judgement_hammer:'🔨', hungry_shadow:'🕶️', storm_shard:'🌀',
     old_armor_remnant:'🛡️', frozen_tears:'❄️', silent_tombstone:'🪦', last_breath:'💨', winter_bark:'🌲',
     clockwork_charm:'⏱️', merchant_scale:'⚖️', resewn_time:'🧵', waning_moon_shard:'🌙', rewound_thread:'🧶',
-    skill_grimoire:'📖', augment_extractor:'🎲',
+    skill_grimoire:'📖', augment_extractor:'🎲', corroded_bandage:'🩹',
   };
   function towerGetEquipEmoji(key){ return TOWER_EQUIP_EMOJI[key] || '📦'; }
 
@@ -2598,7 +2623,7 @@
       { id:'nabi_extra_life', name:'여분의 목숨', grade:'epic', desc:'1UP 발동 횟수 +1 (전투당)', effects:{oneUpCount:1} },
       { id:'nabi_phoenix', name:'불사조의 저력', grade:'rare', desc:'부활 시 체력 1 대신 최대체력의 15%로 부활', effects:{oneUpHpPct:0.15} },
       { id:'nabi_final_blow', name:'최후의 일격', grade:'rare', desc:'1UP 발동 중 피해감소 대신 다음 공격 피해 +50%', effects:{oneUpFinalBlow:0.50} },
-      { id:'nabi_undying', name:'불사의 나비', grade:'legendary', desc:'1UP 발동 횟수 제한이 사실상 사라진다 (전투당 98회)', effects:{oneUpCount:98} },
+      { id:'nabi_undying', name:'불사의 나비', grade:'legendary', desc:'1UP 발동 시 체력 1이 아닌 최대체력의 100%로 부활한다', effects:{oneUpHpPct:1.0} },
       { id:'nabi_butterfly_effect', name:'나비 효과', grade:'mythic', desc:'1UP으로 부활할 때마다 상대에게 즉시 15의 고정 피해를 입힌다', effects:{oneUpCounterDmg:15} },
     ],
     berry: [
@@ -2610,8 +2635,10 @@
     ],
     takamura: [
       { id:'taka_stack_up', name:'죽을 사 강화', grade:'common', desc:'죽을 사 최대 중첩 +1', effects:{deathMarkCapAdd:1} },
-      { id:'taka_quick_exec', name:'신속한 처형', grade:'rare', desc:'처형 발동 시 행동력 +3 회복', effects:{executeApRestore:3} },
+      { id:'taka_quick_exec', name:'신속한 처형', grade:'common', desc:'처형 발동 시 행동력 +3 회복', effects:{executeApRestore:3} },
       { id:'taka_blood_mark', name:'피의 각인', grade:'rare', desc:'죽을 사 중첩 보유 적에게 주는 피해, 중첩당 +1', effects:{deathMarkDmgPerStack:1} },
+      { id:'taka_moment', name:'찰나의 순간', grade:'rare', desc:'[일격] 적중 시에도 죽을 사 중첩이 쌓인다', effects:{deathMarkOnUltimate:true} },
+      { id:'taka_quick_slit', name:'신속한 목긋기', grade:'epic', desc:'처형에 필요한 죽을 사 중첩이 3으로 줄어든다', effects:{deathMarkCapAdd:-1} },
       { id:'taka_karma', name:'인과응보', grade:'legendary', desc:'죽을 사 중첩 보유 적에게 주는 피해, 중첩당 +5', effects:{deathMarkDmgPerStack:5} },
       { id:'taka_swift_end', name:'즉결처단', grade:'mythic', desc:'처형에 필요한 죽을 사 중첩이 2로 줄어든다', effects:{deathMarkCapAdd:-2} },
     ],
@@ -2620,28 +2647,28 @@
       { id:'delta_efficiency', name:'고효율 회로', grade:'rare', desc:'에너지 1개당 일격 피해 증가량 +1', effects:{energyDmgPerStackAdd:1} },
       { id:'delta_generator', name:'비상 발전', grade:'epic', desc:'에너지 최대치일 때 매 턴 종료 시 체력 1 회복', effects:{energyMaxRegen:1} },
       { id:'delta_infinite_charge', name:'무한 충전', grade:'legendary', desc:'에너지 상한이 사실상 사라지고, 매 획득 시 +2씩 쌓인다', effects:{energyCapAdd:95, energyGainAdd:1} },
-      { id:'delta_overclock', name:'초한계 돌파', grade:'mythic', desc:'에너지 1개당 일격 피해 증가량이 +7로 뛰고, 일격을 써도 에너지가 소모되지 않는다', effects:{energyDmgPerStackAdd:7, energyNoConsume:true} },
+      { id:'delta_overclock', name:'한계 돌파', grade:'mythic', desc:'에너지 1개당 일격 피해 증가량이 +7로 뛰고, 일격을 써도 에너지가 소모되지 않는다', effects:{energyDmgPerStackAdd:7, energyNoConsume:true} },
     ],
     weklein: [
       { id:'wek_toxin_grow', name:'맹독 배양', grade:'common', desc:'신경독 최대 중첩 +1, 중첩당 피해 비례 증가', effects:{toxinCapAdd:1} },
       { id:'wek_immune_break', name:'면역 붕괴', grade:'epic', desc:'신경독 최대 중첩 적이 받는 모든 피해 +15%', effects:{toxinMaxDmgPct:0.15} },
-      { id:'wek_toxin_spread', name:'독무 확산', grade:'rare', desc:'신경독 지속시간 3턴→4턴 (스택 시 최대 5턴)', effects:{toxinDurationAdd:1} },
-      { id:'wek_saturation', name:'맹독 포화', grade:'legendary', desc:'신경독 최대 중첩이 6까지 늘어난다', effects:{toxinCapAdd:3} },
-      { id:'wek_collapse', name:'붕괴하는 육체', grade:'mythic', desc:'신경독 최대 중첩 상대는 매 턴 추가로 최대체력의 5%만큼 고정 피해를 받는다', effects:{toxinMythicPct:0.05} },
+      { id:'wek_toxin_spread', name:'독무 확산', grade:'rare', desc:'적중 시 신경독 중첩을 2개씩 획득', effects:{toxinStackGainAdd:1} },
+      { id:'wek_saturation', name:'맹독 포화', grade:'legendary', desc:'신경독으로 피해를 입은 상대는 그때마다 행동력을 1씩 잃는다', effects:{toxinApDrain:true} },
+      { id:'wek_collapse', name:'붕괴하는 육체', grade:'mythic', desc:'신경독으로 입힌 피해의 100%를 회복한다', effects:{toxinLifestealPct:1.0} },
     ],
     usagi: [
       { id:'usagi_accel', name:'칩월드 가속', grade:'rare', desc:'발동 주기 2턴→1턴 단축 (최소 1턴)', effects:{chipCycleReduce:1} },
       { id:'usagi_roulette', name:'행운의 룰렛', grade:'common', desc:'스탯 증가량 2→3 (감소량은 그대로 1)', effects:{chipGainAdd:1} },
       { id:'usagi_stabilize', name:'칩월드 안정화', grade:'common', desc:'감소 수치 하한 50%→70%로 완화', effects:{chipFloorPct:0.20} },
-      { id:'usagi_every_turn', name:'매 턴 룰렛', grade:'legendary', desc:'칩월드가 2턴마다가 아니라 매 턴 발동한다', effects:{chipCycleReduce:1} },
-      { id:'usagi_infinite_odds', name:'무한 확률', grade:'mythic', desc:'칩월드 발동 시 스탯 감소가 사라지고 상승만 남는다', effects:{chipNoDownside:true} },
+      { id:'usagi_bonus_roulette', name:'뿅뿅 룰렛', grade:'legendary', desc:'전투가 끝날 때마다, 조우자 이벤트의 [우사기 룰렛]을 돌릴 수 있다', effects:{usagiRouletteOnWin:true} },
+      { id:'usagi_double_or_nothing', name:'묻고 따블로 가!', grade:'mythic', desc:'칩월드 발동 시 스탯 하락이 사라지고, 대신 다른 스탯이 하나 더 상승한다', effects:{chipDoubleUp:true} },
     ],
     hachimi: [
       { id:'hachi_skill', name:'숙련된 손맛', grade:'common', desc:'중첩 상승 조건들의 상승량 전부 +1', effects:{cookingGainAdd:1} },
       { id:'hachi_shortcut', name:'단축 조리', grade:'rare', desc:'완성까지 필요한 턴수 5→4 (스택 시 최소 3)', effects:{cookingTurnsReduce:1} },
       { id:'hachi_feast', name:'진수성찬', grade:'epic', desc:'요리를 먹을 때/던질 때 효과 모두 +50%', effects:{cookingPowerPct:0.50} },
-      { id:'hachi_instant', name:'즉석 요리', grade:'legendary', desc:'조리 완성까지 필요한 턴수가 2로 줄어든다', effects:{cookingTurnsReduce:3} },
-      { id:'hachi_banquet', name:'만찬의 축복', grade:'mythic', desc:'요리를 먹을 때, 동시에 상대에게도 화상 효과를 건다', effects:{cookingMythicBoth:true} },
+      { id:'hachi_instant', name:'즉석 요리', grade:'legendary', desc:'조리 완성까지 필요한 턴수가 2로 줄어들고, 요리를 시작할 때 3스택부터 시작한다', effects:{cookingTurnsReduce:3, cookingStartStacks:3} },
+      { id:'hachi_banquet', name:'만찬의 축복', grade:'mythic', desc:'요리를 먹을 때 동시에 상대에게도 화상 효과를 걸고, 요리 효과가 200% 증가한다 (총 3배)', effects:{cookingMythicBoth:true, cookingMythicPowerPct:2.0} },
     ],
   };
 
@@ -2652,10 +2679,10 @@
 
   function towerRollAugmentChoices(charId, floor){
     const pool = towerGetAugmentPool(charId);
-    // 고층일수록 rare/epic 가중치 상승. legendary/mythic은 층수와 무관하게 항상 극히 희박하다.
+    // 층이 오를수록 전부 상승하되, 전설/신화도 이제 눈에 띄게 자주 뜨도록 크게 올렸다 (신화가 더 희박함은 유지)
     const weight = (a)=>{
-      if(a.grade==='mythic') return 0.02;
-      if(a.grade==='legendary') return 0.06;
+      if(a.grade==='mythic') return 0.18 + Math.min(0.35, floor * 0.012);
+      if(a.grade==='legendary') return 0.45 + Math.min(0.85, floor * 0.02);
       return a.grade==='epic' ? (floor>=20?3:1) : a.grade==='rare' ? (floor>=10?2.5:1.5) : 1;
     };
     const picks = [];
@@ -2741,7 +2768,6 @@
       equipment: [],
       augments: {},
       revivalTicketUsed: false,
-      hasRevivalTicketItem: false,
       persistentShieldHp: 0, // [무한대전타워] 베리 이벤트 등으로 얻는, 깨지기 전까지 층을 넘어도 유지되는 보호막
       eternalSoupCount: 0, // [무한대전타워] 하치미 이벤트로 얻는 "만년 수프" — 사망 시 체력 7로 자동 부활
       activeEvent: null, // [무한대전타워] 현재 진행 중인 특별 이벤트 (재접속 시 이어서 열기 위한 기록)
@@ -2767,6 +2793,9 @@
   let TS = null; // TowerState
   let TS_pendingShopLineup = null; // 이번 상점 방문에서 뽑은 라인업 (층 이동 시 갱신)
   let TS_pendingAugmentChoices = null;
+  let TS_pickedCharId = null; // 등반 시작 전 화면에서 고른 캐릭터 (메인 게임 선택과 별개, 이번 런 전용)
+  let TS_pickedSkillId = null; // 등반 시작 전 화면에서 고른 컴뱃스킬
+  let TS_pickedSkillIdCharSnapshot = null; // 마지막으로 스킬 목록을 계산했던 캐릭터 — 캐릭터를 바꾸면 스킬 선택을 다시 계산하기 위한 표시
 
   /* ---------- 타워 홈 화면 ---------- */
   function openTowerHome(){
@@ -2800,44 +2829,61 @@
         renderTowerHome();
       };
     } else {
-      const charId = S.selectedCharacter || 'spear';
-      const charName = (CHARACTERS[charId]||{}).name || charId;
+      if(!TS_pickedCharId || !S.ownedCharacters.has(TS_pickedCharId)) TS_pickedCharId = S.selectedCharacter || 'spear';
+      const ownedChars = Object.values(CHARACTERS).filter(ch => S.ownedCharacters.has(ch.id) && !ch.aiOnly);
+      const charButtonsHtml = ownedChars.map(ch=>`
+        <button class="tower-pick-char-btn${ch.id===TS_pickedCharId?' picked':''}" data-char="${ch.id}">
+          <img src="${ch.portraitImg}" alt="${ch.name}">
+          <div class="tpc-name">${ch.name}</div>
+        </button>
+      `).join('');
+
+      const ownedSkillIds = Array.from(S.ownedSkills).filter(id => SKILLS[id] && !SKILLS[id].aiOnly);
+      if(!TS_pickedSkillId || !ownedSkillIds.includes(TS_pickedSkillId) || TS_pickedSkillIdCharSnapshot !== TS_pickedCharId){
+        TS_pickedSkillId = getEquippedSkillId(TS_pickedCharId) || ownedSkillIds[0] || null;
+        TS_pickedSkillIdCharSnapshot = TS_pickedCharId;
+      }
+      const skillButtonsHtml = ownedSkillIds.length === 0
+        ? `<div style="color:var(--text-dim); font-size:12px; padding:6px 0;">보유한 컴뱃스킬이 없습니다</div>`
+        : ownedSkillIds.map(id=>{
+            const sk = SKILLS[id];
+            return `
+              <button class="tower-pick-skill-btn${id===TS_pickedSkillId?' picked':''}" data-skill="${id}">
+                <span class="tps-name">${sk.name}</span>
+                <span class="tps-desc">${sk.desc}</span>
+              </button>
+            `;
+          }).join('');
+
+      const charName = (CHARACTERS[TS_pickedCharId]||{}).name || TS_pickedCharId;
       c.innerHTML = `
         <div class="panel-card">
-          <div style="font-weight:900; font-size:16px; margin-bottom:6px;">새로운 등반을 시작합니다</div>
-          <div style="color:var(--text-dim); font-size:13px; line-height:1.6;">
-            현재 선택된 캐릭터 <b>${charName}</b>(으)로 도전합니다.<br>
-            캐릭터를 바꾸려면 [캐릭터] 탭에서 먼저 변경해주세요.
+          <div style="font-weight:900; font-size:16px; margin-bottom:10px;">새로운 등반을 시작합니다</div>
+          <div style="color:var(--text-dim); font-size:12px; margin-bottom:8px;">캐릭터 선택 (메인 게임 선택과는 별개로, 이번 등반에서만 적용됩니다)</div>
+          <div class="tower-pick-char-row">${charButtonsHtml}</div>
+          <div style="color:var(--text-dim); font-size:12px; margin:14px 0 8px;">컴뱃스킬 선택 — <b>${charName}</b></div>
+          <div class="tower-pick-skill-list">${skillButtonsHtml}</div>
+          <div style="color:var(--text-dim); font-size:11.5px; line-height:1.6; margin-top:14px;">
+            💊 부활은 미리 사는 게 아니라, 쓰러졌을 때 그 자리에서 PP를 내고 살릴지 정할 수 있어요.
           </div>
-        </div>
-        <div class="panel-card" style="margin-top:12px;">
-          <div style="font-weight:900; font-size:14px; margin-bottom:6px;">부활권 (선택)</div>
-          <div style="color:var(--text-dim); font-size:12px; line-height:1.6; margin-bottom:10px;">
-            런당 1회, 패배 시 체력 50%로 부활합니다. 가격: ${TOWER_REVIVAL_TICKET_PRICE.toLocaleString()} PP
-          </div>
-          <button class="btn" id="tower-buy-revival-btn" style="width:100%; padding:10px; border-radius:10px;"></button>
         </div>
         <button class="btn btn-primary" id="tower-start-btn" style="width:100%; margin-top:14px; padding:14px; border-radius:12px;">등반 시작하기</button>
       `;
-      let willBuyRevival = false;
-      const revivalBtn = document.getElementById('tower-buy-revival-btn');
-      const refreshRevivalBtn = ()=>{
-        revivalBtn.textContent = willBuyRevival ? '✅ 부활권 지참함 (취소하려면 다시 클릭)' : `부활권 구매 (${TOWER_REVIVAL_TICKET_PRICE.toLocaleString()} PP)`;
-      };
-      refreshRevivalBtn();
-      revivalBtn.onclick = ()=>{
-        if(!willBuyRevival){
-          if(PP < TOWER_REVIVAL_TICKET_PRICE){ showToast('PP가 부족합니다'); return; }
-          willBuyRevival = true;
-        } else {
-          willBuyRevival = false;
-        }
-        refreshRevivalBtn();
-      };
+      c.querySelectorAll('.tower-pick-char-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          TS_pickedCharId = btn.dataset.char;
+          renderTowerHome();
+        };
+      });
+      c.querySelectorAll('.tower-pick-skill-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          TS_pickedSkillId = btn.dataset.skill;
+          renderTowerHome();
+        };
+      });
       document.getElementById('tower-start-btn').onclick = ()=>{
-        if(willBuyRevival){ addPP(-TOWER_REVIVAL_TICKET_PRICE); }
-        TS = towerCreateNewRun(charId);
-        TS.hasRevivalTicketItem = willBuyRevival;
+        TS = towerCreateNewRun(TS_pickedCharId);
+        TS.skillId = TS_pickedSkillId || null;
         towerSaveRun(TS);
         towerOpenStarterPack(); // 0층: 시작 전 스타터팩 증강 선택 (무료 무제한 리롤, 영웅 등급까지만)
       };
@@ -3015,15 +3061,18 @@
       startShieldPct:0, startShieldFlat:0, defendShieldAdd:0, counterShieldAdd:0, healShield:0,
       autoShieldHp:0, autoShieldCount:0, dotResistPct:0, dotImmuneChance:0, undyingCount:0,
       skillPowerPct:0, augmentExtractChance:0,
+      healDebuffChance:0, healDebuffPct:0, healDebuffTurns:0, healSealChance:0, healSealTurns:0,
       // 캐릭터 전용
       critTrackBonus:0, critTrackReq:0, critTrackBleed:0, critTrackTrueDmgPct:0,
       oneUpExtra:0, oneUpHpPct:0, oneUpFinalBlow:0, oneUpCounterDmg:0,
       fairyShieldAdd:0, fairyShieldCapAdd:0, fairyShieldRegen:0, fairyReflectPct:0, shieldHalvePct:0,
-      deathMarkCapAdd:0, executeApRestore:0, deathMarkDmgPerStack:0,
+      deathMarkCapAdd:0, executeApRestore:0, deathMarkDmgPerStack:0, deathMarkOnUltimate:false,
       energyCapAdd:0, energyThresholdOverride:0, energyDmgPerStackAdd:0, energyMaxRegen:0, energyGainAdd:0, energyNoConsume:false,
-      toxinCapAdd:0, toxinMaxDmgPct:0, toxinDurationAdd:0, toxinMythicPct:0,
-      chipCycleReduce:0, chipGainAdd:0, chipFloorPct:0, chipNoDownside:false,
+      toxinCapAdd:0, toxinMaxDmgPct:0, toxinStackGainAdd:0, toxinLifestealPct:0, toxinApDrain:false,
+      chipCycleReduce:0, chipGainAdd:0, chipFloorPct:0, chipNoDownside:false, chipDoubleUp:false,
+      usagiRouletteOnWin:false,
       cookingGainAdd:0, cookingTurnsReduce:0, cookingPowerPct:0, cookingMythicBoth:false,
+      cookingStartStacks:0, cookingMythicPowerPct:0,
     };
     towerGetActiveEquipment().forEach(item=>{
       const d = towerGetEquipData(item.name, item.tier);
@@ -3041,6 +3090,11 @@
       if(e.shopDiscountPct) {} // 상점 쪽에서 별도 집계 (towerGetDiscountPct)
       if(e.skillPowerPct) b.skillPowerPct += e.skillPowerPct;
       if(e.augmentExtractChance) b.augmentExtractChance = Math.max(b.augmentExtractChance, e.augmentExtractChance);
+      if(e.healDebuffChance) b.healDebuffChance = Math.max(b.healDebuffChance, e.healDebuffChance);
+      if(e.healDebuffPct) b.healDebuffPct = Math.max(b.healDebuffPct, e.healDebuffPct);
+      if(e.healDebuffTurns) b.healDebuffTurns = Math.max(b.healDebuffTurns, e.healDebuffTurns);
+      if(e.healSealChance) b.healSealChance = Math.max(b.healSealChance, e.healSealChance);
+      if(e.healSealTurns) b.healSealTurns = Math.max(b.healSealTurns, e.healSealTurns);
       if(e.apStealChance) b.apStealChance = Math.max(b.apStealChance, e.apStealChance);
       if(e.sureHitCount) b.sureHitCount += e.sureHitCount;
       if(e.lifestealPct) b.lifestealPct = Math.max(b.lifestealPct, e.lifestealPct);
@@ -3101,6 +3155,7 @@
       if(e.deathMarkCapAdd) b.deathMarkCapAdd += e.deathMarkCapAdd * stack;
       if(e.executeApRestore) b.executeApRestore += e.executeApRestore * stack;
       if(e.deathMarkDmgPerStack) b.deathMarkDmgPerStack += e.deathMarkDmgPerStack * stack;
+      if(e.deathMarkOnUltimate) b.deathMarkOnUltimate = true;
       if(e.energyCapAdd) b.energyCapAdd += e.energyCapAdd * stack;
       if(e.energyThreshold) b.energyThresholdOverride = Math.max(b.energyThresholdOverride, e.energyThreshold);
       if(e.energyDmgPerStackAdd) b.energyDmgPerStackAdd += e.energyDmgPerStackAdd * stack;
@@ -3109,16 +3164,21 @@
       if(e.energyNoConsume) b.energyNoConsume = true;
       if(e.toxinCapAdd) b.toxinCapAdd += e.toxinCapAdd * stack;
       if(e.toxinMaxDmgPct) b.toxinMaxDmgPct += e.toxinMaxDmgPct * stack;
-      if(e.toxinDurationAdd) b.toxinDurationAdd += e.toxinDurationAdd * stack;
-      if(e.toxinMythicPct) b.toxinMythicPct = Math.max(b.toxinMythicPct, e.toxinMythicPct);
+      if(e.toxinApDrain) b.toxinApDrain = true;
+      if(e.toxinStackGainAdd) b.toxinStackGainAdd += e.toxinStackGainAdd * stack;
+      if(e.toxinLifestealPct) b.toxinLifestealPct = Math.max(b.toxinLifestealPct, e.toxinLifestealPct);
       if(e.chipCycleReduce) b.chipCycleReduce += e.chipCycleReduce * stack;
       if(e.chipGainAdd) b.chipGainAdd += e.chipGainAdd * stack;
       if(e.chipFloorPct) b.chipFloorPct += e.chipFloorPct * stack;
       if(e.chipNoDownside) b.chipNoDownside = true;
+      if(e.chipDoubleUp) b.chipDoubleUp = true;
+      if(e.usagiRouletteOnWin) b.usagiRouletteOnWin = true;
       if(e.cookingGainAdd) b.cookingGainAdd += e.cookingGainAdd * stack;
       if(e.cookingTurnsReduce) b.cookingTurnsReduce += e.cookingTurnsReduce * stack;
       if(e.cookingPowerPct) b.cookingPowerPct += e.cookingPowerPct * stack;
       if(e.cookingMythicBoth) b.cookingMythicBoth = true;
+      if(e.cookingStartStacks) b.cookingStartStacks = Math.max(b.cookingStartStacks, e.cookingStartStacks);
+      if(e.cookingMythicPowerPct) b.cookingMythicPowerPct += e.cookingMythicPowerPct;
     });
     return b;
   }
@@ -3127,6 +3187,11 @@
   function towerApplyBonusesToFighter(fighter, b){
     fighter.tw_dmgReduce = b.dmgReduce;
     fighter.tw_skillPowerPct = b.skillPowerPct;
+    fighter.tw_healDebuffChance = b.healDebuffChance;
+    fighter.tw_healDebuffPct = b.healDebuffPct;
+    fighter.tw_healDebuffTurns = b.healDebuffTurns;
+    fighter.tw_healSealChance = b.healSealChance;
+    fighter.tw_healSealTurns = b.healSealTurns;
     fighter.tw_lowHpDmgPct = b.lowHpDmgPct;
     fighter.tw_lowHpAtkFlat = b.lowHpDmgAtkFlat || 0;
     fighter.tw_executeDmgPct = b.executeDmgPct;
@@ -3161,6 +3226,7 @@
     fighter.tw_deathMarkCapAdd = b.deathMarkCapAdd;
     fighter.tw_executeApRestore = b.executeApRestore;
     fighter.tw_deathMarkDmgPerStack = b.deathMarkDmgPerStack;
+    fighter.tw_deathMarkOnUltimate = b.deathMarkOnUltimate;
     fighter.tw_energyCapAdd = b.energyCapAdd;
     fighter.tw_energyThresholdOverride = b.energyThresholdOverride;
     fighter.tw_energyDmgPerStackAdd = b.energyDmgPerStackAdd;
@@ -3169,22 +3235,28 @@
     fighter.tw_energyNoConsume = b.energyNoConsume;
     fighter.tw_toxinCapAdd = b.toxinCapAdd;
     fighter.tw_toxinMaxDmgPct = b.toxinMaxDmgPct;
-    fighter.tw_toxinDurationAdd = b.toxinDurationAdd;
-    fighter.tw_toxinMythicPct = b.toxinMythicPct;
+    fighter.tw_toxinStackGainAdd = b.toxinStackGainAdd;
+    fighter.tw_toxinLifestealPct = b.toxinLifestealPct;
+    fighter.tw_toxinApDrain = b.toxinApDrain;
     fighter.tw_chipCycleReduce = b.chipCycleReduce;
     fighter.tw_chipGainAdd = b.chipGainAdd;
     fighter.tw_chipFloorPct = b.chipFloorPct;
     fighter.tw_chipNoDownside = b.chipNoDownside;
+    fighter.tw_chipDoubleUp = b.chipDoubleUp;
     fighter.tw_cookingGainAdd = b.cookingGainAdd;
     fighter.tw_cookingTurnsReduce = b.cookingTurnsReduce;
     fighter.tw_cookingPowerPct = b.cookingPowerPct;
     fighter.tw_cookingMythicBoth = b.cookingMythicBoth;
+    fighter.tw_cookingStartStacks = b.cookingStartStacks;
+    fighter.tw_cookingMythicPowerPct = b.cookingMythicPowerPct;
     // 전투 시작 시 즉시 보호막 지급 (수호의 맹세 / 낡은 갑주의 잔재 등)
     const startShieldAmt = Math.round(fighter.maxHp * (b.startShieldPct||0)) + (b.startShieldFlat||0);
     if(startShieldAmt > 0){
       fighter.passiveShield = (fighter.passiveShield||0) + startShieldAmt;
       fighter.passiveShieldTurns = 99; // 전투 종료까지 유지 (매 턴 감소 로직과 무관하게 큰 값으로 시작)
     }
+    // [무한대전타워] "즉석 요리" 전설 증강 - 조리를 시작 스택부터 시작
+    if(b.cookingStartStacks > 0) fighter.cookingStacks = b.cookingStartStacks;
   }
 
 
@@ -3193,7 +3265,7 @@
     S.mode = 'tower';
     S.difficulty = towerGetAiJudgeLevel(TS.floor);
     const meChar = TS.charId;
-    const meSkillId = getEquippedSkillId(meChar);
+    const meSkillId = TS.skillId || getEquippedSkillId(meChar); // 등반 시작 전 화면에서 고른 스킬 우선 사용
     let opChar, opSkillId;
     if(forcedOpChar){
       opChar = forcedOpChar;
@@ -3280,9 +3352,14 @@
       }
       towerSaveRun(TS);
       showToast(toastMsg);
-      // [무한대전타워] 장비 "증강 추출기" / 증강 "행운의 촉" - 확률로 보너스 증강 선택 기회
-      // (여기서 다음 층으로 넘기지 않는다 — 보너스 화면에서 카드를 고르면 그 완료 콜백이 알아서 다음 층으로 넘어간다)
-      if(Math.random() < (bonus.augmentExtractChance||0)){
+      // [무한대전타워] "뿅뿅 룰렛" 전설 증강 - 전투 승리 시마다 우사기의 룰렛을 돌릴 수 있다 (확정, 확률 아님)
+      // 장비 "증강 추출기" / 증강 "행운의 촉" - 확률로 보너스 증강 선택 기회
+      // (여기서 다음 층으로 넘기지 않는다 — 보너스 화면에서 완료되면 그 콜백이 알아서 다음 층으로 넘어간다)
+      if(bonus.usagiRouletteOnWin){
+        const blackout = document.getElementById('blackout');
+        blackout.classList.add('show');
+        setTimeout(()=> towerPlayUsagiRouletteSpin(), 650);
+      } else if(Math.random() < (bonus.augmentExtractChance||0)){
         towerOpenBonusAugmentPick();
       } else {
         towerGoToNextFloor(); // 암전 → 다음 층 자동 진행 (전투면 버튼 없이 바로 다음 전투, 상점/증강이면 해당 화면 등장)
@@ -3294,18 +3371,21 @@
 
   // 일반 패배 처리 (부활권 확인 후 없으면 런 종료) — 다카무라 결투 패배 시에도 그대로 재사용
   function towerHandleBattleLoss(){
-    if(TS.hasRevivalTicketItem && !TS.revivalTicketUsed){
-      TS.revivalTicketUsed = true;
-      TS.hp = Math.round(TS.maxHp * 0.5);
-      TS.ap = 3;
-      towerSaveRun(TS);
-      towerBlackoutThen(()=>{
-        showToast('부활권 발동! 체력 50%로 부활합니다.');
-        towerRenderShop(); // 부활 시 즉시 상점으로 이동
-      });
-    } else {
-      towerEndRun(`${TS.floor}층에서 등반이 끝났습니다.`);
-    }
+    towerOfferRevival(
+      `${TS.floor}층에서 쓰러졌습니다.`,
+      ()=>{
+        TS.hp = Math.round(TS.maxHp * 0.5);
+        TS.ap = 3;
+        towerSaveRun(TS);
+        towerBlackoutThen(()=>{
+          showToast('부활 완료! 체력 50%로 되살아납니다.');
+          towerRenderShop(); // 부활 시 즉시 상점으로 이동
+        });
+      },
+      ()=>{
+        towerEndRun(`${TS.floor}층에서 등반이 끝났습니다.`);
+      }
+    );
   }
 
   /* ============================================================
@@ -3453,13 +3533,53 @@
   }
 
   function towerShowRewardPopup(icon, title, desc, onClose){
+    const confirmBtn = document.getElementById('tower-reward-confirm-btn');
     document.getElementById('tower-reward-icon').textContent = icon;
     document.getElementById('tower-reward-title').textContent = title;
     document.getElementById('tower-reward-desc').innerHTML = desc;
+    document.getElementById('tower-reward-decline-btn').style.display = 'none'; // 부활 제안 등 이전 상태 잔재 방지
+    confirmBtn.textContent = '확인';
+    confirmBtn.disabled = false;
+    confirmBtn.style.opacity = '1';
     document.getElementById('tower-reward-popup').classList.add('show');
-    document.getElementById('tower-reward-confirm-btn').onclick = ()=>{
+    confirmBtn.onclick = ()=>{
       document.getElementById('tower-reward-popup').classList.remove('show');
       onClose();
+    };
+  }
+
+  // 죽었을 때 그 자리에서 부활 여부를 물어본다 (사전 구매가 아니라 즉시 결제). 런당 1회만 가능.
+  function towerOfferRevival(reason, onRevive, onDecline){
+    if(TS.revivalTicketUsed){ onDecline(); return; }
+    const icon = document.getElementById('tower-reward-icon');
+    const title = document.getElementById('tower-reward-title');
+    const desc = document.getElementById('tower-reward-desc');
+    const confirmBtn = document.getElementById('tower-reward-confirm-btn');
+    const declineBtn = document.getElementById('tower-reward-decline-btn');
+    const canAfford = PP >= TOWER_REVIVAL_TICKET_PRICE;
+
+    icon.textContent = '💊';
+    title.textContent = '쓰러졌습니다...';
+    desc.innerHTML = `${reason ? reason + '<br>' : ''}${TOWER_REVIVAL_TICKET_PRICE.toLocaleString()} PP를 내고 체력 50%로 부활하시겠습니까?<br><span style="color:var(--text-dim); font-size:11px;">보유 PP: ${PP.toLocaleString()}</span>`;
+    confirmBtn.textContent = canAfford ? `💊 부활하기 (${TOWER_REVIVAL_TICKET_PRICE.toLocaleString()} PP)` : 'PP 부족';
+    confirmBtn.disabled = !canAfford;
+    confirmBtn.style.opacity = canAfford ? '1' : '0.4';
+    declineBtn.style.display = 'block';
+    declineBtn.textContent = '포기하고 종료';
+    document.getElementById('tower-reward-popup').classList.add('show');
+
+    confirmBtn.onclick = ()=>{
+      if(!canAfford) return;
+      addPP(-TOWER_REVIVAL_TICKET_PRICE);
+      TS.revivalTicketUsed = true;
+      document.getElementById('tower-reward-popup').classList.remove('show');
+      declineBtn.style.display = 'none';
+      onRevive();
+    };
+    declineBtn.onclick = ()=>{
+      document.getElementById('tower-reward-popup').classList.remove('show');
+      declineBtn.style.display = 'none';
+      onDecline();
     };
   }
 
@@ -3478,14 +3598,16 @@
       towerShowRewardPopup('🍲', '만년 수프 소비!', `체력이 7로 회복되며 부활했습니다. (잔여 ${TS.eternalSoupCount}개)`, ()=> towerGoToNextFloor());
       return;
     }
-    if(TS.hasRevivalTicketItem && !TS.revivalTicketUsed){
-      TS.revivalTicketUsed = true;
-      TS.hp = Math.round(TS.maxHp * 0.5);
-      towerSaveRun(TS);
-      towerShowRewardPopup('💊', '부활권 발동!', '체력 50%로 부활했습니다.', ()=> towerRenderShop());
-      return;
-    }
-    towerEndRun(reason);
+    towerOfferRevival(
+      reason,
+      ()=>{
+        TS.hp = Math.round(TS.maxHp * 0.5);
+        towerSaveRun(TS);
+        showToast('부활 완료! 체력 50%로 되살아납니다.');
+        towerRenderShop();
+      },
+      ()=> towerEndRun(reason)
+    );
   }
 
   /* ---------- 캐릭터별 이벤트 분기 (대사가 끝나면 여기서부터 시작) ---------- */
@@ -3644,21 +3766,24 @@
     setTimeout(()=> towerPlayUsagiRouletteSpin(), 500);
   }
 
+  // 등급별 고정 확률로 하나를 뽑는다 (우사기 룰렛 전용) — 층수와 무관하게 항상 이 비율.
+  // 신화 20%, 전설 25%로 크게 올리고, 하위 등급 비중을 줄여 "저점"도 상향시켰다.
+  function towerPickUsagiRouletteAugment(pool){
+    const buckets = [ ['mythic', 0.20], ['legendary', 0.25], ['epic', 0.35], ['rare', 0.15], ['common', 0.05] ];
+    const r = Math.random();
+    let acc = 0, chosenGrade = 'common';
+    for(const [grade, pct] of buckets){
+      acc += pct;
+      if(r <= acc){ chosenGrade = grade; break; }
+    }
+    const gradePool = pool.filter(a => a.grade === chosenGrade);
+    if(gradePool.length === 0) return pool[Math.floor(Math.random() * pool.length)]; // 방어적 폴백
+    return gradePool[Math.floor(Math.random() * gradePool.length)];
+  }
+
   function towerPlayUsagiRouletteSpin(){
     const pool = towerGetAugmentPool(TS.charId); // 우사기 룰렛만 예외적으로 일반 등급도 포함 (하양 결과)
-    const floorFactor = Math.min(1, TS.floor / 30);
-    const weight = (a)=>{
-      if(a.grade==='mythic') return 0.3 + floorFactor * 1.7;
-      if(a.grade==='legendary') return 1 + floorFactor * 3;
-      if(a.grade==='epic') return 3 + floorFactor * 3;
-      if(a.grade==='rare') return Math.max(0.5, 5 - floorFactor * 2);
-      return Math.max(0.2, 3 - floorFactor * 2.5); // common — 층이 오를수록 더 희박해짐
-    };
-    const weights = pool.map(weight);
-    const total = weights.reduce((a,b)=>a+b, 0);
-    let r = Math.random() * total, idx = 0;
-    for(; idx < weights.length; idx++){ r -= weights[idx]; if(r <= 0) break; }
-    const chosen = pool[Math.min(idx, pool.length - 1)];
+    const chosen = towerPickUsagiRouletteAugment(pool);
 
     const card = document.getElementById('tower-floor-card');
     card.className = 'usagi-roulette';
@@ -6592,7 +6717,7 @@
     if(fighter.cookingTurnsLeft <= 0){
       g.pendingDishEvents.push({ side, stacks: fighter.cookingStacks, turn: g.turn });
       fighter.cookingTurnsLeft = turnsNeeded;
-      fighter.cookingStacks = 0; // 완성된 순간의 스택은 이미 이벤트에 담아뒀으니, 다음 조리는 0부터 다시 시작
+      fighter.cookingStacks = fighter.tw_cookingStartStacks||0; // [무한대전타워] "즉석 요리" 증강 - 완성된 순간의 스택은 이미 이벤트에 담아뒀으니, 다음 조리는 시작 스택부터 다시 시작
     }
   }
 
@@ -6764,7 +6889,7 @@
     }
 
     if(eaten){
-      const powerMult = 1 + (self.tw_cookingPowerPct||0); // [무한대전타워] "진수성찬" 증강 반영
+      const powerMult = 1 + (self.tw_cookingPowerPct||0) + (self.tw_cookingMythicPowerPct||0); // [무한대전타워] "진수성찬"/"만찬의 축복" 증강 반영
       const healAmt = Math.round(HACHIMI_HEAL_TABLE[stacks] * powerMult);
       self.hp = Math.min(self.maxHp, self.hp + healAmt);
       spawnPopup(side, `+${healAmt}`, 'heal');
@@ -6790,7 +6915,7 @@
         }
       }
     } else {
-      const powerMult = 1 + (self.tw_cookingPowerPct||0); // [무한대전타워] "진수성찬" 증강 반영
+      const powerMult = 1 + (self.tw_cookingPowerPct||0) + (self.tw_cookingMythicPowerPct||0); // [무한대전타워] "진수성찬"/"만찬의 축복" 증강 반영
       const target = g[oppKey];
       const targetLabel = oppKey === 'me' ? '내' : '상대';
       const dmg = applyOnHitPassive(side, Math.round(HACHIMI_DMG_TABLE[stacks] * powerMult), g, side==='me' ? 'me-act' : 'op-act');
@@ -7424,11 +7549,11 @@
     }
   }
 
-  // [파고드는 신경독] 중첩 수와 잔여 턴수를 이름 옆에 간단한 보라색 배지로 표시 (예: 🟣2 · 3턴)
+  // [파고드는 신경독] 이제 지속시간 없이 영구 지속 — 중첩 수만 표시 (예: 🟣2)
   function renderNeurotoxinBadge(entity, badgeElId){
     const badge = document.getElementById(badgeElId);
-    if(entity.neurotoxinStacks > 0 && entity.neurotoxinTurns > 0){
-      badge.textContent = `🟣${entity.neurotoxinStacks} · ${entity.neurotoxinTurns}턴`;
+    if(entity.neurotoxinStacks > 0){
+      badge.textContent = `🟣${entity.neurotoxinStacks}`;
       badge.classList.add('show');
     } else {
       badge.classList.remove('show');
@@ -7787,11 +7912,10 @@
         g[k].poisonTurns--;
         applyPoisonTick(k, g);
       }
-      // [파고드는 신경독] 처리 (중첩당 1/2/4 고정 피해, 보호막 무시 · 적중한 바로 그 턴은 카운트하지 않음)
+      // [파고드는 신경독] 이제 지속시간 없이 영구 지속 — 중첩이 남아있는 한 매 턴 계속 틱 (적중한 바로 그 턴은 건너뜀)
       if(g[k].neurotoxinJustApplied){
-        g[k].neurotoxinJustApplied = false; // 이번 턴은 건너뛰고 다음 턴부터 정상적으로 감소
-      } else if(g[k].neurotoxinTurns > 0){
-        g[k].neurotoxinTurns--;
+        g[k].neurotoxinJustApplied = false; // 이번 턴은 건너뛰고 다음 턴부터 정상적으로 진행
+      } else if(g[k].neurotoxinStacks > 0){
         applyNeurotoxinTick(k, g);
       }
       // [조리 시간] 던진 요리로 걸린 화상 처리 (매 턴 고정 피해, 보호막 무시 · 걸린 바로 그 턴은 카운트하지 않음)
@@ -7807,6 +7931,12 @@
       } else if(g[k].lifestealTurns > 0){
         g[k].lifestealTurns--;
       }
+      // [무한대전타워] 장비 "부식된 붕대" - 치유 감소/봉인 지속시간 감소
+      if(g[k].healDebuffTurns > 0){
+        g[k].healDebuffTurns--;
+        if(g[k].healDebuffTurns <= 0) g[k].healDebuffPct = 0;
+      }
+      if(g[k].healSealTurns > 0) g[k].healSealTurns--;
       // [도발] 방어/회복 봉인 지속시간 감소 (스킬을 쓴 이번 턴은 이미 즉시 무효화로 처리했으므로,
       // 봉인 자체는 다음 1턴 동안만 유지되어야 한다)
       if(g[k].actionSealJustApplied){
@@ -7839,12 +7969,14 @@
           g[k].chipTurnCounter = (g[k].chipTurnCounter||0) + 1;
           if(g[k].chipTurnCounter >= cycleLen){
             g[k].chipTurnCounter = 0;
-            const { upKey, downKey } = applyChipWorldPassive(g[k], g);
+            const { upKey, downKey, doubledUp } = applyChipWorldPassive(g[k], g);
             if(k === 'me') bumpCharStat('passiveTriggers', 1);
-            pushLog('sys', downKey
-              ? `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
-              : `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
-            g.pendingChipEffects.push({ side: k, upKey, downKey });
+            pushLog('sys', doubledUp
+              ? `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]}도 상승! (묻고 따블로 가!)`
+              : downKey
+                ? `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
+                : `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
+            g.pendingChipEffects.push({ side: k, upKey, downKey, doubledUp });
           }
         }
       }
@@ -8094,12 +8226,11 @@
     if(target.hp <= 0) return; // 이미 쓰러진 대상에게는 처리하지 않음
     const label = actorKey==='me' ? '내' : '상대';
     const cap = 3 + (actor.tw_toxinCapAdd||0); // [무한대전타워] "맹독 배양" 증강 반영
-    const duration = 3 + (actor.tw_toxinDurationAdd||0); // [무한대전타워] "독무 확산" 증강 반영
-    target.neurotoxinStacks = Math.min(cap, (target.neurotoxinStacks||0) + 1);
-    target.neurotoxinTurns = duration;
+    const gain = 1 + (actor.tw_toxinStackGainAdd||0); // [무한대전타워] "독무 확산" 증강 반영 (적중당 획득량)
+    target.neurotoxinStacks = Math.min(cap, (target.neurotoxinStacks||0) + gain);
     target.neurotoxinJustApplied = true; // 적중한 이번 턴은 틱 카운트에서 제외, 다음 턴부터 진행
     if(actorKey === 'me' && target.neurotoxinStacks >= cap) bumpCharStat('neurotoxinMaxStacks', 1);
-    pushLog(cls, `ㄴ ${label} [${passive.name}]! [신경독] 중첩 ${target.neurotoxinStacks}단계 부여 (${duration}턴, 받는 회복 50% 감소)`);
+    pushLog(cls, `ㄴ ${label} [${passive.name}]! [신경독] 중첩 ${target.neurotoxinStacks}단계 부여 (영구 지속, 받는 회복 효과 50% 감소)`);
     spawnPopup(targetKey, `🟣${target.neurotoxinStacks}`, 'poison');
   }
 
@@ -8171,32 +8302,57 @@
     const stacks = target.neurotoxinStacks||0;
     if(stacks <= 0) return;
     const label = targetKey==='me' ? '내' : '상대';
+    let totalDmg = 0;
     const dmg = towerApplyDotResist(target, NEUROTOXIN_TICK_DAMAGE[stacks] || 0);
     dealDamage(targetKey, dmg);
-    if(target.neurotoxinTurns > 0){
-      pushLog('sys', `🟣 ${label} 신경독으로 ${dmg}의 피해를 입었다 (중첩 ${stacks}, 잔여 ${target.neurotoxinTurns}턴)`);
-    } else {
-      pushLog('sys', `🟣 ${label} 신경독으로 ${dmg}의 피해를 입고, 신경독 효과가 해제되었다`);
-      target.neurotoxinStacks = 0;
+    totalDmg += dmg;
+    pushLog('sys', `🟣 ${label} 신경독으로 ${dmg}의 피해를 입었다 (중첩 ${stacks}, 영구 지속)`);
+
+    // [무한대전타워] "맹독 포화" 전설 증강 - 신경독 피해를 입을 때마다 상대 행동력 1 감소
+    const inflictorApDrain = (targetKey === 'op') ? g.me.tw_toxinApDrain : false;
+    if(inflictorApDrain && target.ap > 0){
+      target.ap = Math.max(0, target.ap - 1);
+      pushLog('sys', `🟣 ${label} [맹독 포화] 효과로 행동력이 1 줄었다`);
     }
-    // [무한대전타워] "붕괴하는 육체" 신화 증강 - 최대 중첩 상대에게 매 턴 최대체력 비례 추가 고정피해
-    if(targetKey === 'op' && g.me.tw_toxinMythicPct && target.hp > 0){
-      const cap = 3 + (g.me.tw_toxinCapAdd||0);
-      if(stacks >= cap){
-        const extraDmg = Math.max(1, Math.round(target.maxHp * g.me.tw_toxinMythicPct));
-        towerDamageSourceKey = 'me';
-        dealDamage(targetKey, extraDmg);
-        pushLog('sys', `🟣 ${label} [붕괴하는 육체] 발동! 최대체력 비례 ${extraDmg} 추가 피해`);
+
+    // [파고드는 신경독 강화] 최대 중첩 상태면 매 턴 최대체력의 10% 추가 고정피해 (기본 패시브로 승격)
+    const inflictorCapAdd = (targetKey === 'op') ? (g.me.tw_toxinCapAdd||0) : 0;
+    const cap = 3 + inflictorCapAdd;
+    if(stacks >= cap && target.hp > 0){
+      const extraDmg = Math.max(1, Math.round(target.maxHp * 0.10));
+      towerDamageSourceKey = (targetKey === 'op') ? 'me' : 'op';
+      dealDamage(targetKey, extraDmg);
+      totalDmg += extraDmg;
+      pushLog('sys', `🟣 ${label} 최대 중첩 상태! 최대체력 비례 ${extraDmg} 추가 피해`);
+    }
+
+    // [무한대전타워] "붕괴하는 육체" 신화 증강 - 신경독으로 입힌 피해의 일정 비율(100%)만큼 회복
+    const inflictorKey = (targetKey === 'op') ? 'me' : 'op';
+    const inflictor = g[inflictorKey];
+    if(inflictor.tw_toxinLifestealPct && totalDmg > 0 && inflictor.hp > 0){
+      const healAmt = Math.round(totalDmg * inflictor.tw_toxinLifestealPct);
+      if(healAmt > 0){
+        inflictor.hp = Math.min(inflictor.maxHp, inflictor.hp + healAmt);
+        pushLog('sys', `🟣 ${inflictorKey==='me'?'내':'상대'} [붕괴하는 육체] 발동! 신경독 피해로 ${healAmt} 회복`);
+        spawnPopup(inflictorKey, `+${healAmt}`, 'heal');
       }
     }
   }
 
-  // [파고드는 신경독] 활성 중에는 받는 회복 효과를 50% 감소시킨다 (소수점 버림). heal 액션과 medkit 스킬 등
-  // "자신의 체력을 직접 회복하는" 모든 효과에 공통으로 적용한다.
+  // 받는 회복 효과를 줄이거나 완전히 막는 모든 디버프를 여기서 한 번에 처리한다.
+  // [파고드는 신경독](활성 중 50% 감소), [무한대전타워] 장비 "부식된 붕대"(회복 감소/봉인)가 여기 모인다.
+  // heal 액션과 medkit 스킬, 하치미 요리 먹기 등 "자신의 체력을 직접 회복하는" 모든 효과에 공통으로 적용한다.
   function applyNeurotoxinHealPenalty(entity, amount, label, cls){
-    if((entity.neurotoxinTurns||0) <= 0) return amount;
-    const reduced = Math.floor(amount * 0.5);
-    pushLog(cls, `ㄴ 🟣 ${label} [신경독] 효과로 회복량이 절반으로 줄었다 (${amount} → ${reduced})`);
+    if((entity.healSealTurns||0) > 0){
+      pushLog(cls, `ㄴ 🩹 ${label} [치유 봉인] 효과로 회복이 완전히 무효화됐다 (${amount} → 0)`);
+      return 0;
+    }
+    let mult = 1;
+    if((entity.neurotoxinStacks||0) > 0) mult *= 0.5;
+    if((entity.healDebuffTurns||0) > 0) mult *= (1 - (entity.healDebuffPct||0));
+    if(mult >= 1) return amount;
+    const reduced = Math.floor(amount * mult);
+    pushLog(cls, `ㄴ 🩹 ${label} 회복 효과 감소로 회복량이 줄었다 (${amount} → ${reduced})`);
     return reduced;
   }
 
@@ -8274,8 +8430,15 @@
     else if(upKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + gainAmt; }
     else if(upKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + gainAmt; }
 
-    if(entity.tw_chipNoDownside){ // [무한대전타워] "무한 확률" 증강 - 하락 스탯 자체가 사라짐
+    if(entity.tw_chipNoDownside){ // (구) "무한 확률" 증강 - 하락 스탯 자체가 사라짐
       return { upKey, downKey: null };
+    }
+    if(entity.tw_chipDoubleUp){ // [무한대전타워] "묻고 따블로 가!" 신화 증강 - 하락 대신 또 다른 상승
+      if(downKey === 'maxHp'){ entity.maxHp += gainAmt; entity.hp = Math.min(entity.maxHp, entity.hp + gainAmt); }
+      else if(downKey === 'atk'){ entity.atkBonus = (entity.atkBonus||0) + gainAmt; }
+      else if(downKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + gainAmt; }
+      else if(downKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + gainAmt; }
+      return { upKey, downKey, doubledUp: true };
     }
 
     const baseVal = downKey === 'maxHp' ? base.hp : base[downKey];
@@ -8381,6 +8544,15 @@
       target.poisonJustApplied = true;
       pushLog(cls, `ㄴ ${actorLabel} [독기] 발동! 상대에게 중독을 부여했다`);
     }
+    // [무한대전타워] 장비 "부식된 붕대" - 적중 시 확률로 상대 회복 효과 감소, 고티어는 완전 봉인까지
+    if(actor.tw_healSealChance && Math.random() < actor.tw_healSealChance){
+      target.healSealTurns = Math.max(target.healSealTurns||0, actor.tw_healSealTurns||1);
+      pushLog(cls, `ㄴ ${actorLabel} [부식된 붕대] 발동! 상대의 회복을 ${target.healSealTurns}턴간 완전히 봉인했다`);
+    } else if(actor.tw_healDebuffChance && Math.random() < actor.tw_healDebuffChance){
+      target.healDebuffTurns = Math.max(target.healDebuffTurns||0, actor.tw_healDebuffTurns||2);
+      target.healDebuffPct = Math.max(target.healDebuffPct||0, actor.tw_healDebuffPct||0.3);
+      pushLog(cls, `ㄴ ${actorLabel} [부식된 붕대] 발동! 상대의 회복 효과를 ${Math.round(target.healDebuffPct*100)}% 감소시켰다 (${target.healDebuffTurns}턴)`);
+    }
     return amount;
   }
 
@@ -8468,21 +8640,28 @@
           dealDamage(targetKey, dmg);
           pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]이 방어를 격파! ${dmg} 피해`);
           applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "일격 적중" 트리거
+          if(actor.tw_deathMarkOnUltimate) applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [무한대전타워] "찰나의 순간" 증강 반영
         } else {
           const dmg = applyOnHitPassive(actorKey, dmgBase, g, cls);
           dealDamage(targetKey, dmg);
           pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]! ${dmg} 피해`);
           applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "일격 적중" 트리거
+          if(actor.tw_deathMarkOnUltimate) applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [무한대전타워] "찰나의 순간" 증강 반영
         }
         break;
       }
       case 'double_strike': {
         // 이 스킬은 [공격] 판정을 가지므로, 방어/공격 관련 패시브([요정날개], [결단일섬] 등)가 그대로 발동한다
-        if(target.defended){
+        // [무한대전타워] "기습" 증강 - 전투 첫 턴엔 방어를 무시하고 100% 적중 (일반 공격과 동일하게 적용)
+        const pierceDefense = target.defended && actor.tw_firstTurnPierce && g.turn === 1;
+        if(target.defended && !pierceDefense){
           spawnPopup(targetKey, 'BLOCK', 'block');
           pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]이 상대 방어에 모두 막혔다`);
           applyBlockPassive(targetKey, g, cls); // [요정날개] 등 "방어로 공격을 받아쳐냄" 트리거
           break;
+        }
+        if(pierceDefense){
+          pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]이 방어를 무시하고 명중했다!`);
         }
         for(let i=1; i<=skill.hits; i++){
           if(target.hp <= 0) break; // 이미 쓰러진 대상에게는 남은 타격을 넣지 않음
@@ -8547,13 +8726,15 @@
         // [우사기] 전용: 이 스킬을 쓰면 자기 패시브 [뿅뿅 바니 칩월드]도 함께 발동한다
         const actorPassive = CHARACTERS[actor.charKey].passive;
         if(actorPassive && actorPassive.id === 'chip_world'){
-          const { upKey, downKey } = applyChipWorldPassive(actor, g);
+          const { upKey, downKey, doubledUp } = applyChipWorldPassive(actor, g);
           actor.chipTurnCounter = 0; // 방금 수동으로 발동시켰으니 자동 발동 타이밍도 여기서부터 다시 센다
           if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
-          pushLog(cls, downKey
-            ? `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
-            : `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
-          g.pendingChipEffects.push({ side: actorKey, upKey, downKey });
+          pushLog(cls, doubledUp
+            ? `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]}도 상승! (묻고 따블로 가!)`
+            : downKey
+              ? `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
+              : `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
+          g.pendingChipEffects.push({ side: actorKey, upKey, downKey, doubledUp });
         }
         break;
       }
@@ -8653,6 +8834,7 @@
         pushLog(cls, `ㄴ ${actorLabel} 일격이 방어를 격파! ${dmg} 피해`);
         if(actorKey === 'me'){ bumpCharStat('ultimateHits', 1); if(hadFullEnergy) bumpCharStat('energyUltimates', 1); }
         applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "일격 적중" 트리거
+        if(actor.tw_deathMarkOnUltimate) applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [무한대전타워] "찰나의 순간" 증강 반영
       } else {
         const base = Math.max(0, getEffectiveUltimate(actor) - (actor.dmgDebuff||0)) + energyBonus;
         const dmg = applyOnHitPassive(actorKey, base, g, cls);
@@ -8660,6 +8842,7 @@
         pushLog(cls, `ㄴ ${actorLabel} 일격! ${dmg} 피해`);
         if(actorKey === 'me'){ bumpCharStat('ultimateHits', 1); if(hadFullEnergy) bumpCharStat('energyUltimates', 1); }
         applyNeurotoxinOnHit(actorKey, targetKey, g, cls); // [파고드는 신경독] 등 "일격 적중" 트리거
+        if(actor.tw_deathMarkOnUltimate) applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [무한대전타워] "찰나의 순간" 증강 반영
       }
     } else if(actorAct==='counter'){
       if(targetAct==='ultimate'){
