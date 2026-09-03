@@ -1025,6 +1025,17 @@
     font-family:'Black Han Sans',sans-serif; font-size:28px; text-align:center; padding:0 20px;
     text-shadow:0 0 20px currentColor;
   }
+  .tower-rainbow-text{
+    background:linear-gradient(90deg, #FF5252, #FFD54F, #4ADE80, #4FC3F7, #C084FC, #FF5252);
+    background-size:400% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:towerRainbowShift 2s linear infinite;
+    text-shadow:none !important;
+  }
+  @keyframes towerRainbowShift{
+    0%{ background-position:0% 50%; }
+    100%{ background-position:400% 50%; }
+  }
   @keyframes towerPopIn{
     from{ opacity:0; transform:translateY(36px) scale(.98); }
     to{ opacity:1; transform:translateY(0) scale(1); }
@@ -1087,6 +1098,20 @@
   .tower-item-soldout-badge{
     width:100%; margin-top:4px; padding:9px 4px; border-radius:10px;
     background:#FF5252; color:#1a0505; font-weight:900; font-size:12px; letter-spacing:1px;
+  }
+  .tower-item-card.tower-item-artifact{
+    position:relative; overflow:hidden;
+    border-color:#FFD54F; border-width:2px;
+    background:linear-gradient(160deg, rgba(255,213,79,0.12), rgba(255,82,82,0.08));
+    animation:towerArtifactGlow 1.8s ease-in-out infinite;
+  }
+  @keyframes towerArtifactGlow{
+    0%,100%{ box-shadow:0 0 10px rgba(255,213,79,0.35), inset 0 0 0 1px rgba(255,213,79,0.3); }
+    50%{ box-shadow:0 0 22px rgba(255,213,79,0.75), inset 0 0 0 1px rgba(255,213,79,0.6); }
+  }
+  .tower-item-artifact-badge{
+    position:absolute; top:6px; right:6px; background:linear-gradient(135deg,#FFD54F,#FF5252);
+    color:#1a0505; font-size:9px; font-weight:900; padding:2px 7px; border-radius:6px; letter-spacing:.5px;
   }
   .tower-price-tag{
     font-family:'JetBrains Mono',monospace; font-weight:800; letter-spacing:.3px;
@@ -2473,7 +2498,10 @@
   const TOWER_HP_HEAL_PRICE_PER_POINT = 3;
   const TOWER_AP_CHARGE_PRICE_PER_POINT = 12;
   const TOWER_REVIVAL_TICKET_PRICE = 1800;
-  function towerGetSellPrice(tier){ return Math.floor(TOWER_EQUIP_TIER_PRICE[tier] * TOWER_EQUIP_SELL_RATIO); }
+  function towerGetSellPrice(tier){
+    if(tier === 5) return TOWER_ARTIFACT_SELL_PRICE;
+    return Math.floor(TOWER_EQUIP_TIER_PRICE[tier] * TOWER_EQUIP_SELL_RATIO);
+  }
 
   /* ---------- 장비 카탈로그 (무기/방어구/장신구, 각 4티어) ---------- */
   const TOWER_EQUIPMENT = {
@@ -2594,9 +2622,56 @@
     clockwork_charm:'⏱️', merchant_scale:'⚖️', resewn_time:'🧵', waning_moon_shard:'🌙', rewound_thread:'🧶',
     skill_grimoire:'📖', augment_extractor:'🎲', corroded_bandage:'🩹',
   };
-  function towerGetEquipEmoji(key){ return TOWER_EQUIP_EMOJI[key] || '📦'; }
+
+  // T5 아티팩트 — 일반 티어 체계 밖에 있는 극희귀 등급. T4 장비 3개를 융합해야만 확률적으로 나오며,
+  // 상점(리롤 포함)에서도 아주 낮은 확률로 등장할 수 있다. 전부 "이 게임을 뒤집는" 수준의 파격 효과.
+  const TOWER_ARTIFACTS = {
+    sun_memory: {
+      name:'태양의 기억', emoji:'☀️',
+      desc:'가하는 피해가 100% 증폭된다.',
+      effects:{ allDmgMultPct:1.0 },
+    },
+    sea_hymn: {
+      name:'바다의 찬가', emoji:'🌊',
+      desc:'모든 행동(공격/방어/회복/일격/카운터/컴뱃스킬)이 행동력을 소모하지 않는다.',
+      effects:{ allActionsFree:true },
+    },
+    hear_no_evil: {
+      name:'보고 싶지 않고, 듣고 싶지 않고, 말하고 싶지 않은 아이', emoji:'🙈',
+      desc:'[공격]과 [일격]이 상대의 [방어]와 [카운터]를 전부 무시한다.',
+      effects:{ alwaysPierce:true },
+    },
+    suddenly_one_day: {
+      name:'어느 날 갑자기', emoji:'🪳',
+      desc:'행동력이 항상 8로 고정된다. [바다의 찬가]를 함께 보유하면, 보유 행동력 1당 가하는 피해가 20% 증폭된다.',
+      effects:{ apFixedValue:8 },
+    },
+    silver_wing: {
+      name:'은빛날개', emoji:'🦋',
+      desc:'받는 모든 피해가 50% 감소한다.',
+      effects:{ dmgReducePct:0.50 },
+    },
+  };
+  const TOWER_ARTIFACT_NAMES = Object.values(TOWER_ARTIFACTS).map(a=>a.name);
+  const TOWER_ARTIFACT_SELL_PRICE = 2500; // 융합/상점 외엔 구할 방법이 없는 만큼 판매가도 파격적으로
+  const TOWER_ARTIFACT_PRICE = 1000; // 상점에서 직접 뜨는 경우의 구매가
+  const TOWER_ARTIFACT_SHOP_CHANCE = 0.02; // 상점 슬롯 하나당 T5가 대신 뜰 확률 (리롤 포함)
+
+  function towerGetArtifactByName(name){
+    return Object.values(TOWER_ARTIFACTS).find(a=>a.name===name) || null;
+  }
+  function towerGetArtifactKeyByName(name){
+    const found = Object.entries(TOWER_ARTIFACTS).find(([,v])=>v.name===name);
+    return found ? found[0] : null;
+  }
+
+  function towerGetEquipEmoji(key){ return TOWER_EQUIP_EMOJI[key] || TOWER_ARTIFACTS[key]?.emoji || '📦'; }
 
   function towerGetEquipData(name, tier){
+    if(tier === 5){
+      const artifact = towerGetArtifactByName(name);
+      return artifact ? { tier:5, desc:artifact.desc, effects:artifact.effects } : null;
+    }
     const entry = Object.values(TOWER_EQUIPMENT).find(e=>e.name===name);
     if(!entry) return null;
     return entry.tiers.find(t=>t.tier===tier) || null;
@@ -2609,7 +2684,7 @@
     { id:'g_hp_pct', name:'생명의 그릇', grade:'common', desc:'최대체력 +5% (곱연산 누적)', effects:{maxHpPct:0.05} },
     { id:'g_start_shield', name:'수호의 맹세', grade:'common', desc:'전투 시작 시 최대체력의 5%만큼 보호막', effects:{startShieldPct:0.05} },
     { id:'g_lowhp_dmg', name:'뒷심', grade:'rare', desc:'체력 30% 이하일 때 모든 스킬 피해 +20%', effects:{lowHpDmgPct:0.20} },
-    { id:'g_undying', name:'불굴', grade:'epic', desc:'전투당 1회, 치명적 피해를 받아도 체력 1로 생존', effects:{undyingCount:1} },
+    { id:'g_undying', name:'불굴', grade:'epic', desc:'전투당 1회, 치명적 피해를 받아도 체력 1로 생존 (최대 3중첩)', effects:{undyingCount:1}, stackCap:3 },
     { id:'g_atk_up', name:'예리함', grade:'common', desc:'[공격] 피해 +1', effects:{atkAdd:1} },
     { id:'g_ult_up', name:'일격의 무게', grade:'rare', desc:'[일격] 피해 +4, 격파 수치 +3', effects:{ultimateAdd:4, ultimateBreakAdd:3} },
     { id:'g_poison_proc', name:'독기', grade:'rare', desc:'[공격] 적중 시 25% 확률로 2턴 지속피해 1', effects:{poisonProcChance:0.25} },
@@ -2625,6 +2700,24 @@
     { id:'g_shop_discount', name:'상인의 눈', grade:'rare', desc:'상점 아이템 가격 10% 할인', effects:{shopDiscountPct:0.10} },
     { id:'g_skill_power', name:'숙련된 손놀림', grade:'rare', desc:'컴뱃스킬 효과/피해량 +20%', effects:{skillPowerPct:0.20} },
     { id:'g_extractor_luck', name:'행운의 촉', grade:'epic', desc:'전투 승리 시 15% 확률로 추가 증강 선택 기회 획득', effects:{augmentExtractChance:0.15} },
+    // ---- 전설(노랑) ----
+    { id:'gl_giant_heart', name:'거인의 심장', grade:'legendary', desc:'최대체력 +100', effects:{maxHpAdd:100} },
+    { id:'gl_undying_will', name:'불멸의 의지', grade:'legendary', desc:'전투당 3회, 치명적 피해를 받아도 체력 1로 생존', effects:{undyingCount:3} },
+    { id:'gl_tyrant_strike', name:'폭군의 일격', grade:'legendary', desc:'[일격] 피해 +35, 격파 수치 +20', effects:{ultimateAdd:35, ultimateBreakAdd:20} },
+    { id:'gl_berserker_start', name:'광전사의 첫걸음', grade:'legendary', desc:'전투 첫 턴엔 방어를 무시하고 100% 적중, 체력 30% 이하일 때 모든 스킬 피해 +50%', effects:{firstTurnPierce:true, lowHpDmgPct:0.50} },
+    { id:'gl_judge', name:'심판자', grade:'legendary', desc:'체력 20% 이하인 적에게 주는 피해 +70%', effects:{executeDmgPct:0.70} },
+    { id:'gl_platinum_hand', name:'백금의 손', grade:'legendary', desc:'층 클리어 시 타워 코인 획득량 +80%', effects:{coinPct:0.80} },
+    { id:'gl_steel_heart', name:'강철 심장', grade:'legendary', desc:'전투 시작 시 최대체력의 25%만큼 보호막, [방어] 성공 시 보호막 +5', effects:{startShieldPct:0.25, defendShieldAdd:5} },
+    { id:'gl_mastery', name:'절대 숙련', grade:'legendary', desc:'컴뱃스킬 효과/피해량 +100%, 전투당 사용 횟수 +1', effects:{skillPowerPct:1.0, skillUsesAdd:1} },
+    // ---- 신화(빨강) ----
+    { id:'gm_titan_heart', name:'거신의 심장', grade:'mythic', desc:'최대체력이 100% 증가한다 (사실상 2배)', effects:{maxHpPct:1.0} },
+    { id:'gm_immortal', name:'불멸자', grade:'mythic', desc:'전투당 1회, 죽음 직전 최대체력의 100%로 부활한다', effects:{undyingHpPct:1.0} },
+    { id:'gm_destroyer_seal', name:'파괴신의 인장', grade:'mythic', desc:'가하는 모든 피해가 50% 증가한다', effects:{allDmgMultPct:0.50} },
+    { id:'gm_time_thief', name:'시간 도둑', grade:'mythic', desc:'매 턴 종료 시 행동력을 2 회복한다', effects:{apRegenPerTurn:2} },
+    { id:'gm_regen_seal', name:'재생의 인장', grade:'mythic', desc:'매 턴 종료 시 최대체력의 8%를 회복한다', effects:{hpRegenPct:0.08} },
+    { id:'gm_coronation', name:'처형자의 대관식', grade:'mythic', desc:'체력 20% 이하인 적에게 주는 피해 +150%', effects:{executeDmgPct:1.5} },
+    { id:'gm_infinite_wealth', name:'무한한 부', grade:'mythic', desc:'층 클리어 시 타워 코인 획득량 +200%', effects:{coinPct:2.0} },
+    { id:'gm_madness_first', name:'광기의 첫수', grade:'mythic', desc:'전투 첫 턴엔 방어를 무시하고 100% 적중, 전투 시작 시 행동력 +5', effects:{firstTurnPierce:true, startApAdd:5} },
   ];
 
   // 캐릭터 전용 증강 (해당 캐릭터로 플레이할 때만 후보 풀에 등장, 중복 픽 가능)
@@ -2694,8 +2787,15 @@
     return TOWER_AUGMENTS_GENERAL.concat(charAug);
   }
 
+  // 선택 화면(리롤 포함)에 실제로 등장시킬 후보만 추린다 — stackCap이 있는 증강은 이미 그만큼
+  // 다 채웠으면(예: 불굴 3중첩) 더 이상 뽑히지 않는다. 보유 증강 열람 등 "이미 가진 걸 보여주는" 용도로는
+  // 계속 towerGetAugmentPool을 그대로 쓰고, 이 함수는 "새로 고를 수 있는 후보"에만 쓴다.
+  function towerGetSelectableAugmentPool(charId){
+    return towerGetAugmentPool(charId).filter(a => !a.stackCap || (TS.augments[a.id]||0) < a.stackCap);
+  }
+
   function towerRollAugmentChoices(charId, floor){
-    const pool = towerGetAugmentPool(charId);
+    const pool = towerGetSelectableAugmentPool(charId);
     // 층이 오를수록 전부 상승하되, 전설/신화도 이제 눈에 띄게 자주 뜨도록 크게 올렸다 (신화가 더 희박함은 유지)
     const weight = (a)=>{
       if(a.grade==='mythic') return 0.18 + Math.min(0.35, floor * 0.012);
@@ -2730,6 +2830,8 @@
     return { ok:true, equipment:remaining };
   }
 
+  const TOWER_ARTIFACT_FUSE_CHANCE = 1.0; // T4 3개 융합 시 T5 아티팩트가 나올 확률 (T4 모으기+융합 자체가 이미 큰 진입장벽이라 확정 지급)
+
   function towerFuseEquipment(equipmentList, indices){
     if(indices.length !== 3) return { ok:false, reason:'정확히 3개를 선택해야 합니다.' };
     const items = indices.map(i => equipmentList[i]);
@@ -2739,6 +2841,12 @@
     if(tiers.size !== 1) return { ok:false, reason:'같은 티어의 장비끼리만 융합할 수 있습니다.' };
     const tier = items[0].tier;
     const remaining = equipmentList.filter((_, i) => !indices.includes(i));
+    // T4 장비 3개를 융합하면, 아주 낮은 확률로 T5 아티팩트가 대신 나온다
+    if(tier === 4 && Math.random() < TOWER_ARTIFACT_FUSE_CHANCE){
+      const artifactName = TOWER_ARTIFACT_NAMES[Math.floor(Math.random() * TOWER_ARTIFACT_NAMES.length)];
+      remaining.push({ name:artifactName, tier:5 });
+      return { ok:true, equipment:remaining, gotArtifact:true };
+    }
     const randomName = TOWER_EQUIPMENT_NAMES[Math.floor(Math.random() * TOWER_EQUIPMENT_NAMES.length)];
     remaining.push({ name:randomName, tier });
     return { ok:true, equipment:remaining };
@@ -2756,6 +2864,13 @@
     const keys = Object.keys(TOWER_EQUIPMENT);
     const lineup = [];
     for(let i=0;i<4;i++){
+      // 아주 낮은 확률로 T5 아티팩트가 일반 아이템 대신 등장한다 (리롤 시에도 매번 이 확률이 적용됨)
+      if(Math.random() < TOWER_ARTIFACT_SHOP_CHANCE){
+        const artifactName = TOWER_ARTIFACT_NAMES[Math.floor(Math.random() * TOWER_ARTIFACT_NAMES.length)];
+        const artifactKey = towerGetArtifactKeyByName(artifactName);
+        lineup.push({ key:artifactKey, name:artifactName, category:'artifact', tier:5, price:TOWER_ARTIFACT_PRICE });
+        continue;
+      }
       const key = keys[Math.floor(Math.random()*keys.length)];
       const entry = TOWER_EQUIPMENT[key];
       const availableTiers = entry.tiers.map(t=>t.tier);
@@ -3079,6 +3194,8 @@
       autoShieldHp:0, autoShieldCount:0, dotResistPct:0, dotImmuneChance:0, undyingCount:0,
       skillPowerPct:0, augmentExtractChance:0,
       healDebuffChance:0, healDebuffPct:0, healDebuffTurns:0, healSealChance:0, healSealTurns:0,
+      undyingHpPct:0, allDmgMultPct:0, apRegenPerTurn:0, hpRegenPct:0,
+      allActionsFree:false, alwaysPierce:false, apFixedValue:0, dmgReducePct:0,
       // 캐릭터 전용
       critTrackBonus:0, critTrackReq:0, critTrackBleed:0, critTrackTrueDmgPct:0,
       oneUpExtra:0, oneUpHpPct:0, oneUpFinalBlow:0, oneUpCounterDmg:0,
@@ -3127,6 +3244,12 @@
       if(e.dotImmuneChance) b.dotImmuneChance = Math.max(b.dotImmuneChance, e.dotImmuneChance);
       if(e.healShield) b.healShield += e.healShield;
       if(e.skillUsesBonus) {} // 위에서 처리됨
+      // T5 아티팩트 전용 효과
+      if(e.allDmgMultPct) b.allDmgMultPct += e.allDmgMultPct;
+      if(e.allActionsFree) b.allActionsFree = true;
+      if(e.alwaysPierce) b.alwaysPierce = true;
+      if(e.apFixedValue) b.apFixedValue = Math.max(b.apFixedValue, e.apFixedValue);
+      if(e.dmgReducePct) b.dmgReducePct = Math.max(b.dmgReducePct, e.dmgReducePct);
     });
     const pool = towerGetAugmentPool(TS.charId);
     Object.keys(TS.augments).forEach(id=>{
@@ -3155,6 +3278,10 @@
       if(e.counterShieldAdd) b.counterShieldAdd += e.counterShieldAdd * stack;
       if(e.skillPowerPct) b.skillPowerPct += e.skillPowerPct * stack;
       if(e.augmentExtractChance) b.augmentExtractChance = Math.max(b.augmentExtractChance, e.augmentExtractChance);
+      if(e.undyingHpPct) b.undyingHpPct = Math.max(b.undyingHpPct, e.undyingHpPct);
+      if(e.allDmgMultPct) b.allDmgMultPct += e.allDmgMultPct * stack;
+      if(e.apRegenPerTurn) b.apRegenPerTurn += e.apRegenPerTurn * stack;
+      if(e.hpRegenPct) b.hpRegenPct += e.hpRegenPct * stack;
       // 캐릭터 전용
       if(e.critTrackBonus) b.critTrackBonus += e.critTrackBonus * stack;
       if(e.critTrackReq) b.critTrackReq += e.critTrackReq * stack;
@@ -3209,6 +3336,14 @@
     fighter.tw_healDebuffTurns = b.healDebuffTurns;
     fighter.tw_healSealChance = b.healSealChance;
     fighter.tw_healSealTurns = b.healSealTurns;
+    fighter.tw_undyingHpPct = b.undyingHpPct;
+    fighter.tw_allDmgMultPct = b.allDmgMultPct;
+    fighter.tw_apRegenPerTurn = b.apRegenPerTurn;
+    fighter.tw_hpRegenPct = b.hpRegenPct;
+    fighter.tw_allActionsFree = b.allActionsFree;
+    fighter.tw_alwaysPierce = b.alwaysPierce;
+    fighter.tw_apFixedValue = b.apFixedValue;
+    fighter.tw_dmgReducePct = b.dmgReducePct;
     fighter.tw_lowHpDmgPct = b.lowHpDmgPct;
     fighter.tw_lowHpAtkFlat = b.lowHpDmgAtkFlat || 0;
     fighter.tw_executeDmgPct = b.executeDmgPct;
@@ -3312,6 +3447,7 @@
     g.me.ultimateBonus = bonus.ultimate;
     g.me.skillMaxUses = 1 + skillBonusFromFloor + bonus.skillUses;
     towerApplyBonusesToFighter(g.me, bonus);
+    if(bonus.apFixedValue) g.me.ap = bonus.apFixedValue; // [무한대전타워] "어느 날 갑자기" 아티팩트 - 전투 시작부터 고정값
     // [무한대전타워] 베리 이벤트 등에서 얻은 "영구 보호막" - 깨지기 전까지 층을 넘어도 유지
     if(TS.persistentShieldHp > 0){
       g.me.passiveShield = (g.me.passiveShield||0) + TS.persistentShieldHp;
@@ -3643,7 +3779,8 @@
   // 스피어: 선택 없음 — 무작위 보라색(영웅) 등급 증강 하나 즉시 지급
   function towerResolveSpearEvent(){
     const pool = TOWER_AUGMENTS_GENERAL.filter(a => a.grade === 'epic')
-      .concat(towerGetAugmentPool(TS.charId).filter(a => a.grade === 'epic'));
+      .concat(towerGetAugmentPool(TS.charId).filter(a => a.grade === 'epic'))
+      .filter(a => !a.stackCap || (TS.augments[a.id]||0) < a.stackCap);
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     TS.augments[chosen.id] = (TS.augments[chosen.id] || 0) + 1;
     towerSaveRun(TS);
@@ -3712,7 +3849,9 @@
         towerShowRewardPopup('🛠️', 'T4 장비 획득!', `${piece.name} (T4)`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
       });
     } else if(roll < 0.8){ // 영웅~신화 증강
-      const pool = towerGetAugmentPool(TS.charId).filter(a => a.grade==='epic' || a.grade==='legendary' || a.grade==='mythic');
+      const pool = towerGetAugmentPool(TS.charId)
+        .filter(a => a.grade==='epic' || a.grade==='legendary' || a.grade==='mythic')
+        .filter(a => !a.stackCap || (TS.augments[a.id]||0) < a.stackCap);
       const chosen = pool[Math.floor(Math.random() * pool.length)];
       TS.augments[chosen.id] = (TS.augments[chosen.id] || 0) + 1;
       towerSaveRun(TS);
@@ -3742,7 +3881,9 @@
   function towerResolveWekleinChoice(yes){
     if(yes){
       towerSetEventLines(['...', '그래.', '알려줘서... 고맙군.'], ()=>{
-        const pool = towerGetAugmentPool(TS.charId).filter(a => a.grade === 'epic');
+        const pool = towerGetAugmentPool(TS.charId)
+          .filter(a => a.grade === 'epic')
+          .filter(a => !a.stackCap || (TS.augments[a.id]||0) < a.stackCap);
         const picks = [];
         for(let i=0;i<2 && pool.length>0;i++) picks.push(pool[Math.floor(Math.random()*pool.length)]);
         picks.forEach(p=>{ TS.augments[p.id] = (TS.augments[p.id]||0) + 1; });
@@ -3798,9 +3939,13 @@
     return gradePool[Math.floor(Math.random() * gradePool.length)];
   }
 
+  const TOWER_USAGI_ARTIFACT_CHANCE = 0.01; // 우사기 룰렛에서 T5 아티팩트가 나올 확률
+
   function towerPlayUsagiRouletteSpin(){
-    const pool = towerGetAugmentPool(TS.charId); // 우사기 룰렛만 예외적으로 일반 등급도 포함 (하양 결과)
+    const isArtifactRoll = Math.random() < TOWER_USAGI_ARTIFACT_CHANCE;
+    const pool = towerGetSelectableAugmentPool(TS.charId); // 우사기 룰렛만 예외적으로 일반 등급도 포함 (하양 결과)
     const chosen = towerPickUsagiRouletteAugment(pool);
+    const chosenArtifactName = isArtifactRoll ? TOWER_ARTIFACT_NAMES[Math.floor(Math.random() * TOWER_ARTIFACT_NAMES.length)] : null;
 
     const card = document.getElementById('tower-floor-card');
     card.className = 'usagi-roulette';
@@ -3817,17 +3962,33 @@
       spins++;
       if(spins >= maxSpins){
         clearInterval(spinInterval);
-        nameEl.textContent = `🎉 ${chosen.name}`;
-        nameEl.style.color = TOWER_USAGI_GRADE_COLOR[chosen.grade];
-        TS.augments[chosen.id] = (TS.augments[chosen.id] || 0) + 1;
-        towerSaveRun(TS);
-        setTimeout(()=>{
-          card.style.opacity = '0';
+        if(isArtifactRoll){
+          // [무한대전타워] T5 아티팩트 당첨 — 무지개색으로 확실하게 티를 낸다
+          nameEl.textContent = `🌈 ${chosenArtifactName}`;
+          nameEl.classList.add('tower-rainbow-text');
+          TS.equipment.push({ name:chosenArtifactName, tier:5 });
+          towerSaveRun(TS);
+          const artifact = towerGetArtifactByName(chosenArtifactName);
           setTimeout(()=>{
-            document.getElementById('blackout').classList.remove('show');
-            towerShowRewardPopup('🎰', '룰렛 대박!', `<b style="color:${TOWER_USAGI_GRADE_COLOR[chosen.grade]}">${chosen.name}</b><br>${chosen.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
-          }, 400);
-        }, 900);
+            card.style.opacity = '0';
+            setTimeout(()=>{
+              document.getElementById('blackout').classList.remove('show');
+              towerShowRewardPopup('🌈', 'T5 아티팩트 당첨!!', `<b class="tower-rainbow-text">${chosenArtifactName}</b><br>${artifact.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+            }, 400);
+          }, 900);
+        } else {
+          nameEl.textContent = `🎉 ${chosen.name}`;
+          nameEl.style.color = TOWER_USAGI_GRADE_COLOR[chosen.grade];
+          TS.augments[chosen.id] = (TS.augments[chosen.id] || 0) + 1;
+          towerSaveRun(TS);
+          setTimeout(()=>{
+            card.style.opacity = '0';
+            setTimeout(()=>{
+              document.getElementById('blackout').classList.remove('show');
+              towerShowRewardPopup('🎰', '룰렛 대박!', `<b style="color:${TOWER_USAGI_GRADE_COLOR[chosen.grade]}">${chosen.name}</b><br>${chosen.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+            }, 400);
+          }, 900);
+        }
       }
     }, 70);
   }
@@ -3883,7 +4044,8 @@
 
   function towerGetEquipKeyByName(name){
     const found = Object.entries(TOWER_EQUIPMENT).find(([,v])=>v.name===name);
-    return found ? found[0] : null;
+    if(found) return found[0];
+    return towerGetArtifactKeyByName(name);
   }
 
   function towerRerollShop(){
@@ -3948,9 +4110,11 @@
     const itemCardsHtml = TS_pendingShopLineup.map((item, idx)=>{
       const finalPrice = Math.max(1, Math.round(item.price * priceMult * (1 - discount)));
       const desc = (towerGetEquipData(item.name, item.tier)||{}).desc || '';
+      const isArtifact = item.tier === 5;
+      const artifactClass = isArtifact ? ' tower-item-artifact' : '';
       if(item.sold){
         return `
-          <div class="tower-item-card tower-item-soldout">
+          <div class="tower-item-card tower-item-soldout${artifactClass}">
             <div class="tower-item-emoji titem-emoji-${idx}">${towerGetEquipEmoji(item.key)}</div>
             <div class="tower-item-name titem-name-${idx}">${item.name}</div>
             <div class="tower-item-tier titem-tier-${idx}">T${item.tier}</div>
@@ -3960,7 +4124,8 @@
         `;
       }
       return `
-        <div class="tower-item-card">
+        <div class="tower-item-card${artifactClass}">
+          ${isArtifact ? '<div class="tower-item-artifact-badge">T5</div>' : ''}
           <div class="tower-item-emoji titem-emoji-${idx}">${towerGetEquipEmoji(item.key)}</div>
           <div class="tower-item-name titem-name-${idx}">${item.name}</div>
           <div class="tower-item-tier titem-tier-${idx}">T${item.tier}</div>
@@ -4151,8 +4316,9 @@
           ? (isActive ? `<div class="tbi-active-badge">적용 중</div>` : `<div class="tbi-inactive-badge">미적용</div>`)
           : '';
         const effectDesc = (towerGetEquipData(e.name, e.tier)||{}).desc || '';
+        const artifactClass = e.tier === 5 ? ' tower-item-artifact' : '';
         return `
-          <div class="tower-bag-item${selected ? ' selected' : ''}${activeClass}" data-idx="${idx}">
+          <div class="tower-bag-item${selected ? ' selected' : ''}${activeClass}${artifactClass}" data-idx="${idx}">
             ${activeBadge}
             <div class="tbi-emoji">${towerGetEquipEmoji(key)}</div>
             <div class="tbi-name">${e.name}</div>
@@ -4230,9 +4396,15 @@
       if(!result.ok){ showToast(result.reason); return; }
       TS.equipment = result.equipment;
       towerSaveRun(TS);
-      showToast('융합 완료!');
       towerCloseBag();
-      renderTowerShopContent();
+      if(result.gotArtifact){
+        const gained = result.equipment[result.equipment.length - 1];
+        const artifact = towerGetArtifactByName(gained.name);
+        towerShowRewardPopup('✨', 'T5 아티팩트 융합 성공!!', `<b style="color:#FFD54F;">${gained.name}</b><br>${artifact.desc}`, ()=> renderTowerShopContent());
+      } else {
+        showToast('융합 완료!');
+        renderTowerShopContent();
+      }
     }
   });
 
@@ -4257,7 +4429,7 @@
 
   // 0층 스타터팩 전용 후보 생성 — 전설/신화는 아예 등장하지 않고, 공용+캐릭터전용 증강 중에서만 고른다
   function towerRollStarterChoices(charId){
-    const pool = towerGetAugmentPool(charId).filter(a => a.grade !== 'legendary' && a.grade !== 'mythic');
+    const pool = towerGetSelectableAugmentPool(charId).filter(a => a.grade !== 'legendary' && a.grade !== 'mythic');
     const weight = (a)=> a.grade==='epic' ? 2 : a.grade==='rare' ? 1.5 : 1;
     const picks = [];
     const poolCopy = pool.slice();
@@ -4398,8 +4570,8 @@
     if(btn) btn.disabled = true;
     const newChoices = TS_starterPackActive ? towerRollStarterChoices(TS.charId) : towerRollAugmentChoices(TS.charId, TS.floor);
     const pool = TS_starterPackActive
-      ? towerGetAugmentPool(TS.charId).filter(a => a.grade !== 'legendary' && a.grade !== 'mythic')
-      : towerGetAugmentPool(TS.charId);
+      ? towerGetSelectableAugmentPool(TS.charId).filter(a => a.grade !== 'legendary' && a.grade !== 'mythic')
+      : towerGetSelectableAugmentPool(TS.charId);
     const cardEls = Array.from(document.querySelectorAll('#tower-augment-content .tower-augment-pick'));
     towerPlayRerollSequence(
       cardEls,
@@ -7822,9 +7994,9 @@
     g.history.push({who:'me', act:meAct, ap:g.me.ap});
     g.history.push({who:'op', act:opAct, ap:g.op.ap});
 
-    // 비용 지불
-    g.me.ap -= COST[meAct];
-    g.op.ap -= COST[opAct];
+    // 비용 지불 (단, [바다의 찬가] 아티팩트를 보유하면 어떤 행동도 행동력을 소모하지 않는다)
+    if(!g.me.tw_allActionsFree) g.me.ap -= COST[meAct];
+    if(!g.op.tw_allActionsFree) g.op.ap -= COST[opAct];
     g.me.defended = false;
     g.op.defended = false;
     if(meAct === 'skill') g.me.skillUseCount = (g.me.skillUseCount||0) + 1;
@@ -7980,6 +8152,21 @@
         if(g[k].healDebuffTurns <= 0) g[k].healDebuffPct = 0;
       }
       if(g[k].healSealTurns > 0) g[k].healSealTurns--;
+      // [무한대전타워] "시간 도둑" 신화 증강 - 매 턴 종료 시 행동력 자동 회복
+      if(g[k].tw_apRegenPerTurn && g[k].hp > 0){
+        g[k].ap = Math.min(AP_MAX, g[k].ap + g[k].tw_apRegenPerTurn);
+        pushLog('sys', `⏱️ ${k==='me'?'내':'상대'} [시간 도둑] 효과로 행동력 ${g[k].tw_apRegenPerTurn} 회복`);
+      }
+      // [무한대전타워] "재생의 인장" 신화 증강 - 매 턴 종료 시 최대체력 비례 회복
+      if(g[k].tw_hpRegenPct && g[k].hp > 0 && g[k].hp < g[k].maxHp){
+        const regenAmt = Math.max(1, Math.round(g[k].maxHp * g[k].tw_hpRegenPct));
+        g[k].hp = Math.min(g[k].maxHp, g[k].hp + regenAmt);
+        pushLog('sys', `💚 ${k==='me'?'내':'상대'} [재생의 인장] 효과로 ${regenAmt} 회복`);
+      }
+      // [무한대전타워] "어느 날 갑자기" 아티팩트 - 매 턴 종료 시 행동력을 고정값으로 되돌림
+      if(g[k].tw_apFixedValue && g[k].hp > 0 && g[k].ap !== g[k].tw_apFixedValue){
+        g[k].ap = g[k].tw_apFixedValue;
+      }
       // [도발] 방어/회복 봉인 지속시간 감소 (스킬을 쓴 이번 턴은 이미 즉시 무효화로 처리했으므로,
       // 봉인 자체는 다음 1턴 동안만 유지되어야 한다)
       if(g[k].actionSealJustApplied){
@@ -8140,6 +8327,10 @@
     if(remaining > 0 && target.tw_dmgReduce){
       remaining = Math.max(0, remaining - target.tw_dmgReduce);
     }
+    // [무한대전타워] "은빛날개" 아티팩트 - 받는 모든 피해 비율 감소 (조건 없이 상시 적용)
+    if(remaining > 0 && target.tw_dmgReducePct){
+      remaining = Math.ceil(remaining * (1 - target.tw_dmgReducePct));
+    }
     // [무한대전타워] 신화 증강 "절대 방벽" - 보호막이 남아있는 동안 받는 피해 절반
     if(remaining > 0 && target.tw_shieldHalvePct && (target.shieldHp > 0 || target.passiveShield > 0)){
       remaining = Math.ceil(remaining * (1 - target.tw_shieldHalvePct));
@@ -8189,6 +8380,14 @@
       spawnPopup(targetKey, 'AUTO SHIELD', 'heal');
     }
     if(target.hp > target.maxHp * 0.25) target.tw_autoShieldTriggeredThisDrop = false; // 체력을 회복해 위험 구간을 벗어나면 다시 발동 가능
+
+    // [무한대전타워] "불멸자" 신화 증강 - 전투당 1회, 죽음 직전 지정 비율만큼 체력을 회복하며 부활 (불굴보다 먼저 체크)
+    if(target.hp <= 0 && target.tw_undyingHpPct && !target.tw_phoenixUsed){
+      target.tw_phoenixUsed = true;
+      target.hp = Math.max(1, Math.round(target.maxHp * target.tw_undyingHpPct));
+      pushLog('sys', `✨ ${label} [불멸자] 발동! 체력 ${target.hp}로 부활했다`);
+      spawnPopup(targetKey, 'REVIVE!', 'heal');
+    }
 
     // [무한대전타워] 증강 "불굴" - 치명적 피해로 사망 시 전투당 제한 횟수만큼 체력 1로 생존 (1UP보다 먼저 체크)
     if(target.hp <= 0 && (target.tw_undyingCount||0) > 0){
@@ -8568,6 +8767,15 @@
       actor.tw_oneUpFinalBlowActive = 0;
     }
 
+    // [무한대전타워] "파괴신의 인장" 신화 증강 - 가하는 모든 피해 배율 증가
+    if(actor.tw_allDmgMultPct && amount > 0){
+      amount = Math.round(amount * (1 + actor.tw_allDmgMultPct));
+    }
+    // [무한대전타워] "어느 날 갑자기" + "바다의 찬가" 아티팩트 조합 - 보유 행동력 1당 피해 +20%
+    if(actor.tw_apFixedValue && actor.tw_allActionsFree && amount > 0){
+      amount = Math.round(amount * (1 + actor.ap * 0.20));
+    }
+
     amount += get2v2SuddenDeathBonus(); // 2VS2가 질질 끌리지 않도록, 턴이 오래 갈수록 모든 피해에 보너스가 붙는다
 
     // [무한대전타워] 장비 "굶주린 그림자" - 가한 피해의 일부만큼 흡혈
@@ -8700,7 +8908,7 @@
       case 'double_strike': {
         // 이 스킬은 [공격] 판정을 가지므로, 방어/공격 관련 패시브([요정날개], [결단일섬] 등)가 그대로 발동한다
         // [무한대전타워] "기습" 증강 - 전투 첫 턴엔 방어를 무시하고 100% 적중 (일반 공격과 동일하게 적용)
-        const pierceDefense = target.defended && actor.tw_firstTurnPierce && g.turn === 1;
+        const pierceDefense = target.defended && (actor.tw_alwaysPierce || (actor.tw_firstTurnPierce && g.turn === 1));
         if(target.defended && !pierceDefense){
           spawnPopup(targetKey, 'BLOCK', 'block');
           pushLog(cls, `ㄴ ${actorLabel} 컴뱃스킬 [${skill.name}]이 상대 방어에 모두 막혔다`);
@@ -8851,11 +9059,12 @@
       // [무한대전타워] "기습" 증강 - 전투 첫 턴엔 방어를 무시하고 100% 적중
       // [무한대전타워] 증강 "뒷심"과 별개로, 체력이 낮을 때 한정 필중 횟수가 남아있으면 이번 공격도 방어 무시
       const pierceDefense = target.defended && (
+        actor.tw_alwaysPierce ||
         (actor.tw_firstTurnPierce && g.turn === 1) ||
         (actor.tw_sureHitCount > 0 && actor.hp <= actor.maxHp * 0.25)
       );
-      if(pierceDefense && actor.tw_sureHitCount > 0 && actor.hp <= actor.maxHp * 0.25 && !(actor.tw_firstTurnPierce && g.turn === 1)){
-        actor.tw_sureHitCount -= 1; // 기습으로 뚫은 경우는 소모하지 않고, 필중으로 뚫은 경우만 소모
+      if(pierceDefense && actor.tw_sureHitCount > 0 && actor.hp <= actor.maxHp * 0.25 && !actor.tw_alwaysPierce && !(actor.tw_firstTurnPierce && g.turn === 1)){
+        actor.tw_sureHitCount -= 1; // 기습/상시관철로 뚫은 경우는 소모하지 않고, 필중으로 뚫은 경우만 소모
       }
       if(target.defended && !pierceDefense){
         spawnPopup(targetKey, 'BLOCK', 'block');
@@ -8899,7 +9108,7 @@
         }
       }
       actor.lastUltimateBonus = energyBonus; // 카운터로 반사당할 경우, 반사 피해에도 이 보너스가 그대로 실리도록 기억해둔다
-      if(targetAct==='counter'){
+      if(targetAct==='counter' && !actor.tw_alwaysPierce){
         pushLog(cls, `ㄴ ${actorLabel} 일격이 카운터에 막혔다!`);
       } else if(target.defended){
         const base = Math.max(0, getEffectiveUltimateBreak(actor) - (actor.dmgDebuff||0)) + energyBonus;
@@ -8919,7 +9128,7 @@
         if(actor.tw_deathMarkOnUltimate) applyDeathMarkOnAttackHit(actorKey, targetKey, g, cls); // [무한대전타워] "찰나의 순간" 증강 반영
       }
     } else if(actorAct==='counter'){
-      if(targetAct==='ultimate'){
+      if(targetAct==='ultimate' && !target.tw_alwaysPierce){
         // 반사되는 피해는 상대(일격을 쓴 쪽)의 일격 스탯을 그대로 되돌려주는 것 (카운터 자신의 공격력이 아님)
         // 상대가 [비상충전 프로토콜] 등으로 일격에 보너스를 실었다면, 반사 피해에도 그 보너스가 그대로 실린다
         const reflectBonus = target.lastUltimateBonus || 0;
@@ -8932,6 +9141,8 @@
           actor.passiveShieldTurns = Math.max(actor.passiveShieldTurns||0, 3);
           pushLog(cls, `ㄴ ${actorLabel} [반격 본능] 효과로 보호막 +${actor.tw_counterShieldAdd}`);
         }
+      } else if(targetAct==='ultimate' && target.tw_alwaysPierce){
+        pushLog(cls, `ㄴ ${actorLabel} 카운터를 시도했지만, 상대의 일격은 카운터를 무시하고 그대로 명중했다`);
       } else if(targetAct==='attack'){
         // 공격 피해는 위쪽 'attack' 분기에서 이미 처리됨 — 여기서 또 넣으면 중복 피해 버그가 됨
         pushLog(cls, `ㄴ ${actorLabel} 카운터가 빗나갔다 (상대는 일격을 쓰지 않음)`);
