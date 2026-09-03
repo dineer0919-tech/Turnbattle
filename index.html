@@ -1162,6 +1162,11 @@
     display:none; align-items:flex-end; justify-content:center; padding:0;
   }
   #tower-bag-overlay.show{ display:flex; }
+  #tower-rank-overlay{
+    position:absolute; inset:0; background:#000000ea; z-index:80;
+    display:none; align-items:flex-end; justify-content:center; padding:0;
+  }
+  #tower-rank-overlay.show{ display:flex; }
   .tower-bag-panel{
     width:100%; max-width:430px; max-height:82vh;
     background:var(--panel); border:1px solid var(--panel-line);
@@ -1218,6 +1223,34 @@
   }
   .tower-bag-footer{ padding:14px 20px 20px; border-top:1px solid var(--panel-line); }
   .tower-bag-confirm-btn{ width:100%; padding:14px; border-radius:14px; font-size:14px; }
+
+  /* ---------- 무한대전타워: 랭킹(리더보드) 오버레이 ---------- */
+  .tower-rank-list{ flex:1; overflow-y:auto; padding:10px 16px 16px; display:flex; flex-direction:column; gap:8px; }
+  .tower-rank-empty{ color:var(--text-dim); font-size:13px; text-align:center; padding:40px 0; }
+  .tower-rank-row{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px;
+    background:var(--panel-alt); border:1px solid var(--panel-line);
+  }
+  .tower-rank-row.me{ border-color:var(--accent-ap); background:rgba(62,230,201,0.10); }
+  .tower-rank-rank{
+    width:28px; flex:0 0 auto; text-align:center; font-family:'JetBrains Mono',monospace;
+    font-weight:900; font-size:13px; color:var(--text-dim);
+  }
+  .tower-rank-row:nth-child(1) .tower-rank-rank{ color:#FFD54F; font-size:16px; }
+  .tower-rank-row:nth-child(2) .tower-rank-rank{ color:#CFD8DC; font-size:15px; }
+  .tower-rank-row:nth-child(3) .tower-rank-rank{ color:#FFAB91; font-size:14px; }
+  .tower-rank-char-img{
+    width:34px; height:34px; border-radius:50%; object-fit:cover; object-position:top center;
+    border:1px solid var(--panel-line); flex:0 0 auto;
+  }
+  .tower-rank-mid{ flex:1; min-width:0; }
+  .tower-rank-nick{ font-size:12.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tower-rank-char-name{ font-size:10.5px; color:var(--text-dim); margin-top:1px; }
+  .tower-rank-floor{
+    flex:0 0 auto; font-family:'JetBrains Mono',monospace; font-weight:900; font-size:14px;
+    color:var(--accent-crit);
+  }
+  .tower-rank-loading{ color:var(--text-dim); font-size:13px; text-align:center; padding:40px 0; }
 
   /* ---------- 무한대전타워: 특별 이벤트 (진짜 참가자 조우) ---------- */
   #tower-event-overlay{
@@ -1461,6 +1494,7 @@
     <div class="back-row">
       <button class="back-btn" id="tower-home-back">←</button>
       <div class="disp" style="font-size:20px;">무한대전타워</div>
+      <button class="btn" id="tower-rank-open-btn" style="margin-left:auto; padding:8px 12px; border-radius:10px; font-size:12px;">🏆 랭킹</button>
     </div>
     <div id="tower-home-content" style="padding:0 22px;"></div>
   </div>
@@ -1889,6 +1923,20 @@
       <div class="tower-bag-footer" id="tower-bag-footer" style="display:none;">
         <button class="btn btn-primary tower-bag-confirm-btn" id="tower-bag-confirm-btn">확인</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 무한대전타워: 랭킹(리더보드) — 도달 층수 상위 50명 -->
+  <div id="tower-rank-overlay">
+    <div class="tower-bag-panel" style="max-height:78vh;">
+      <div class="tower-bag-head">
+        <div>
+          <div class="tower-bag-title">🏆 무한대전타워 랭킹</div>
+          <div class="tower-bag-hint">도달 층수 상위 50명</div>
+        </div>
+        <button class="tower-bag-close" id="tower-rank-close-btn">✕</button>
+      </div>
+      <div class="tower-rank-list" id="tower-rank-list"></div>
     </div>
   </div>
 
@@ -2490,10 +2538,11 @@
     return 1.0 + 0.08 * 6 + 0.12 * (floor - 15); // 16층부터 가파르게 이어짐
   }
   // [무한대전타워] 100층부터 "보스"에게만 추가로 곱해지는 지수함수 배율.
-  // 100층에서는 1배(변화 없음)이고, 한 층 오를 때마다 1.12배씩 복리로 불어나 급격히 강해진다.
+  // 100층에서는 1배(변화 없음)이고, 한 층 오를 때마다 1.0114배씩 복리로 불어난다.
+  // (예전엔 1.12배라 120층에 이미 약 9.6배로 너무 급격했음 — 이제는 300층쯤 가야 그 정도(≈9.6배)가 되도록 완만하게 조정)
   function towerGetBossExponentialMultiplier(floor){
     if(floor < 100) return 1;
-    return Math.pow(1.12, floor - 100);
+    return Math.pow(1.0114, floor - 100);
   }
   // [무한대전타워] 100층부터 적(잡몹/보스 공통)이 들고 나오는 부활 횟수. 10층마다 1회씩 늘어난다.
   function towerGetEnemyReviveCount(floor){
@@ -3077,6 +3126,7 @@
   function towerEndRun(reason){
     const floorReached = TS.floor;
     const charId = TS.charId;
+    towerSubmitLeaderboardScore(charId, S.nickname, floorReached); // [무한대전타워] 등반 종료 시 랭킹에 기록 제출
     const blackout = document.getElementById('blackout');
     blackout.classList.add('show');
     setTimeout(()=>{
@@ -3087,6 +3137,77 @@
       });
       setTimeout(()=> blackout.classList.remove('show'), 100);
     }, 650);
+  }
+
+  /* ---------- 무한대전타워: 랭킹(리더보드) — Firebase에 도달 층수 상위 50명만 유지 ---------- */
+  const TOWER_LEADERBOARD_PATH = 'towerLeaderboard';
+  const TOWER_LEADERBOARD_MAX = 50;
+
+  // 등반 결과를 랭킹에 제출한다. 제출 후 전체 기록을 훑어 50명을 넘으면 가장 낮은 기록부터 정리한다.
+  function towerSubmitLeaderboardScore(charId, nickname, floor){
+    if(!FIREBASE_READY || !floor || floor < 1) return;
+    const entry = {
+      charId: charId || '',
+      nickname: ((nickname || '').trim() || '이름없는 도전자').slice(0, 12),
+      floor: floor,
+      ts: firebase.database.ServerValue.TIMESTAMP,
+    };
+    fbDb().ref(TOWER_LEADERBOARD_PATH).push(entry).then(()=>{
+      return fbDb().ref(TOWER_LEADERBOARD_PATH).orderByChild('floor').once('value');
+    }).then(snap=>{
+      const keys = [];
+      snap.forEach(child=>{ keys.push(child.key); return false; }); // orderByChild는 오름차순 — 앞쪽이 가장 낮은 기록
+      if(keys.length > TOWER_LEADERBOARD_MAX){
+        const excessKeys = keys.slice(0, keys.length - TOWER_LEADERBOARD_MAX);
+        const updates = {};
+        excessKeys.forEach(key=>{ updates[key] = null; });
+        fbDb().ref(TOWER_LEADERBOARD_PATH).update(updates).catch(()=>{});
+      }
+    }).catch(err=>{ console.error('타워 랭킹 제출 실패:', err); });
+  }
+
+  function towerOpenLeaderboard(){
+    const overlay = document.getElementById('tower-rank-overlay');
+    const listEl = document.getElementById('tower-rank-list');
+    overlay.classList.add('show');
+    if(!FIREBASE_READY){
+      listEl.innerHTML = `<div class="tower-rank-empty">랭킹 기능을 사용하려면 Firebase 설정이 먼저 필요해요</div>`;
+      return;
+    }
+    listEl.innerHTML = `<div class="tower-rank-loading">불러오는 중...</div>`;
+    fbDb().ref(TOWER_LEADERBOARD_PATH).orderByChild('floor').limitToLast(TOWER_LEADERBOARD_MAX).once('value').then(snap=>{
+      const rows = [];
+      snap.forEach(child=>{ rows.push(child.val()); return false; });
+      rows.reverse(); // 오름차순으로 읽었으니 뒤집어서 가장 높은 층이 1등으로 오게 함
+      if(rows.length === 0){
+        listEl.innerHTML = `<div class="tower-rank-empty">아직 등록된 기록이 없습니다. 첫 등반 기록의 주인공이 되어보세요!</div>`;
+        return;
+      }
+      listEl.innerHTML = rows.map((row, idx)=>{
+        const ch = CHARACTERS[row.charId];
+        const charName = ch ? ch.name : (row.charId || '알 수 없음');
+        const charImgHtml = ch ? `<img class="tower-rank-char-img" src="${ch.portraitImg}" alt="${charName}">` : `<div class="tower-rank-char-img"></div>`;
+        const isMe = !!S.nickname && row.nickname === S.nickname;
+        return `
+          <div class="tower-rank-row${isMe ? ' me' : ''}">
+            <div class="tower-rank-rank">${idx + 1}</div>
+            ${charImgHtml}
+            <div class="tower-rank-mid">
+              <div class="tower-rank-nick">${row.nickname || '이름없는 도전자'}</div>
+              <div class="tower-rank-char-name">${charName}</div>
+            </div>
+            <div class="tower-rank-floor">${row.floor}층</div>
+          </div>
+        `;
+      }).join('');
+    }).catch(err=>{
+      console.error('타워 랭킹 조회 실패:', err);
+      listEl.innerHTML = `<div class="tower-rank-empty">랭킹을 불러오지 못했습니다</div>`;
+    });
+  }
+
+  function towerCloseLeaderboard(){
+    document.getElementById('tower-rank-overlay').classList.remove('show');
   }
 
   // 도달 층수에 비례해 등반 보상(메인 게임 PP/XP)을 계산한다
@@ -6840,6 +6961,8 @@
 
   document.getElementById('diff-back').addEventListener('click', ()=> goHome('main'));
   document.getElementById('tower-home-back').addEventListener('click', ()=> goHome('main'));
+  document.getElementById('tower-rank-open-btn').addEventListener('click', towerOpenLeaderboard);
+  document.getElementById('tower-rank-close-btn').addEventListener('click', towerCloseLeaderboard);
   document.querySelectorAll('.diff-card').forEach(card=>{
     card.addEventListener('click', ()=>{
       startBattle(card.dataset.diff);
