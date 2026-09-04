@@ -2742,11 +2742,6 @@
       desc:'적을 처치했을 때 오버킬이 발생했다면, 그 적이 부활하더라도 남은 오버킬 피해량을 그대로 다시 입힌다. 오버킬로 만든 피해량이 전부 소모될 때까지 반복된다.',
       effects:{ overkillChainDmg:true },
     },
-    high_noon: {
-      name:'하이 눈', emoji:'🔫',
-      desc:'자신과 상대의 모든 부활 관련 증강·효과가 차단된다. (나비의 [1UP] 패시브 자체는 예외)',
-      effects:{ revivalBlockAll:true },
-    },
   };
   const TOWER_ARTIFACT_NAMES = Object.values(TOWER_ARTIFACTS).map(a=>a.name);
   const TOWER_ARTIFACT_SELL_PRICE = 2500; // 융합/상점 외엔 구할 방법이 없는 만큼 판매가도 파격적으로
@@ -3427,7 +3422,7 @@
       cookingStartStacks:0, cookingMythicPowerPct:0,
       skillCountsAsAttack:false, // [환영 무기] 전설 증강 - 컴뱃스킬도 [공격] 판정을 받게 함
       turnScalingDmgPct:0, goldDmgScalePct:0, shopPriceFixed1:false, bypassTurnLimit:false,
-      overkillChainDmg:false, revivalBlockAll:false,
+      overkillChainDmg:false,
     };
     towerGetActiveEquipment().forEach(item=>{
       const d = towerGetEquipData(item.name, item.tier);
@@ -3476,7 +3471,6 @@
       if(e.goldDmgScalePct) b.goldDmgScalePct = Math.max(b.goldDmgScalePct, e.goldDmgScalePct);
       if(e.shopPriceFixed1) b.shopPriceFixed1 = true;
       if(e.overkillChainDmg) b.overkillChainDmg = true;
-      if(e.revivalBlockAll) b.revivalBlockAll = true;
     });
     const pool = towerGetAugmentPool(TS.charId);
     Object.keys(TS.augments).forEach(id=>{
@@ -3590,7 +3584,6 @@
     fighter.tw_goldDmgScalePct = b.goldDmgScalePct;
     fighter.tw_shopPriceFixed1 = b.shopPriceFixed1;
     fighter.tw_overkillChainDmg = b.overkillChainDmg;
-    fighter.tw_revivalBlockAll = b.revivalBlockAll;
     fighter.tw_lowHpDmgPct = b.lowHpDmgPct;
     fighter.tw_lowHpAtkFlat = b.lowHpDmgAtkFlat || 0;
     fighter.tw_executeDmgPct = b.executeDmgPct;
@@ -8680,13 +8673,11 @@
     let meDead = g.me.hp<=0, opDead = g.op.hp<=0;
 
     // [무한대전타워] 100층부터 적이 들고 나오는 부활 — 쓰러져도 남은 부활 횟수가 있으면 체력 50%로 되살아나 전투가 계속된다
-    // [무한대전타워] "하이 눈" 아티팩트 - 이 부활도 예외 없이 차단
-    // [무한대전타워] "붕괴하는 육체" 신화 증강 - 최대 중첩 신경독 처형은 이 부활도 무시한다
-    const revivalBlockedForOp = !!(g.me && g.me.tw_revivalBlockAll);
+    // [무한대전타워] "붕괴하는 육체" 신화 증강 - 최대 중첩 신경독 처형은 100층 이상 적의 부활도 무시한다
     if(opDead && g.op.tw_ignoreRevive){
       pushLog('sys', `☠️ 상대 신경독 최대 중첩 처형! 100층 이상의 부활 효과까지 전부 무시하고 쓰러졌다`);
       g.op.tw_ignoreRevive = false;
-    } else if(opDead && S.mode === 'tower' && !revivalBlockedForOp){
+    } else if(opDead && S.mode === 'tower'){
       // [무한대전타워] "얽힌 생명줄의 무도회" - 오버킬로 남은 잔여 피해를, 부활할 때마다 그대로 다시 적용한다.
       // 잔여 피해가 소진되거나(더 이상 죽지 않게 되거나) 상대의 부활 횟수가 다할 때까지 반복.
       let overkillPool = g.op.hp < 0 ? -g.op.hp : 0;
@@ -8817,8 +8808,12 @@
       remaining = Math.ceil(remaining * (1 - target.tw_shieldHalvePct));
     }
     // [무한대전타워] 신화 증강 "붕괴하는 육체" - 신경독에 걸린 상대에게 받는 피해 감소
-    if(remaining > 0 && target.tw_toxinDefendReducePct && sourceKey && g[sourceKey] && (g[sourceKey].neurotoxinStacks||0) > 0){
-      remaining = Math.ceil(remaining * (1 - target.tw_toxinDefendReducePct));
+    if(remaining > 0 && target.tw_toxinDefendReducePct){
+      const attackerKey = targetKey === 'me' ? 'op' : 'me';
+      const attacker = g[attackerKey];
+      if(attacker && (attacker.neurotoxinStacks||0) > 0){
+        remaining = Math.ceil(remaining * (1 - target.tw_toxinDefendReducePct));
+      }
     }
 
     // 1. 컴뱃스킬(에너지 쉴드)로 얻은 임시 보호막을 먼저 소모
@@ -8858,6 +8853,21 @@
     // [무한대전타워] "얽힌 생명줄의 무도회" 아티팩트 - 오버킬로 만든 초과 피해량을 기록해둔다
     const overkillAmt = target.hp < 0 ? -target.hp : 0;
 
+    // [무한대전타워] "붕괴하는 육체" 신화 증강 - 최대 중첩 신경독에 걸린 상대가 "무엇에 맞아 죽든" 부활 효과를 무시하고 처형한다
+    // (신경독 틱 데미지 자체로만 죽는 경우로 한정하면, 고HP 적에게는 사실상 발동 기회가 없기 때문에 모든 피해원에 적용)
+    // sourceKey(공격자 표시 플래그)는 대부분의 일반 공격 경로에서 세팅되지 않아 비어있는 경우가 많으므로,
+    // "죽은 쪽의 반대편이 공격자"라는 확정적 추론으로 대체한다 (1:1 전투에서는 항상 성립).
+    if(target.hp <= 0){
+      const executorKey = targetKey === 'me' ? 'op' : 'me';
+      const executor = g[executorKey];
+      if(executor && executor.tw_toxinExecuteIgnoreRevive){
+        const execCap = 3 + (executor.tw_toxinCapAdd||0);
+        if((target.neurotoxinStacks||0) >= execCap){
+          target.tw_ignoreRevive = true;
+        }
+      }
+    }
+
     // [무한대전타워] 장비 "마지막 숨결" - 체력 20% 이하로 떨어지는 순간 전투당 제한 횟수만큼 자동 보호막
     if(target.tw_autoShieldHp && (target.tw_autoShieldCount||0) > 0 && target.hp > 0 && target.hp <= target.maxHp * 0.2 && !target.tw_autoShieldTriggeredThisDrop){
       target.passiveShield = (target.passiveShield||0) + target.tw_autoShieldHp;
@@ -8869,11 +8879,8 @@
     }
     if(target.hp > target.maxHp * 0.25) target.tw_autoShieldTriggeredThisDrop = false; // 체력을 회복해 위험 구간을 벗어나면 다시 발동 가능
 
-    // [무한대전타워] "하이 눈" 아티팩트 - 자신/상대 모두의 부활 관련 효과 차단 (나비의 [1UP] 자체는 예외)
-    const revivalBlocked = !!(g.me && g.me.tw_revivalBlockAll);
-
     // [무한대전타워] "불멸자" 신화 증강 - 전투당 1회, 죽음 직전 지정 비율만큼 체력을 회복하며 부활 (불굴보다 먼저 체크)
-    if(target.hp <= 0 && target.tw_undyingHpPct && !target.tw_phoenixUsed && !target.tw_ignoreRevive && !revivalBlocked){
+    if(target.hp <= 0 && target.tw_undyingHpPct && !target.tw_phoenixUsed && !target.tw_ignoreRevive){
       target.tw_phoenixUsed = true;
       target.hp = Math.max(1, Math.round(target.maxHp * target.tw_undyingHpPct));
       pushLog('sys', `✨ ${label} [불멸자] 발동! 체력 ${target.hp}로 부활했다`);
@@ -8881,7 +8888,7 @@
     }
 
     // [무한대전타워] 증강 "불굴" - 치명적 피해로 사망 시 전투당 제한 횟수만큼 체력 1로 생존 (1UP보다 먼저 체크)
-    if(target.hp <= 0 && (target.tw_undyingCount||0) > 0 && !target.tw_ignoreRevive && !revivalBlocked){
+    if(target.hp <= 0 && (target.tw_undyingCount||0) > 0 && !target.tw_ignoreRevive){
       target.tw_undyingCount -= 1;
       target.hp = 1;
       pushLog('sys', `✨ ${label} [불굴] 발동! 체력 1로 버텨냈다`);
@@ -8889,13 +8896,13 @@
     }
 
     const wasIgnoringRevive = target.hp <= 0 && target.tw_ignoreRevive;
-    checkOneUpRevive(targetKey, g); // [하이 눈] 예외 - 나비의 [1UP] 자체는 여기서 항상 정상 발동
+    checkOneUpRevive(targetKey, g);
     if(wasIgnoringRevive && target.hp <= 0){
       pushLog('sys', `☠️ ${label} 신경독 최대 중첩 처형! 모든 부활 효과를 무시하고 쓰러졌다`);
     }
 
     // [무한대전타워] 아이템 "만년 수프" - 1UP/불굴 등을 다 써도 쓰러졌다면, 마지막 안전망으로 체력 7 부활 (전투 중 즉시 처리)
-    if(target.hp <= 0 && targetKey === 'me' && typeof TS !== 'undefined' && TS && (TS.eternalSoupCount||0) > 0 && !revivalBlocked && !target.tw_ignoreRevive){
+    if(target.hp <= 0 && targetKey === 'me' && typeof TS !== 'undefined' && TS && (TS.eternalSoupCount||0) > 0 && !target.tw_ignoreRevive){
       TS.eternalSoupCount -= 1;
       target.hp = 7;
       pushLog('sys', `🍲 [만년 수프]를 사용해 체력 7로 부활했다! (잔여 ${TS.eternalSoupCount}개)`);
@@ -8903,12 +8910,17 @@
     }
 
     // [무한대전타워] "얽힌 생명줄의 무도회" 아티팩트 - 오버킬 상태로 처치했는데 상대가 부활했다면, 남은 오버킬 피해를 그대로 다시 입힌다
-    if(overkillAmt > 0 && sourceKey && g[sourceKey] && g[sourceKey].tw_overkillChainDmg && target.hp > 0 && towerOverkillChainDepth < 15){
-      towerOverkillChainDepth++;
-      pushLog('sys', `🩸 ${label} [얽힌 생명줄의 무도회] 발동! 남은 오버킬 피해 ${overkillAmt}가 부활한 상대를 다시 덮친다`);
-      towerDamageSourceKey = sourceKey;
-      dealDamage(targetKey, overkillAmt);
-      towerOverkillChainDepth--;
+    // (여기서도 sourceKey 대신 "죽은 쪽의 반대편" 추론을 사용해 안정적으로 공격자를 찾는다)
+    if(overkillAmt > 0 && target.hp > 0 && towerOverkillChainDepth < 15){
+      const executorKey = targetKey === 'me' ? 'op' : 'me';
+      const executor = g[executorKey];
+      if(executor && executor.tw_overkillChainDmg){
+        towerOverkillChainDepth++;
+        pushLog('sys', `🩸 ${label} [얽힌 생명줄의 무도회] 발동! 남은 오버킬 피해 ${overkillAmt}가 부활한 상대를 다시 덮친다`);
+        towerDamageSourceKey = executorKey;
+        dealDamage(targetKey, overkillAmt);
+        towerOverkillChainDepth--;
+      }
     }
   }
 
