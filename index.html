@@ -1195,6 +1195,7 @@
     display:grid; grid-template-columns:1fr 1fr; gap:10px;
   }
   .tower-bag-empty{ color:var(--text-dim); font-size:13px; text-align:center; padding:30px 0; grid-column:1/-1; }
+  .tower-bag-divider{ grid-column:1/-1; height:1px; background:var(--panel-line); margin:4px 2px; opacity:0.6; }
   .tower-bag-item{
     background:var(--panel-alt); border:2px solid var(--panel-line); border-radius:14px;
     padding:12px 8px; display:flex; flex-direction:column; align-items:center; gap:4px;
@@ -2726,6 +2727,26 @@
       desc:'받는 모든 피해가 50% 감소한다.',
       effects:{ dmgReducePct:0.50 },
     },
+    chrono_dynamics: {
+      name:'초동역학시간전환기', emoji:'⏱️',
+      desc:'전투가 30턴이 넘어도 끝나지 않는다. 턴이 지날 때마다 가하는 피해가 10%씩 누적 상승한다.',
+      effects:{ bypassTurnLimit:true, turnScalingDmgPct:0.10 },
+    },
+    wealth_and_fame: {
+      name:'부와 명성', emoji:'💰',
+      desc:'모든 장비와 리롤 가격이 1원으로 고정된다. 보유 골드 1000당 가하는 피해가 0.1%씩 증가한다.',
+      effects:{ shopPriceFixed1:true, goldDmgScalePct:0.001 },
+    },
+    tangled_lifeline: {
+      name:'얽힌 생명줄의 무도회', emoji:'🩸',
+      desc:'적을 처치했을 때 오버킬이 발생했다면, 그 적이 부활하더라도 남은 오버킬 피해량을 그대로 다시 입힌다. 오버킬로 만든 피해량이 전부 소모될 때까지 반복된다.',
+      effects:{ overkillChainDmg:true },
+    },
+    high_noon: {
+      name:'하이 눈', emoji:'🔫',
+      desc:'자신과 상대의 모든 부활 관련 증강·효과가 차단된다. (나비의 [1UP] 패시브 자체는 예외)',
+      effects:{ revivalBlockAll:true },
+    },
   };
   const TOWER_ARTIFACT_NAMES = Object.values(TOWER_ARTIFACTS).map(a=>a.name);
   const TOWER_ARTIFACT_SELL_PRICE = 2500; // 융합/상점 외엔 구할 방법이 없는 만큼 판매가도 파격적으로
@@ -2913,10 +2934,16 @@
     const items = indices.map(i => equipmentList[i]);
     const remaining = equipmentList.filter((_, i) => !indices.includes(i));
 
-    // [소망의 조각] 3개를 융합하면 확정으로 T5 아티팩트를 얻는다 (T4 3개 → 조각 1개 → 조각 3개 → T5)
+    // [소망의 조각] 3개를 융합하면 T5 아티팩트를 얻는다 (T4 3개 → 조각 1개 → 조각 3개 → T5)
+    // 이미 보유한 T5는 다시 나오지 않도록 제외하고, 전부 보유 중이면 제작 자체를 막는다.
     const isAllWishShard = items.every(it => it.name === TOWER_WISH_SHARD_NAME && it.tier === 'wish');
     if(isAllWishShard){
-      const artifactName = TOWER_ARTIFACT_NAMES[Math.floor(Math.random() * TOWER_ARTIFACT_NAMES.length)];
+      const ownedT5Names = new Set(remaining.filter(e => e.tier === 5).map(e => e.name));
+      const availableNames = TOWER_ARTIFACT_NAMES.filter(n => !ownedT5Names.has(n));
+      if(availableNames.length === 0){
+        return { ok:false, reason:'이미 모든 T5 아티팩트를 보유하고 있어 더 이상 제작할 수 없습니다.' };
+      }
+      const artifactName = availableNames[Math.floor(Math.random() * availableNames.length)];
       remaining.push({ name:artifactName, tier:5 });
       return { ok:true, equipment:remaining, gotArtifact:true };
     }
@@ -3399,6 +3426,8 @@
       cookingGainAdd:0, cookingTurnsReduce:0, cookingPowerPct:0, cookingMythicBoth:false,
       cookingStartStacks:0, cookingMythicPowerPct:0,
       skillCountsAsAttack:false, // [환영 무기] 전설 증강 - 컴뱃스킬도 [공격] 판정을 받게 함
+      turnScalingDmgPct:0, goldDmgScalePct:0, shopPriceFixed1:false, bypassTurnLimit:false,
+      overkillChainDmg:false, revivalBlockAll:false,
     };
     towerGetActiveEquipment().forEach(item=>{
       const d = towerGetEquipData(item.name, item.tier);
@@ -3442,6 +3471,12 @@
       if(e.alwaysPierce) b.alwaysPierce = true;
       if(e.apFixedValue) b.apFixedValue = Math.max(b.apFixedValue, e.apFixedValue);
       if(e.dmgReducePct) b.dmgReducePct = Math.max(b.dmgReducePct, e.dmgReducePct);
+      if(e.turnScalingDmgPct) b.turnScalingDmgPct = Math.max(b.turnScalingDmgPct, e.turnScalingDmgPct);
+      if(e.bypassTurnLimit) b.bypassTurnLimit = true;
+      if(e.goldDmgScalePct) b.goldDmgScalePct = Math.max(b.goldDmgScalePct, e.goldDmgScalePct);
+      if(e.shopPriceFixed1) b.shopPriceFixed1 = true;
+      if(e.overkillChainDmg) b.overkillChainDmg = true;
+      if(e.revivalBlockAll) b.revivalBlockAll = true;
     });
     const pool = towerGetAugmentPool(TS.charId);
     Object.keys(TS.augments).forEach(id=>{
@@ -3550,6 +3585,12 @@
     fighter.tw_alwaysPierce = b.alwaysPierce;
     fighter.tw_apFixedValue = b.apFixedValue;
     fighter.tw_dmgReducePct = b.dmgReducePct;
+    fighter.tw_turnScalingDmgPct = b.turnScalingDmgPct;
+    fighter.tw_bypassTurnLimit = b.bypassTurnLimit;
+    fighter.tw_goldDmgScalePct = b.goldDmgScalePct;
+    fighter.tw_shopPriceFixed1 = b.shopPriceFixed1;
+    fighter.tw_overkillChainDmg = b.overkillChainDmg;
+    fighter.tw_revivalBlockAll = b.revivalBlockAll;
     fighter.tw_lowHpDmgPct = b.lowHpDmgPct;
     fighter.tw_lowHpAtkFlat = b.lowHpDmgAtkFlat || 0;
     fighter.tw_executeDmgPct = b.executeDmgPct;
@@ -4273,10 +4314,15 @@
   }
 
   // 리롤할수록 상점 아이템 가격 자체가 조금씩 비싸지고(체감 인플레이션), 리롤 비용도 따로 더 가파르게 오른다
+  // [무한대전타워] "부와 명성" 아티팩트 보유 여부 - 장비/리롤 가격을 1원으로 고정시킨다
+  function towerHasWealthAndFame(){
+    return TS.equipment.some(e => e.tier === 5 && e.name === '부와 명성');
+  }
   function towerGetShopPriceMultiplier(){
     return 1 + 0.15 * TS_shopRerollCount;
   }
   function towerGetShopRerollCost(){
+    if(towerHasWealthAndFame()) return 1;
     return Math.round(30 * Math.pow(1.6, TS_shopRerollCount));
   }
 
@@ -4334,7 +4380,7 @@
         const realIdx = rerollableIndices[seqIdx];
         const item = freshLineup[realIdx];
         TS_pendingShopLineup[realIdx] = item; // 품절 칸은 손대지 않고, 리롤 대상 칸만 실제 데이터도 교체
-        const finalPrice = Math.max(1, Math.round(item.price * newPriceMult * (1 - discount)));
+        const finalPrice = towerHasWealthAndFame() ? 1 : Math.max(1, Math.round(item.price * newPriceMult * (1 - discount)));
         const emojiEl = document.querySelector(`.titem-emoji-${realIdx}`);
         const nameEl = document.querySelector(`.titem-name-${realIdx}`);
         const tierEl = document.querySelector(`.titem-tier-${realIdx}`);
@@ -4360,7 +4406,7 @@
     const priceMult = towerGetShopPriceMultiplier();
     const rerollCost = towerGetShopRerollCost();
     const itemCardsHtml = TS_pendingShopLineup.map((item, idx)=>{
-      const finalPrice = Math.max(1, Math.round(item.price * priceMult * (1 - discount)));
+      const finalPrice = towerHasWealthAndFame() ? 1 : Math.max(1, Math.round(item.price * priceMult * (1 - discount)));
       const desc = (towerGetEquipData(item.name, item.tier)||{}).desc || '';
       const isArtifact = item.tier === 5;
       const artifactClass = isArtifact ? ' tower-item-artifact' : '';
@@ -4438,7 +4484,7 @@
         const idx = Number(btn.dataset.idx);
         const item = TS_pendingShopLineup[idx];
         if(item.sold) return; // 이미 품절된 칸 (방어적 체크 — 버튼 자체가 안 뜨므로 사실상 도달 안 함)
-        const finalPrice = Math.max(1, Math.round(item.price * priceMult * (1 - discount)));
+        const finalPrice = towerHasWealthAndFame() ? 1 : Math.max(1, Math.round(item.price * priceMult * (1 - discount)));
         if(TS.coins < finalPrice){ showToast('코인이 부족합니다'); return; }
         TS.coins -= finalPrice;
         TS.equipment.push({ name:item.name, tier:item.tier });
@@ -4562,11 +4608,30 @@
       grid.innerHTML = `<div class="tower-bag-empty">보유 장비가 없습니다</div>`;
     } else {
       const activeSet = towerGetActiveEquipment();
-      const equipHtml = TS.equipment.map((e, idx)=>{
+      // [무한대전타워] 정제/융합/보관함 목록을 "종류별로 묶어서, 각 묶음 안에서는 티어 순"으로 정렬해 보여준다.
+      // 보유하지 않은 종류는 애초에 TS.equipment에 없으므로 자연히 표시되지 않는다.
+      const equipCatalogOrder = Object.keys(TOWER_EQUIPMENT);
+      const groupRank = (e)=>{
+        if(e.name === TOWER_WISH_SHARD_NAME) return 100000; // 조각은 맨 마지막 묶음
+        if(e.tier === 5) return 10000 + TOWER_ARTIFACT_NAMES.indexOf(e.name); // 아티팩트는 장비 다음 묶음
+        return equipCatalogOrder.indexOf(towerGetEquipKeyByName(e.name)); // 일반 장비는 카탈로그 순서
+      };
+      const order = TS.equipment.map((e, idx)=>({ e, idx })).sort((a, b)=>{
+        const ra = groupRank(a.e), rb = groupRank(b.e);
+        if(ra !== rb) return ra - rb;
+        return (a.e.tier === 'wish' ? 0 : a.e.tier) - (b.e.tier === 'wish' ? 0 : b.e.tier); // 같은 묶음이면 티어 오름차순
+      });
+      let prevRank = null;
+      const equipHtml = order.map(({ e, idx })=>{
+        const rank = groupRank(e);
+        const dividerHtml = (prevRank !== null && rank !== prevRank) ? `<div class="tower-bag-divider"></div>` : '';
+        prevRank = rank;
         const key = towerGetEquipKeyByName(e.name);
         const selected = TS_bagSelected.includes(idx);
         const sellBtnHtml = TS_bagMode === 'view'
-          ? `<button class="tbi-sell-btn" data-sell-idx="${idx}"><span class="tower-price-tag">💰 ${towerGetSellPrice(e.tier).toLocaleString()}</span> 판매</button>`
+          ? (e.tier === 5
+              ? `<button class="tbi-sell-btn" data-sell-idx="${idx}"><span class="tower-price-tag">💠 조각으로</span> 환원</button>`
+              : `<button class="tbi-sell-btn" data-sell-idx="${idx}"><span class="tower-price-tag">💰 ${towerGetSellPrice(e.tier).toLocaleString()}</span> 판매</button>`)
           : '';
         // 같은 이름 장비 중 가장 티어가 높은 것만 실제로 스탯에 반영된다 — 그 외엔 "미적용"으로 표시
         const isActive = activeSet.includes(e);
@@ -4580,6 +4645,7 @@
         const tierLabel = isWishShard ? '조각' : `T${e.tier}`;
         const emoji = isWishShard ? '💠' : towerGetEquipEmoji(key);
         return `
+          ${dividerHtml}
           <div class="tower-bag-item${selected ? ' selected' : ''}${activeClass}${artifactClass}" data-idx="${idx}">
             ${activeBadge}
             <div class="tbi-emoji">${emoji}</div>
@@ -4610,8 +4676,15 @@
           ev.stopPropagation();
           const idx = Number(btn.dataset.sellIdx);
           const item = TS.equipment[idx];
-          TS.coins += towerGetSellPrice(item.tier);
-          TS.equipment.splice(idx, 1);
+          if(item.tier === 5){
+            // [무한대전타워] T5 아티팩트는 골드로 팔 수 없고, 대신 [소망의 조각] 1개로 환원된다 (다른 T5로 다시 노려볼 수 있게)
+            TS.equipment.splice(idx, 1);
+            TS.equipment.push({ name:TOWER_WISH_SHARD_NAME, tier:'wish' });
+            showToast(`${item.name}을(를) [소망의 조각]으로 환원했습니다`);
+          } else {
+            TS.coins += towerGetSellPrice(item.tier);
+            TS.equipment.splice(idx, 1);
+          }
           towerSaveRun(TS);
           towerRenderBag();
           renderTowerShopContent();
@@ -8622,7 +8695,9 @@
     }
     renderBattle();
 
-    if(meDead || opDead || g.turn > currentMaxTurns()){
+    // [무한대전타워] "초동역학시간전환기" 아티팩트 - 30턴이 지나도 전투가 끝나지 않음
+    const turnLimitBypassed = !!(g.me && g.me.tw_bypassTurnLimit);
+    if(meDead || opDead || (!turnLimitBypassed && g.turn > currentMaxTurns())){
       g.locked = true;
       // 2VS2에서 죽음이 아니라 턴 제한으로 끝났다면, 승패를 가르기 전에 양 팀 체력 합산 연출을 보여준다
       if(is2v2Mode() && S.team2v2 && !meDead && !opDead){
@@ -8696,6 +8771,7 @@
   // 반사 계산(반사의 날개)에만 쓰이고, dealDamage 진입 즉시 소비 후 리셋되어 재귀 반사가 무한루프로 번지지 않는다.
   // 지속피해(독/신경독/화상) 틱처럼 "가해자"가 없는 호출은 이 값을 건드리지 않으면 자동으로 null 취급된다.
   let towerDamageSourceKey = null;
+  let towerOverkillChainDepth = 0; // [무한대전타워] "얽힌 생명줄의 무도회" 아티팩트 - 무한부활+오버킬 조합의 무한루프 방지용 안전장치
 
   function dealDamage(targetKey, amount){
     const g = S.game;
@@ -8756,6 +8832,9 @@
       if(targetKey === 'me') flashHit(); // 내가 맞을 때만 붉은 피격 플래시
     }
 
+    // [무한대전타워] "얽힌 생명줄의 무도회" 아티팩트 - 오버킬로 만든 초과 피해량을 기록해둔다
+    const overkillAmt = target.hp < 0 ? -target.hp : 0;
+
     // [무한대전타워] 장비 "마지막 숨결" - 체력 20% 이하로 떨어지는 순간 전투당 제한 횟수만큼 자동 보호막
     if(target.tw_autoShieldHp && (target.tw_autoShieldCount||0) > 0 && target.hp > 0 && target.hp <= target.maxHp * 0.2 && !target.tw_autoShieldTriggeredThisDrop){
       target.passiveShield = (target.passiveShield||0) + target.tw_autoShieldHp;
@@ -8767,8 +8846,11 @@
     }
     if(target.hp > target.maxHp * 0.25) target.tw_autoShieldTriggeredThisDrop = false; // 체력을 회복해 위험 구간을 벗어나면 다시 발동 가능
 
+    // [무한대전타워] "하이 눈" 아티팩트 - 자신/상대 모두의 부활 관련 효과 차단 (나비의 [1UP] 자체는 예외)
+    const revivalBlocked = !!(g.me && g.me.tw_revivalBlockAll);
+
     // [무한대전타워] "불멸자" 신화 증강 - 전투당 1회, 죽음 직전 지정 비율만큼 체력을 회복하며 부활 (불굴보다 먼저 체크)
-    if(target.hp <= 0 && target.tw_undyingHpPct && !target.tw_phoenixUsed && !target.tw_ignoreRevive){
+    if(target.hp <= 0 && target.tw_undyingHpPct && !target.tw_phoenixUsed && !target.tw_ignoreRevive && !revivalBlocked){
       target.tw_phoenixUsed = true;
       target.hp = Math.max(1, Math.round(target.maxHp * target.tw_undyingHpPct));
       pushLog('sys', `✨ ${label} [불멸자] 발동! 체력 ${target.hp}로 부활했다`);
@@ -8776,7 +8858,7 @@
     }
 
     // [무한대전타워] 증강 "불굴" - 치명적 피해로 사망 시 전투당 제한 횟수만큼 체력 1로 생존 (1UP보다 먼저 체크)
-    if(target.hp <= 0 && (target.tw_undyingCount||0) > 0 && !target.tw_ignoreRevive){
+    if(target.hp <= 0 && (target.tw_undyingCount||0) > 0 && !target.tw_ignoreRevive && !revivalBlocked){
       target.tw_undyingCount -= 1;
       target.hp = 1;
       pushLog('sys', `✨ ${label} [불굴] 발동! 체력 1로 버텨냈다`);
@@ -8784,17 +8866,26 @@
     }
 
     const wasIgnoringRevive = target.hp <= 0 && target.tw_ignoreRevive;
-    checkOneUpRevive(targetKey, g);
+    checkOneUpRevive(targetKey, g); // [하이 눈] 예외 - 나비의 [1UP] 자체는 여기서 항상 정상 발동
     if(wasIgnoringRevive && target.hp <= 0){
       pushLog('sys', `☠️ ${label} 신경독 최대 중첩 처형! 모든 부활 효과를 무시하고 쓰러졌다`);
     }
 
     // [무한대전타워] 아이템 "만년 수프" - 1UP/불굴 등을 다 써도 쓰러졌다면, 마지막 안전망으로 체력 7 부활 (전투 중 즉시 처리)
-    if(target.hp <= 0 && targetKey === 'me' && typeof TS !== 'undefined' && TS && (TS.eternalSoupCount||0) > 0){
+    if(target.hp <= 0 && targetKey === 'me' && typeof TS !== 'undefined' && TS && (TS.eternalSoupCount||0) > 0 && !revivalBlocked){
       TS.eternalSoupCount -= 1;
       target.hp = 7;
       pushLog('sys', `🍲 [만년 수프]를 사용해 체력 7로 부활했다! (잔여 ${TS.eternalSoupCount}개)`);
       spawnPopup(targetKey, 'SOUP REVIVE!', 'heal');
+    }
+
+    // [무한대전타워] "얽힌 생명줄의 무도회" 아티팩트 - 오버킬 상태로 처치했는데 상대가 부활했다면, 남은 오버킬 피해를 그대로 다시 입힌다
+    if(overkillAmt > 0 && sourceKey && g[sourceKey] && g[sourceKey].tw_overkillChainDmg && target.hp > 0 && towerOverkillChainDepth < 15){
+      towerOverkillChainDepth++;
+      pushLog('sys', `🩸 ${label} [얽힌 생명줄의 무도회] 발동! 남은 오버킬 피해 ${overkillAmt}가 부활한 상대를 다시 덮친다`);
+      towerDamageSourceKey = sourceKey;
+      dealDamage(targetKey, overkillAmt);
+      towerOverkillChainDepth--;
     }
   }
 
@@ -8810,7 +8901,9 @@
         : 2 + (defender.tw_fairyShieldAdd||0); // [무한대전타워] "두꺼운 날개" 증강 반영
       const cap = 6 + (defender.tw_fairyShieldCapAdd||0);
       const before = defender.passiveShield || 0;
-      defender.passiveShield = Math.min(cap, before + gainAmt);
+      // 다른 경로(장비/반격/이월 등)로 이미 캡을 초과한 보호막을 갖고 있어도, 이 패시브가 그걸 캡까지 깎아내리는 일이 없도록
+      // "기존 보유량"과 "캡까지 채운 값" 중 더 큰 쪽을 취한다 (절대 손해 보지 않음)
+      defender.passiveShield = Math.max(before, Math.min(cap, before + gainAmt));
       const gained = defender.passiveShield - before;
       defender.passiveShieldTurns = defender.tw_fairyShieldNoDuration ? 9999 : 3; // [무한대전타워] "여왕의 가호" - 유지시간 제한 삭제
       defender.passiveShieldJustGranted = true; // 획득한 바로 이번 턴은 지속시간 카운트에서 제외
@@ -9196,6 +9289,15 @@
     // [무한대전타워] "어느 날 갑자기" + "바다의 찬가" 아티팩트 조합 - 보유 행동력 1당 피해 +20%
     if(actor.tw_apFixedValue && actor.tw_allActionsFree && amount > 0){
       amount = Math.round(amount * (1 + actor.ap * 0.20));
+    }
+    // [무한대전타워] "초동역학시간전환기" 아티팩트 - 턴이 지날수록 가하는 피해 10%씩 누적 증가
+    if(actor.tw_turnScalingDmgPct && amount > 0 && g.turn > 1){
+      amount = Math.round(amount * (1 + actor.tw_turnScalingDmgPct * (g.turn - 1)));
+    }
+    // [무한대전타워] "부와 명성" 아티팩트 - 보유 골드 1000당 가하는 피해 0.1% 증가
+    if(actor.tw_goldDmgScalePct && amount > 0){
+      const goldBonus = Math.floor((TS.coins||0) / 1000) * actor.tw_goldDmgScalePct;
+      if(goldBonus > 0) amount = Math.round(amount * (1 + goldBonus));
     }
 
     amount += get2v2SuddenDeathBonus(); // 2VS2가 질질 끌리지 않도록, 턴이 오래 갈수록 모든 피해에 보너스가 붙는다
