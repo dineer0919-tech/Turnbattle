@@ -2849,7 +2849,7 @@
       { id:'usagi_roulette', name:'행운의 룰렛', grade:'common', desc:'스탯 증가량 2→3 (감소량은 그대로 1)', effects:{chipGainAdd:1} },
       { id:'usagi_stabilize', name:'칩월드 안정화', grade:'common', desc:'감소 수치 하한 50%→70%로 완화', effects:{chipFloorPct:0.20} },
       { id:'usagi_bonus_roulette', name:'이 룰렛은 제껍니다', grade:'legendary', desc:'승패에 관계없이 매 전투가 끝날 때마다, 조우자 이벤트의 [우사기 룰렛]을 돌릴 수 있다', effects:{usagiRouletteEveryBattle:true} },
-      { id:'usagi_double_or_nothing', name:'우사기가 좋아하는 랜덤 게임', grade:'mythic', desc:'칩월드 발동 시 두 스탯 모두 상향 칩으로 바뀌며, 증가량이 각 스탯 원수치의 50%로 늘어난다', effects:{chipDoubleUp:true, chipGainBasePct:0.5} },
+      { id:'usagi_double_or_nothing', name:'우사기가 좋아하는 랜덤 게임', grade:'mythic', desc:'우사기의 기본 능력치(최대체력/공격/회복/일격피해)가 +100 증가한다. 칩월드 발동 시 두 스탯 모두 상향 칩으로 바뀌며, 증가량이 이 범핑된 능력치의 100%로 늘어난다', effects:{maxHpAdd:100, atkAdd:100, healAdd:100, ultimateAdd:100, chipDoubleUp:true, chipGainBasePct:1.0, chipBaseBumpAdd:100} },
     ],
     hachimi: [
       { id:'hachi_skill', name:'숙련된 손맛', grade:'common', desc:'중첩 상승 조건들의 상승량 전부 +1', effects:{cookingGainAdd:1} },
@@ -3394,7 +3394,7 @@
       energyCapAdd:0, energyThresholdOverride:0, energyDmgPerStackAdd:0, energyMaxRegen:0, energyGainAdd:0, energyNoConsume:false,
       toxinCapAdd:0, toxinMaxDmgPct:0, toxinStackGainAdd:0, toxinLifestealPct:0, toxinApDrain:false,
       toxinMaxStackHealPct:0, toxinDefendReducePct:0, toxinExecuteIgnoreRevive:false,
-      chipCycleReduce:0, chipGainAdd:0, chipFloorPct:0, chipNoDownside:false, chipDoubleUp:false, chipGainBasePct:0,
+      chipCycleReduce:0, chipGainAdd:0, chipFloorPct:0, chipNoDownside:false, chipDoubleUp:false, chipGainBasePct:0, chipBaseBumpAdd:0,
       usagiRouletteOnWin:false, usagiRouletteEveryBattle:false,
       cookingGainAdd:0, cookingTurnsReduce:0, cookingPowerPct:0, cookingMythicBoth:false,
       cookingStartStacks:0, cookingMythicPowerPct:0,
@@ -3519,6 +3519,7 @@
       if(e.chipNoDownside) b.chipNoDownside = true;
       if(e.chipDoubleUp) b.chipDoubleUp = true;
       if(e.chipGainBasePct) b.chipGainBasePct = Math.max(b.chipGainBasePct, e.chipGainBasePct);
+      if(e.chipBaseBumpAdd) b.chipBaseBumpAdd += e.chipBaseBumpAdd * stack;
       if(e.usagiRouletteOnWin) b.usagiRouletteOnWin = true;
       if(e.usagiRouletteEveryBattle) b.usagiRouletteEveryBattle = true;
       if(e.skillIsAttack) b.skillCountsAsAttack = true;
@@ -3611,6 +3612,7 @@
     fighter.tw_chipNoDownside = b.chipNoDownside;
     fighter.tw_chipDoubleUp = b.chipDoubleUp;
     fighter.tw_chipGainBasePct = b.chipGainBasePct;
+    fighter.tw_chipBaseBumpAdd = b.chipBaseBumpAdd;
     fighter.tw_cookingGainAdd = b.cookingGainAdd;
     fighter.tw_cookingTurnsReduce = b.cookingTurnsReduce;
     fighter.tw_cookingPowerPct = b.cookingPowerPct;
@@ -9082,7 +9084,7 @@
     const downKey = CHIP_STAT_KEYS.filter(k => k !== upKey)[Math.floor(turnRandom(g) * (CHIP_STAT_KEYS.length - 1))];
     const gainAmt = 2 + (entity.tw_chipGainAdd||0); // [무한대전타워] "행운의 룰렛" 증강 반영
     const floorPct = 0.5 + (entity.tw_chipFloorPct||0); // [무한대전타워] "칩월드 안정화" 증강 반영
-    const basePctOf = (key) => Math.max(1, Math.round((key === 'maxHp' ? base.hp : base[key]) * entity.tw_chipGainBasePct)); // [무한대전타워] "우사기가 좋아하는 랜덤 게임" 신화 증강 - 원수치 비례 증가량
+    const basePctOf = (key) => Math.max(1, Math.round(((key === 'maxHp' ? base.hp : base[key]) + (entity.tw_chipBaseBumpAdd||0)) * entity.tw_chipGainBasePct)); // [무한대전타워] "우사기가 좋아하는 랜덤 게임" 신화 증강 - +100 범핑된 원수치 비례 증가량
     const upGain = entity.tw_chipGainBasePct ? basePctOf(upKey) : gainAmt;
 
     if(upKey === 'maxHp'){ entity.maxHp += upGain; entity.hp = Math.min(entity.maxHp, entity.hp + upGain); }
