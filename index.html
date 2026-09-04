@@ -2811,15 +2811,15 @@
       { id:'nabi_extra_life', name:'여분의 목숨', grade:'epic', desc:'1UP 발동 횟수 +1 (전투당)', effects:{oneUpCount:1} },
       { id:'nabi_phoenix', name:'불사조의 저력', grade:'rare', desc:'부활 시 체력 1 대신 최대체력의 15%로 부활', effects:{oneUpHpPct:0.15} },
       { id:'nabi_final_blow', name:'최후의 일격', grade:'rare', desc:'1UP 발동 중 피해감소 대신 다음 공격 피해 +50%', effects:{oneUpFinalBlow:0.50} },
-      { id:'nabi_undying', name:'불사의 나비', grade:'legendary', desc:'1UP 발동 시 체력 1이 아닌 최대체력의 100%로 부활한다', effects:{oneUpHpPct:1.0} },
-      { id:'nabi_butterfly_effect', name:'나비 효과', grade:'mythic', desc:'1UP으로 부활할 때마다 상대에게 즉시 15의 고정 피해를 입힌다', effects:{oneUpCounterDmg:15} },
+      { id:'nabi_undying', name:'불사의 나비', grade:'legendary', desc:'1UP 부활 횟수 제한과 부활 페널티가 모두 사라진다. 대신 부활할 때마다 가하는 피해가 영구히 50%씩 증가한다', effects:{oneUpUnlimited:true, oneUpNoPenalty:true, oneUpDmgUpPct:0.5} },
+      { id:'nabi_butterfly_effect', name:'나비 효과', grade:'mythic', desc:'1UP으로 부활할 때마다 상대에게 상대 최대체력의 50%에 달하는 고정 피해를 입힌다', effects:{oneUpCounterDmgMaxHpPct:0.5} },
     ],
     berry: [
       { id:'berry_thick_wing', name:'두꺼운 날개', grade:'common', desc:'보호막 획득량 +1, 최대 중첩 +1', effects:{fairyShieldAdd:1, fairyShieldCapAdd:1} },
       { id:'berry_blessing', name:'요정의 축복', grade:'rare', desc:'보호막 보유 중 매 턴 체력 1 회복', effects:{fairyShieldRegen:1} },
       { id:'berry_reflect', name:'반사의 날개', grade:'epic', desc:'보호막으로 막은 피해의 20%를 상대에게 반사', effects:{fairyReflectPct:0.20} },
-      { id:'berry_queens_grace', name:'여왕의 가호', grade:'legendary', desc:'보호막 최대 중첩 제한이 사실상 사라진다', effects:{fairyShieldCapAdd:994, fairyShieldAdd:2} },
-      { id:'berry_absolute_wall', name:'절대 방벽', grade:'mythic', desc:'보호막이 남아있는 동안 받는 모든 피해가 절반으로 줄어든다', effects:{shieldHalvePct:0.5} },
+      { id:'berry_queens_grace', name:'여왕의 가호', grade:'legendary', desc:'보호막 최대 중첩 제한과 유지시간 제한이 사실상 사라지며, 보호막 생성량이 최대체력의 15%로 늘어난다', effects:{fairyShieldCapAdd:994, fairyShieldNoDuration:true, fairyShieldGainMaxHpPct:0.15} },
+      { id:'berry_absolute_wall', name:'요정의 반란', grade:'mythic', desc:'자신이 가하는 모든 피해가 자신의 최대체력과 보유 보호막 수치에 비례해서 증가한다', effects:{fairyRebellion:true} },
     ],
     takamura: [
       { id:'taka_stack_up', name:'죽을 사 강화', grade:'common', desc:'죽을 사 최대 중첩 +1', effects:{deathMarkCapAdd:1} },
@@ -2841,15 +2841,15 @@
       { id:'wek_toxin_grow', name:'맹독 배양', grade:'common', desc:'신경독 최대 중첩 +1, 중첩당 피해 비례 증가', effects:{toxinCapAdd:1} },
       { id:'wek_immune_break', name:'면역 붕괴', grade:'epic', desc:'신경독 최대 중첩 적이 받는 모든 피해 +15%', effects:{toxinMaxDmgPct:0.15} },
       { id:'wek_toxin_spread', name:'독무 확산', grade:'rare', desc:'적중 시 신경독 중첩을 2개씩 획득', effects:{toxinStackGainAdd:1} },
-      { id:'wek_saturation', name:'맹독 포화', grade:'legendary', desc:'신경독으로 피해를 입은 상대는 그때마다 행동력을 1씩 잃는다', effects:{toxinApDrain:true} },
-      { id:'wek_collapse', name:'붕괴하는 육체', grade:'mythic', desc:'신경독으로 입힌 피해의 100%를 회복한다', effects:{toxinLifestealPct:1.0} },
+      { id:'wek_saturation', name:'맹독 포화', grade:'legendary', desc:'신경독 최대 중첩 시, 상대 최대체력의 10% 피해를 추가로 입히고 그 독 피해의 100%를 회복한다', effects:{toxinMaxStackHealPct:1.0} },
+      { id:'wek_collapse', name:'붕괴하는 육체', grade:'mythic', desc:'신경독에 걸린 상대에게 받는 피해가 80% 줄어들며, 최대 중첩 상태의 신경독 피해는 대상의 부활 효과를 무시하고 처형한다', effects:{toxinDefendReducePct:0.8, toxinExecuteIgnoreRevive:true} },
     ],
     usagi: [
       { id:'usagi_accel', name:'칩월드 가속', grade:'rare', desc:'발동 주기 2턴→1턴 단축 (최소 1턴)', effects:{chipCycleReduce:1} },
       { id:'usagi_roulette', name:'행운의 룰렛', grade:'common', desc:'스탯 증가량 2→3 (감소량은 그대로 1)', effects:{chipGainAdd:1} },
       { id:'usagi_stabilize', name:'칩월드 안정화', grade:'common', desc:'감소 수치 하한 50%→70%로 완화', effects:{chipFloorPct:0.20} },
-      { id:'usagi_bonus_roulette', name:'뿅뿅 룰렛', grade:'legendary', desc:'전투가 끝날 때마다, 조우자 이벤트의 [우사기 룰렛]을 돌릴 수 있다', effects:{usagiRouletteOnWin:true} },
-      { id:'usagi_double_or_nothing', name:'묻고 따블로 가!', grade:'mythic', desc:'칩월드 발동 시 스탯 하락이 사라지고, 대신 다른 스탯이 하나 더 상승한다', effects:{chipDoubleUp:true} },
+      { id:'usagi_bonus_roulette', name:'이 룰렛은 제껍니다', grade:'legendary', desc:'승패에 관계없이 매 전투가 끝날 때마다, 조우자 이벤트의 [우사기 룰렛]을 돌릴 수 있다', effects:{usagiRouletteEveryBattle:true} },
+      { id:'usagi_double_or_nothing', name:'우사기가 좋아하는 랜덤 게임', grade:'mythic', desc:'칩월드 발동 시 두 스탯 모두 상향 칩으로 바뀌며, 증가량이 각 스탯 원수치의 50%로 늘어난다', effects:{chipDoubleUp:true, chipGainBasePct:0.5} },
     ],
     hachimi: [
       { id:'hachi_skill', name:'숙련된 손맛', grade:'common', desc:'중첩 상승 조건들의 상승량 전부 +1', effects:{cookingGainAdd:1} },
@@ -3387,12 +3387,15 @@
       // 캐릭터 전용
       critTrackBonus:0, critTrackReq:0, critTrackBleed:0, critTrackTrueDmgPct:0,
       oneUpExtra:0, oneUpHpPct:0, oneUpFinalBlow:0, oneUpCounterDmg:0,
+      oneUpUnlimited:false, oneUpNoPenalty:false, oneUpDmgUpPct:0, oneUpCounterDmgMaxHpPct:0,
       fairyShieldAdd:0, fairyShieldCapAdd:0, fairyShieldRegen:0, fairyReflectPct:0, shieldHalvePct:0,
+      fairyShieldNoDuration:false, fairyShieldGainMaxHpPct:0, fairyRebellion:false,
       deathMarkCapAdd:0, executeApRestore:0, deathMarkDmgPerStack:0, deathMarkOnUltimate:false,
       energyCapAdd:0, energyThresholdOverride:0, energyDmgPerStackAdd:0, energyMaxRegen:0, energyGainAdd:0, energyNoConsume:false,
       toxinCapAdd:0, toxinMaxDmgPct:0, toxinStackGainAdd:0, toxinLifestealPct:0, toxinApDrain:false,
-      chipCycleReduce:0, chipGainAdd:0, chipFloorPct:0, chipNoDownside:false, chipDoubleUp:false,
-      usagiRouletteOnWin:false,
+      toxinMaxStackHealPct:0, toxinDefendReducePct:0, toxinExecuteIgnoreRevive:false,
+      chipCycleReduce:0, chipGainAdd:0, chipFloorPct:0, chipNoDownside:false, chipDoubleUp:false, chipGainBasePct:0,
+      usagiRouletteOnWin:false, usagiRouletteEveryBattle:false,
       cookingGainAdd:0, cookingTurnsReduce:0, cookingPowerPct:0, cookingMythicBoth:false,
       cookingStartStacks:0, cookingMythicPowerPct:0,
       skillCountsAsAttack:false, // [환영 무기] 전설 증강 - 컴뱃스킬도 [공격] 판정을 받게 함
@@ -3480,11 +3483,18 @@
       if(e.oneUpHpPct) b.oneUpHpPct = Math.max(b.oneUpHpPct, e.oneUpHpPct);
       if(e.oneUpFinalBlow) b.oneUpFinalBlow = Math.max(b.oneUpFinalBlow, e.oneUpFinalBlow);
       if(e.oneUpCounterDmg) b.oneUpCounterDmg += e.oneUpCounterDmg * stack;
+      if(e.oneUpUnlimited) b.oneUpUnlimited = true;
+      if(e.oneUpNoPenalty) b.oneUpNoPenalty = true;
+      if(e.oneUpDmgUpPct) b.oneUpDmgUpPct = Math.max(b.oneUpDmgUpPct, e.oneUpDmgUpPct);
+      if(e.oneUpCounterDmgMaxHpPct) b.oneUpCounterDmgMaxHpPct = Math.max(b.oneUpCounterDmgMaxHpPct, e.oneUpCounterDmgMaxHpPct);
       if(e.fairyShieldAdd) b.fairyShieldAdd += e.fairyShieldAdd * stack;
       if(e.fairyShieldCapAdd) b.fairyShieldCapAdd += e.fairyShieldCapAdd * stack;
       if(e.fairyShieldRegen) b.fairyShieldRegen += e.fairyShieldRegen * stack;
       if(e.fairyReflectPct) b.fairyReflectPct += e.fairyReflectPct * stack;
       if(e.shieldHalvePct) b.shieldHalvePct = Math.max(b.shieldHalvePct, e.shieldHalvePct);
+      if(e.fairyShieldNoDuration) b.fairyShieldNoDuration = true;
+      if(e.fairyShieldGainMaxHpPct) b.fairyShieldGainMaxHpPct = Math.max(b.fairyShieldGainMaxHpPct, e.fairyShieldGainMaxHpPct);
+      if(e.fairyRebellion) b.fairyRebellion = true;
       if(e.deathMarkCapAdd) b.deathMarkCapAdd += e.deathMarkCapAdd * stack;
       if(e.executeApRestore) b.executeApRestore += e.executeApRestore * stack;
       if(e.deathMarkDmgPerStack) b.deathMarkDmgPerStack += e.deathMarkDmgPerStack * stack;
@@ -3500,12 +3510,17 @@
       if(e.toxinApDrain) b.toxinApDrain = true;
       if(e.toxinStackGainAdd) b.toxinStackGainAdd += e.toxinStackGainAdd * stack;
       if(e.toxinLifestealPct) b.toxinLifestealPct = Math.max(b.toxinLifestealPct, e.toxinLifestealPct);
+      if(e.toxinMaxStackHealPct) b.toxinMaxStackHealPct = Math.max(b.toxinMaxStackHealPct, e.toxinMaxStackHealPct);
+      if(e.toxinDefendReducePct) b.toxinDefendReducePct = Math.max(b.toxinDefendReducePct, e.toxinDefendReducePct);
+      if(e.toxinExecuteIgnoreRevive) b.toxinExecuteIgnoreRevive = true;
       if(e.chipCycleReduce) b.chipCycleReduce += e.chipCycleReduce * stack;
       if(e.chipGainAdd) b.chipGainAdd += e.chipGainAdd * stack;
       if(e.chipFloorPct) b.chipFloorPct += e.chipFloorPct * stack;
       if(e.chipNoDownside) b.chipNoDownside = true;
       if(e.chipDoubleUp) b.chipDoubleUp = true;
+      if(e.chipGainBasePct) b.chipGainBasePct = Math.max(b.chipGainBasePct, e.chipGainBasePct);
       if(e.usagiRouletteOnWin) b.usagiRouletteOnWin = true;
+      if(e.usagiRouletteEveryBattle) b.usagiRouletteEveryBattle = true;
       if(e.skillIsAttack) b.skillCountsAsAttack = true;
       if(e.cookingGainAdd) b.cookingGainAdd += e.cookingGainAdd * stack;
       if(e.cookingTurnsReduce) b.cookingTurnsReduce += e.cookingTurnsReduce * stack;
@@ -3560,11 +3575,18 @@
     fighter.tw_oneUpHpPct = b.oneUpHpPct;
     fighter.tw_oneUpFinalBlow = b.oneUpFinalBlow;
     fighter.tw_oneUpCounterDmg = b.oneUpCounterDmg;
+    fighter.tw_oneUpUnlimited = b.oneUpUnlimited;
+    fighter.tw_oneUpNoPenalty = b.oneUpNoPenalty;
+    fighter.tw_oneUpDmgUpPct = b.oneUpDmgUpPct;
+    fighter.tw_oneUpCounterDmgMaxHpPct = b.oneUpCounterDmgMaxHpPct;
     fighter.tw_fairyShieldAdd = b.fairyShieldAdd;
     fighter.tw_fairyShieldCapAdd = b.fairyShieldCapAdd;
     fighter.tw_fairyShieldRegen = b.fairyShieldRegen;
     fighter.tw_fairyReflectPct = b.fairyReflectPct;
     fighter.tw_shieldHalvePct = b.shieldHalvePct;
+    fighter.tw_fairyShieldNoDuration = b.fairyShieldNoDuration;
+    fighter.tw_fairyShieldGainMaxHpPct = b.fairyShieldGainMaxHpPct;
+    fighter.tw_fairyRebellion = b.fairyRebellion;
     fighter.tw_deathMarkCapAdd = b.deathMarkCapAdd;
     fighter.tw_executeApRestore = b.executeApRestore;
     fighter.tw_deathMarkDmgPerStack = b.deathMarkDmgPerStack;
@@ -3580,11 +3602,15 @@
     fighter.tw_toxinStackGainAdd = b.toxinStackGainAdd;
     fighter.tw_toxinLifestealPct = b.toxinLifestealPct;
     fighter.tw_toxinApDrain = b.toxinApDrain;
+    fighter.tw_toxinMaxStackHealPct = b.toxinMaxStackHealPct;
+    fighter.tw_toxinDefendReducePct = b.toxinDefendReducePct;
+    fighter.tw_toxinExecuteIgnoreRevive = b.toxinExecuteIgnoreRevive;
     fighter.tw_chipCycleReduce = b.chipCycleReduce;
     fighter.tw_chipGainAdd = b.chipGainAdd;
     fighter.tw_chipFloorPct = b.chipFloorPct;
     fighter.tw_chipNoDownside = b.chipNoDownside;
     fighter.tw_chipDoubleUp = b.chipDoubleUp;
+    fighter.tw_chipGainBasePct = b.chipGainBasePct;
     fighter.tw_cookingGainAdd = b.cookingGainAdd;
     fighter.tw_cookingTurnsReduce = b.cookingTurnsReduce;
     fighter.tw_cookingPowerPct = b.cookingPowerPct;
@@ -3723,7 +3749,7 @@
       // [무한대전타워] "뿅뿅 룰렛" 전설 증강 - 전투 승리 시마다 우사기의 룰렛을 돌릴 수 있다 (확정, 확률 아님)
       // 장비 "증강 추출기" / 증강 "행운의 촉" - 확률로 보너스 증강 선택 기회
       // (여기서 다음 층으로 넘기지 않는다 — 보너스 화면에서 완료되면 그 콜백이 알아서 다음 층으로 넘어간다)
-      if(bonus.usagiRouletteOnWin){
+      if(bonus.usagiRouletteOnWin || bonus.usagiRouletteEveryBattle){
         const blackout = document.getElementById('blackout');
         blackout.classList.add('show');
         setTimeout(()=> towerPlayUsagiRouletteSpin(), 650);
@@ -3733,7 +3759,15 @@
         towerGoToNextFloor(); // 암전 → 다음 층 자동 진행 (전투면 버튼 없이 바로 다음 전투, 상점/증강이면 해당 화면 등장)
       }
     } else {
-      towerHandleBattleLoss();
+      // [무한대전타워] "이 룰렛은 제껍니다" 전설 증강 - 패배 시에도(승패 무관) 룰렛을 돌릴 수 있다
+      const lossBonus = towerBuildPlayerBonuses();
+      if(lossBonus.usagiRouletteEveryBattle){
+        const blackout = document.getElementById('blackout');
+        blackout.classList.add('show');
+        setTimeout(()=> towerPlayUsagiRouletteSpin(towerHandleBattleLoss), 650);
+      } else {
+        towerHandleBattleLoss();
+      }
     }
   }
 
@@ -4156,7 +4190,8 @@
 
   const TOWER_USAGI_ARTIFACT_CHANCE = 0.01; // 우사기 룰렛에서 T5 아티팩트가 나올 확률
 
-  function towerPlayUsagiRouletteSpin(){
+  function towerPlayUsagiRouletteSpin(onDone){
+    const finish = onDone || (()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
     const isArtifactRoll = Math.random() < TOWER_USAGI_ARTIFACT_CHANCE;
     const pool = towerGetSelectableAugmentPool(TS.charId); // 우사기 룰렛만 예외적으로 일반 등급도 포함 (하양 결과)
     const chosen = towerPickUsagiRouletteAugment(pool);
@@ -4188,7 +4223,7 @@
             card.style.opacity = '0';
             setTimeout(()=>{
               document.getElementById('blackout').classList.remove('show');
-              towerShowRewardPopup('🌈', 'T5 아티팩트 당첨!!', `<b class="tower-rainbow-text">${chosenArtifactName}</b><br>${artifact.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+              towerShowRewardPopup('🌈', 'T5 아티팩트 당첨!!', `<b class="tower-rainbow-text">${chosenArtifactName}</b><br>${artifact.desc}`, finish);
             }, 400);
           }, 900);
         } else {
@@ -4200,7 +4235,7 @@
             card.style.opacity = '0';
             setTimeout(()=>{
               document.getElementById('blackout').classList.remove('show');
-              towerShowRewardPopup('🎰', '룰렛 대박!', `<b style="color:${TOWER_USAGI_GRADE_COLOR[chosen.grade]}">${chosen.name}</b><br>${chosen.desc}`, ()=>{ towerCloseEventOverlay(); towerGoToNextFloor(); });
+              towerShowRewardPopup('🎰', '룰렛 대박!', `<b style="color:${TOWER_USAGI_GRADE_COLOR[chosen.grade]}">${chosen.name}</b><br>${chosen.desc}`, finish);
             }, 400);
           }, 900);
         }
@@ -8538,7 +8573,7 @@
             const { upKey, downKey, doubledUp } = applyChipWorldPassive(g[k], g);
             if(k === 'me') bumpCharStat('passiveTriggers', 1);
             pushLog('sys', doubledUp
-              ? `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]}도 상승! (묻고 따블로 가!)`
+              ? `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]}도 상승! (랜덤 게임)`
               : downKey
                 ? `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
                 : `🎰 ${k==='me'?'내':'상대'} [${kPassive.name}] 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
@@ -8680,6 +8715,10 @@
     if(remaining > 0 && target.tw_shieldHalvePct && (target.shieldHp > 0 || target.passiveShield > 0)){
       remaining = Math.ceil(remaining * (1 - target.tw_shieldHalvePct));
     }
+    // [무한대전타워] 신화 증강 "붕괴하는 육체" - 신경독에 걸린 상대에게 받는 피해 감소
+    if(remaining > 0 && target.tw_toxinDefendReducePct && sourceKey && g[sourceKey] && (g[sourceKey].neurotoxinStacks||0) > 0){
+      remaining = Math.ceil(remaining * (1 - target.tw_toxinDefendReducePct));
+    }
 
     // 1. 컴뱃스킬(에너지 쉴드)로 얻은 임시 보호막을 먼저 소모
     if(remaining > 0 && target.shieldHp > 0){
@@ -8727,7 +8766,7 @@
     if(target.hp > target.maxHp * 0.25) target.tw_autoShieldTriggeredThisDrop = false; // 체력을 회복해 위험 구간을 벗어나면 다시 발동 가능
 
     // [무한대전타워] "불멸자" 신화 증강 - 전투당 1회, 죽음 직전 지정 비율만큼 체력을 회복하며 부활 (불굴보다 먼저 체크)
-    if(target.hp <= 0 && target.tw_undyingHpPct && !target.tw_phoenixUsed){
+    if(target.hp <= 0 && target.tw_undyingHpPct && !target.tw_phoenixUsed && !target.tw_ignoreRevive){
       target.tw_phoenixUsed = true;
       target.hp = Math.max(1, Math.round(target.maxHp * target.tw_undyingHpPct));
       pushLog('sys', `✨ ${label} [불멸자] 발동! 체력 ${target.hp}로 부활했다`);
@@ -8735,14 +8774,18 @@
     }
 
     // [무한대전타워] 증강 "불굴" - 치명적 피해로 사망 시 전투당 제한 횟수만큼 체력 1로 생존 (1UP보다 먼저 체크)
-    if(target.hp <= 0 && (target.tw_undyingCount||0) > 0){
+    if(target.hp <= 0 && (target.tw_undyingCount||0) > 0 && !target.tw_ignoreRevive){
       target.tw_undyingCount -= 1;
       target.hp = 1;
       pushLog('sys', `✨ ${label} [불굴] 발동! 체력 1로 버텨냈다`);
       spawnPopup(targetKey, 'SURVIVE!', 'heal');
     }
 
+    const wasIgnoringRevive = target.hp <= 0 && target.tw_ignoreRevive;
     checkOneUpRevive(targetKey, g);
+    if(wasIgnoringRevive && target.hp <= 0){
+      pushLog('sys', `☠️ ${label} 신경독 최대 중첩 처형! 모든 부활 효과를 무시하고 쓰러졌다`);
+    }
 
     // [무한대전타워] 아이템 "만년 수프" - 1UP/불굴 등을 다 써도 쓰러졌다면, 마지막 안전망으로 체력 7 부활 (전투 중 즉시 처리)
     if(target.hp <= 0 && targetKey === 'me' && typeof TS !== 'undefined' && TS && (TS.eternalSoupCount||0) > 0){
@@ -8759,12 +8802,15 @@
     const defender = g[defenderKey];
     const passive = CHARACTERS[defender.charKey].passive;
     if(passive && passive.id === 'fairy_wings'){
-      const gainAmt = 2 + (defender.tw_fairyShieldAdd||0); // [무한대전타워] "두꺼운 날개" 증강 반영
+      // [무한대전타워] "여왕의 가호" 전설 증강 - 보호막 생성량이 최대체력의 15%로 대체됨
+      const gainAmt = defender.tw_fairyShieldGainMaxHpPct
+        ? Math.round(defender.maxHp * defender.tw_fairyShieldGainMaxHpPct) + (defender.tw_fairyShieldAdd||0)
+        : 2 + (defender.tw_fairyShieldAdd||0); // [무한대전타워] "두꺼운 날개" 증강 반영
       const cap = 6 + (defender.tw_fairyShieldCapAdd||0);
       const before = defender.passiveShield || 0;
       defender.passiveShield = Math.min(cap, before + gainAmt);
       const gained = defender.passiveShield - before;
-      defender.passiveShieldTurns = 3; // 새 보호막 발생 시 지속시간 갱신
+      defender.passiveShieldTurns = defender.tw_fairyShieldNoDuration ? 9999 : 3; // [무한대전타워] "여왕의 가호" - 유지시간 제한 삭제
       defender.passiveShieldJustGranted = true; // 획득한 바로 이번 턴은 지속시간 카운트에서 제외
       const label = defenderKey==='me' ? '내' : '상대';
       if(defenderKey === 'me' && defender.passiveShield >= cap) bumpCharStat('shieldMaxCount', 1);
@@ -8830,8 +8876,9 @@
   function checkOneUpRevive(targetKey, g){
     const target = g[targetKey];
     if(target.hp > 0) return;
+    if(target.tw_ignoreRevive){ target.tw_ignoreRevive = false; return; } // [무한대전타워] "붕괴하는 육체" 신화 증강 - 신경독 처형은 부활 무시
     const passive = CHARACTERS[target.charKey].passive;
-    const maxUses = 1 + (target.tw_oneUpExtra||0); // [무한대전타워] "여분의 목숨" 증강 반영
+    const maxUses = target.tw_oneUpUnlimited ? Infinity : (1 + (target.tw_oneUpExtra||0)); // [무한대전타워] "여분의 목숨"/"불사의 나비" 증강 반영
     const usedCount = target.oneUpUsedCount||0;
     if(passive && passive.id === 'one_up' && usedCount < maxUses){
       target.oneUpUsedCount = usedCount + 1;
@@ -8842,23 +8889,30 @@
         pushLog('sys', `💫 ${label} [${passive.name}] 발동! 체력 ${target.hp}로 부활`);
       } else {
         target.hp = 1;
-        pushLog('sys', `💫 ${label} [${passive.name}] 발동! 1의 체력으로 부활 (이후 공격/일격 피해 -2)`);
+        pushLog('sys', `💫 ${label} [${passive.name}] 발동! 1의 체력으로 부활${target.tw_oneUpNoPenalty ? '' : ' (이후 공격/일격 피해 -2)'}`);
       }
       if(target.tw_oneUpFinalBlow){ // [무한대전타워] "최후의 일격" 증강 반영 - 페널티 대신 다음 공격 강화
         target.tw_oneUpFinalBlowActive = target.tw_oneUpFinalBlow;
-      } else {
+      } else if(!target.tw_oneUpNoPenalty){ // [무한대전타워] "불사의 나비" 전설 증강 - 부활 페널티 삭제
         target.dmgDebuff = (target.dmgDebuff||0) + 2;
+      }
+      if(target.tw_oneUpDmgUpPct){ // [무한대전타워] "불사의 나비" 전설 증강 - 부활할 때마다 가하는 피해 영구 증가 (누적)
+        target.tw_allDmgMultPct = (target.tw_allDmgMultPct||0) + target.tw_oneUpDmgUpPct;
+        pushLog('sys', `🦋 ${label} [불사의 나비] 발동! 가하는 피해가 영구히 ${Math.round(target.tw_oneUpDmgUpPct*100)}% 증가했다 (누적 ${Math.round((target.tw_allDmgMultPct)*100)}%)`);
       }
       if(targetKey === 'me') bumpCharStat('oneUpRevives', 1);
       spawnPopup(targetKey, 'REVIVE!', 'heal');
-      if(target.tw_oneUpCounterDmg){ // [무한대전타워] "나비 효과" 신화 증강 반영
-        const oppKey = targetKey === 'me' ? 'op' : 'me';
-        const opp = g[oppKey];
+      const oneUpCounterFlat = target.tw_oneUpCounterDmg||0;
+      const oppKey = targetKey === 'me' ? 'op' : 'me';
+      const opp = g[oppKey];
+      const oneUpCounterPctDmg = target.tw_oneUpCounterDmgMaxHpPct ? Math.round(opp.maxHp * target.tw_oneUpCounterDmgMaxHpPct) : 0;
+      const oneUpCounterTotal = oneUpCounterFlat + oneUpCounterPctDmg;
+      if(oneUpCounterTotal > 0){ // [무한대전타워] "나비 효과" 신화 증강 반영
         if(opp.hp > 0){
           towerDamageSourceKey = targetKey;
-          dealDamage(oppKey, target.tw_oneUpCounterDmg);
-          pushLog('sys', `🦋 ${label} [나비 효과] 발동! 상대에게 ${target.tw_oneUpCounterDmg}의 고정 피해`);
-          spawnPopup(oppKey, `-${target.tw_oneUpCounterDmg}`, null);
+          dealDamage(oppKey, oneUpCounterTotal);
+          pushLog('sys', `🦋 ${label} [나비 효과] 발동! 상대에게 ${oneUpCounterTotal}의 고정 피해`);
+          spawnPopup(oppKey, `-${oneUpCounterTotal}`, null);
         }
       }
     }
@@ -8893,27 +8947,29 @@
     const stacks = target.neurotoxinStacks||0;
     if(stacks <= 0) return;
     const label = targetKey==='me' ? '내' : '상대';
+    const inflictorKeyEarly = (targetKey === 'op') ? 'me' : 'op';
+    const inflictorEarly = g[inflictorKeyEarly];
+    const capEarly = 3 + (inflictorEarly.tw_toxinCapAdd||0);
+    // [무한대전타워] "붕괴하는 육체" 신화 증강 - 최대 중첩 상태의 신경독 피해는 부활 효과를 무시하고 처형
+    if(stacks >= capEarly && inflictorEarly.tw_toxinExecuteIgnoreRevive){
+      target.tw_ignoreRevive = true;
+    }
     let totalDmg = 0;
     const dmg = towerApplyDotResist(target, NEUROTOXIN_TICK_DAMAGE[stacks] || 0);
     dealDamage(targetKey, dmg);
     totalDmg += dmg;
     pushLog('sys', `🟣 ${label} 신경독으로 ${dmg}의 피해를 입었다 (중첩 ${stacks}, 영구 지속)`);
 
-    // [무한대전타워] "맹독 포화" 전설 증강 - 신경독 피해를 입을 때마다 상대 행동력 1 감소
-    const inflictorApDrain = (targetKey === 'op') ? g.me.tw_toxinApDrain : false;
-    if(inflictorApDrain && target.ap > 0){
-      target.ap = Math.max(0, target.ap - 1);
-      pushLog('sys', `🟣 ${label} [맹독 포화] 효과로 행동력이 1 줄었다`);
-    }
-
     // [파고드는 신경독 강화] 최대 중첩 상태면 매 턴 최대체력의 10% 추가 고정피해 (기본 패시브로 승격)
     const inflictorCapAdd = (targetKey === 'op') ? (g.me.tw_toxinCapAdd||0) : 0;
     const cap = 3 + inflictorCapAdd;
+    let maxStackExtraDmg = 0;
     if(stacks >= cap && target.hp > 0){
       const extraDmg = Math.max(1, Math.round(target.maxHp * 0.10));
       towerDamageSourceKey = (targetKey === 'op') ? 'me' : 'op';
       dealDamage(targetKey, extraDmg);
       totalDmg += extraDmg;
+      maxStackExtraDmg += extraDmg;
       pushLog('sys', `🟣 ${label} 최대 중첩 상태! 최대체력 비례 ${extraDmg} 추가 피해`);
     }
 
@@ -8928,6 +8984,17 @@
         spawnPopup(inflictorKey, `+${healAmt}`, 'heal');
       }
     }
+    // [무한대전타워] "맹독 포화" 전설 증강 - 최대 중첩 상태에서 입힌 독 피해의 일정 비율만큼 회복
+    if(maxStackExtraDmg > 0 && inflictor.tw_toxinMaxStackHealPct && totalDmg > 0 && inflictor.hp > 0){
+      const healAmt2 = Math.round(totalDmg * inflictor.tw_toxinMaxStackHealPct);
+      if(healAmt2 > 0){
+        inflictor.hp = Math.min(inflictor.maxHp, inflictor.hp + healAmt2);
+        pushLog('sys', `🟣 ${inflictorKey==='me'?'내':'상대'} [맹독 포화] 발동! 최대 중첩 신경독 피해로 ${healAmt2} 회복`);
+        spawnPopup(inflictorKey, `+${healAmt2}`, 'heal');
+      }
+    }
+    // 이번 틱에서 처형 플래그가 소모되지 않았다면(대상이 쓰러지지 않았다면) 다음 틱까지 남지 않도록 정리
+    target.tw_ignoreRevive = false;
   }
 
   // 받는 회복 효과를 줄이거나 완전히 막는 모든 디버프를 여기서 한 번에 처리한다.
@@ -9015,20 +9082,23 @@
     const downKey = CHIP_STAT_KEYS.filter(k => k !== upKey)[Math.floor(turnRandom(g) * (CHIP_STAT_KEYS.length - 1))];
     const gainAmt = 2 + (entity.tw_chipGainAdd||0); // [무한대전타워] "행운의 룰렛" 증강 반영
     const floorPct = 0.5 + (entity.tw_chipFloorPct||0); // [무한대전타워] "칩월드 안정화" 증강 반영
+    const basePctOf = (key) => Math.max(1, Math.round((key === 'maxHp' ? base.hp : base[key]) * entity.tw_chipGainBasePct)); // [무한대전타워] "우사기가 좋아하는 랜덤 게임" 신화 증강 - 원수치 비례 증가량
+    const upGain = entity.tw_chipGainBasePct ? basePctOf(upKey) : gainAmt;
 
-    if(upKey === 'maxHp'){ entity.maxHp += gainAmt; entity.hp = Math.min(entity.maxHp, entity.hp + gainAmt); }
-    else if(upKey === 'atk'){ entity.atkBonus = (entity.atkBonus||0) + gainAmt; }
-    else if(upKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + gainAmt; }
-    else if(upKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + gainAmt; }
+    if(upKey === 'maxHp'){ entity.maxHp += upGain; entity.hp = Math.min(entity.maxHp, entity.hp + upGain); }
+    else if(upKey === 'atk'){ entity.atkBonus = (entity.atkBonus||0) + upGain; }
+    else if(upKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + upGain; }
+    else if(upKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + upGain; }
 
     if(entity.tw_chipNoDownside){ // (구) "무한 확률" 증강 - 하락 스탯 자체가 사라짐
       return { upKey, downKey: null };
     }
-    if(entity.tw_chipDoubleUp){ // [무한대전타워] "묻고 따블로 가!" 신화 증강 - 하락 대신 또 다른 상승
-      if(downKey === 'maxHp'){ entity.maxHp += gainAmt; entity.hp = Math.min(entity.maxHp, entity.hp + gainAmt); }
-      else if(downKey === 'atk'){ entity.atkBonus = (entity.atkBonus||0) + gainAmt; }
-      else if(downKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + gainAmt; }
-      else if(downKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + gainAmt; }
+    if(entity.tw_chipDoubleUp){ // [무한대전타워] "우사기가 좋아하는 랜덤 게임" 신화 증강 - 하락 대신 또 다른 상승
+      const downGain = entity.tw_chipGainBasePct ? basePctOf(downKey) : gainAmt;
+      if(downKey === 'maxHp'){ entity.maxHp += downGain; entity.hp = Math.min(entity.maxHp, entity.hp + downGain); }
+      else if(downKey === 'atk'){ entity.atkBonus = (entity.atkBonus||0) + downGain; }
+      else if(downKey === 'heal'){ entity.healBonus = (entity.healBonus||0) + downGain; }
+      else if(downKey === 'ultimate'){ entity.ultimateBonus = (entity.ultimateBonus||0) + downGain; }
       return { upKey, downKey, doubledUp: true };
     }
 
@@ -9115,6 +9185,11 @@
     // [무한대전타워] "파괴신의 인장" 신화 증강 - 가하는 모든 피해 배율 증가
     if(actor.tw_allDmgMultPct && amount > 0){
       amount = Math.round(amount * (1 + actor.tw_allDmgMultPct));
+    }
+    // [무한대전타워] "요정의 반란" 신화 증강 - 자신의 최대체력, 보유 보호막 수치에 비례해 가하는 피해 증가
+    if(actor.tw_fairyRebellion && amount > 0){
+      const rebellionBonus = (actor.maxHp||0) * 0.001 + ((actor.passiveShield||0) + (actor.shieldHp||0)) * 0.03;
+      if(rebellionBonus > 0) amount = Math.round(amount * (1 + rebellionBonus));
     }
     // [무한대전타워] "어느 날 갑자기" + "바다의 찬가" 아티팩트 조합 - 보유 행동력 1당 피해 +20%
     if(actor.tw_apFixedValue && actor.tw_allActionsFree && amount > 0){
@@ -9330,7 +9405,7 @@
           actor.chipTurnCounter = 0; // 방금 수동으로 발동시켰으니 자동 발동 타이밍도 여기서부터 다시 센다
           if(actorKey === 'me') bumpCharStat('passiveTriggers', 1);
           pushLog(cls, doubledUp
-            ? `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]}도 상승! (묻고 따블로 가!)`
+            ? `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]}도 상승! (랜덤 게임)`
             : downKey
               ? `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 / ${CHIP_STAT_LABEL[downKey]} 하락`
               : `ㄴ ${actorLabel} [${actorPassive.name}] 동시 발동! ${CHIP_STAT_LABEL[upKey]} 상승 (하락 없음!)`);
