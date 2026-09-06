@@ -453,6 +453,10 @@
   .gacha-banner-title{ font-size:16px; font-weight:900; color:var(--text); margin-bottom:4px; }
   .gacha-banner-desc{ font-size:11.5px; color:var(--text-dim); margin-bottom:14px; line-height:1.5; }
   .gacha-pickup-label{ font-size:11px; font-weight:900; color:#FFC94D; margin-bottom:8px; }
+  .gacha-pity-box{ margin-top:16px; padding:10px 12px; border-radius:12px; background:#00000033; border:1px solid #ffffff22; }
+  .gacha-pity-label{ font-size:10.5px; font-weight:700; color:var(--text-dim); margin-bottom:6px; }
+  .gacha-pity-bar{ height:7px; border-radius:999px; background:#ffffff1a; overflow:hidden; }
+  .gacha-pity-bar-fill{ height:100%; background:linear-gradient(90deg,#FFC94D,#FF8C3A); transition:width .25s ease-out; }
   .gacha-pickup-row{ display:flex; gap:10px; justify-content:center; margin-bottom:16px; flex-wrap:wrap; }
   .skin-pickup-card{
     width:100px; background:var(--panel-alt); border:1px solid var(--panel-line); border-radius:12px;
@@ -1535,6 +1539,29 @@
   .coupon-modal-actions{ display:flex; gap:10px; }
   .coupon-modal-actions .btn{ flex:1; padding:11px; border-radius:10px; }
 
+  /* ---------- 출석체크 모달 ---------- */
+  #attendance-modal{
+    position:absolute; inset:0; z-index:150; display:none; align-items:center; justify-content:center;
+    background:#000000d9; padding:0 24px;
+  }
+  #attendance-modal.show{ display:flex; }
+  .attendance-modal-panel{
+    width:100%; max-width:360px; background:var(--panel); border:1px solid var(--panel-line);
+    border-radius:20px; padding:24px 20px; text-align:center;
+    animation:towerPopIn .4s cubic-bezier(.2,.8,.3,1);
+  }
+  .attendance-day-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; }
+  .attendance-day-card{
+    position:relative; background:var(--panel-alt); border:1px solid var(--panel-line); border-radius:12px;
+    padding:10px 4px 12px; display:flex; flex-direction:column; align-items:center; gap:4px;
+  }
+  .attendance-day-card.today{ border-color:#FFC94D; box-shadow:0 0 0 2px #FFC94D55; }
+  .attendance-day-card.claimed{ opacity:.5; }
+  .attendance-day-num{ font-size:10.5px; font-weight:800; color:var(--text-dim); }
+  .attendance-day-icon{ font-size:22px; }
+  .attendance-day-amount{ font-size:10px; font-weight:700; color:var(--text); }
+  .attendance-day-check{ position:absolute; top:2px; right:5px; font-size:12px; color:#7CFF9E; font-weight:900; }
+
   /* ---------- 결과 오버레이 ---------- */
   #result-overlay{
     position:absolute; inset:0; background:#000000e6; z-index:60;
@@ -2185,6 +2212,18 @@
     </div>
   </div>
 
+  <!-- 출석체크 -->
+  <div id="attendance-modal">
+    <div class="attendance-modal-panel">
+      <div class="coupon-modal-title">📅 출석체크</div>
+      <div class="attendance-day-grid" id="attendance-day-grid"></div>
+      <div class="coupon-modal-actions">
+        <button class="btn" id="attendance-close-btn">닫기</button>
+        <button class="btn btn-primary" id="attendance-claim-btn">받기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 화면 전환용 암전 + 무한대전타워 층 카드 (특정 screen에 종속되지 않도록 최상위에 위치) -->
   <div id="blackout"></div>
   <div id="tower-floor-card"></div>
@@ -2367,6 +2406,8 @@
     ownedChallengeBooks: new Set(),                  // 구매한 챌린지북 (캐릭터 id 기준)
     ownedSkins: new Set(),                            // 뽑기로 획득한 스킨 id 목록 (전 캐릭터 공통 보관함)
     skinShards: {},                                    // 스킨별 조각 보유 개수. { skinId: count } (SKIN_SHARD_TARGET개 모으면 자동으로 스킨 획득)
+    gachaPity: {},                                      // 배너별 천장 카운터. { bannerId: count } (GACHA_PITY_CAP회 도달 시 픽업 스킨 하나 확정 지급 후 0으로 초기화)
+    attendance: { lastCheckIn: null, dayIndex: -1, totalCheckIns: 0 }, // 출석체크: 마지막 출석일(YYYY-MM-DD), 이번 7일 사이클 진행 인덱스(0~6), 누적 출석일수
     equippedSkins: {},                                // 캐릭터별 장착한 스킨 id. { charId: skinId | null }. 미지정/null이면 기본 모습
     charStats: {},                                   // 캐릭터별 누적 스탯 (챌린지북 미션 진행도 판정용)
     titles: new Set(),                               // 획득한 칭호 목록
@@ -2714,7 +2755,7 @@
   /* ============== 챌린지북 (캐릭터별 도전과제 + 칭호) ==============
      공통 미션 5개(모든 책 동일) + 전용 미션 2개(캐릭터 패시브 연계)로 구성.
      전부 완료하면 그 캐릭터 전용 칭호를 얻는다. 스탯은 charStats[캐릭터id][stat]에 누적되고,
-     싱글/1v1 멀티에서 그 캐릭터로 직접 플레이한 판에서만 올라간다 (2VS2는 팀원 귀속이 애매해 제외).
+     싱글/1v1 멀티/무한대전타워에서 그 캐릭터로 직접 플레이한 판에서만 올라간다 (2VS2는 팀원 귀속이 애매해 제외).
   */
   const COMMON_MISSIONS = [
     { id:'common_wins10', desc:'이 캐릭터로 10승 달성', stat:'wins', target:10 },
@@ -2884,11 +2925,14 @@
 
   const SKIN_SHARD_TARGET = 20; // 스킨 조각을 이만큼 모으면 자동으로 해당 스킨을 완전히 획득
   const SKIN_DUPLICATE_REFUND_RATE = 0.3; // 이미 완전히 보유한 스킨이 또 나오면 1회분 비용의 30%를 다이아몬드로 환급
+  const GACHA_PITY_CAP = 300; // 천장: 이번 배너에서 누적 300회를 뽑으면 픽업 스킨 중 하나를 확정 지급
 
   // 스킨 뽑기 실행 (1회 또는 10회). 매 회차마다 다음 순서로 판정한다.
+  //   0) 이번 배너 누적 뽑기 횟수(천장 카운터)가 GACHA_PITY_CAP에 도달했으면 픽업 스킨 중 하나를 확정 지급하고 카운터 리셋
   //   1) 이미 완전히 보유한 스킨이면 → 다이아몬드로 일부 환급 (중복)
   //   2) 미보유 스킨이면 → 등급별 확률(directChance)로 스킨 단품이 바로 나올 수도 있음 (다른 가챠 게임처럼)
   //   3) 단품이 안 나오면 → 조각 1개 지급, 조각이 SKIN_SHARD_TARGET개 모이면 자동으로 스킨 완전 획득
+  //   4) 픽업 스킨을 단품으로 얻으면(직행이든 조각완성이든) 천장 카운터가 리셋된다
   function pullSkinGacha(bannerId, times){
     const banner = GACHA_BANNERS[bannerId];
     if(!banner || !banner.active) return;
@@ -2899,23 +2943,48 @@
     if(DIAMONDS < cost){ showToast('💎 다이아몬드가 부족해요'); return; }
     DIAMONDS -= cost;
     const perPullCost = isTen ? Math.round(banner.tenCost / 10) : banner.singleCost;
+    const pickupSkins = banner.pickupSkinIds.map(id => SKINS[id]).filter(Boolean);
     const results = [];
     for(let i=0; i<times; i++){
-      const skin = rollSkinFromBanner(bannerId);
+      S.gachaPity[bannerId] = (S.gachaPity[bannerId] || 0) + 1;
+      let skin, forcedByPity = false;
+
+      if(S.gachaPity[bannerId] >= GACHA_PITY_CAP && pickupSkins.length > 0){
+        // 천장 도달 — 픽업 스킨 중 미보유가 있으면 그중에서, 전부 보유 중이면 픽업 스킨 중 아무거나 확정
+        const unowned = pickupSkins.filter(sk => !S.ownedSkins.has(sk.id));
+        const candidates = unowned.length > 0 ? unowned : pickupSkins;
+        skin = candidates[Math.floor(Math.random() * candidates.length)];
+        forcedByPity = true;
+        S.gachaPity[bannerId] = 0;
+      } else {
+        skin = rollSkinFromBanner(bannerId);
+      }
       if(!skin) continue;
+
       const meta = SKIN_RARITY[skin.rarity] || {};
+      const isPickupSkin = banner.pickupSkinIds.includes(skin.id);
+
       if(S.ownedSkins.has(skin.id)){
-        // 이미 완전히 보유한 스킨 → 다이아몬드로 환급
+        // 이미 완전히 보유한 스킨 → 다이아몬드로 환급 (천장으로 뽑혔어도 이미 있으면 그냥 환급)
         const refund = Math.round(perPullCost * SKIN_DUPLICATE_REFUND_RATE);
         DIAMONDS += refund;
         results.push({ type:'dup', skin, refund });
         continue;
       }
+
+      if(forcedByPity){
+        S.ownedSkins.add(skin.id);
+        S.skinShards[skin.id] = 0;
+        results.push({ type:'full', skin, viaPity:true });
+        continue;
+      }
+
       const directChance = typeof meta.directChance === 'number' ? meta.directChance : 0.1;
       if(Math.random() < directChance){
         // 단품 직행 획득
         S.ownedSkins.add(skin.id);
         S.skinShards[skin.id] = 0;
+        if(isPickupSkin) S.gachaPity[bannerId] = 0; // 픽업 단품을 자력으로 뽑았으니 천장 리셋
         results.push({ type:'full', skin, viaShard:false });
       } else {
         const cur = (S.skinShards[skin.id] || 0) + 1;
@@ -2923,6 +2992,7 @@
           // 조각이 다 모여서 자동으로 스킨 완성
           S.ownedSkins.add(skin.id);
           S.skinShards[skin.id] = 0;
+          if(isPickupSkin) S.gachaPity[bannerId] = 0;
           results.push({ type:'full', skin, viaShard:true });
         } else {
           S.skinShards[skin.id] = cur;
@@ -3159,7 +3229,7 @@
     contentEl.classList.add('gacha-full-dialogue-phase');
     tintEl.style.background = meta.color;
     contentEl.innerHTML = `
-      <div class="gacha-full-rarity-tag" style="border-color:${meta.color}; color:${meta.color};">★ ${meta.label} 스킨</div>
+      <div class="gacha-full-rarity-tag" style="border-color:${meta.color}; color:${meta.color};">${result.viaPity ? '🎯 천장 달성! ' : '★ '}${meta.label} 스킨</div>
       <div class="gacha-full-dialogue">"${result.skin.quote || result.skin.name}"</div>
     `;
 
@@ -3248,8 +3318,10 @@
 
   // 싱글/1v1 멀티에서 "내가 직접 조작하는 캐릭터"의 행동일 때만 호출되어야 한다 (actorKey==='me' 체크는 호출부 책임)
   function bumpCharStat(field, amount){
-    if(S.mode !== 'single' && S.mode !== 'multi') return; // 2VS2는 팀원 귀속이 애매해서 집계하지 않는다
-    const charId = S.selectedCharacter;
+    let charId;
+    if(S.mode === 'single' || S.mode === 'multi') charId = S.selectedCharacter;
+    else if(S.mode === 'tower') charId = TS_pickedCharId; // 무한대전타워: 이번 등반에 고른 캐릭터 기준으로 집계
+    else return; // 2VS2는 팀원 귀속이 애매해서 집계하지 않는다
     if(!charId || !CHALLENGE_BOOKS[charId]) return;
     if(!S.charStats[charId]) S.charStats[charId] = {};
     S.charStats[charId][field] = (S.charStats[charId][field]||0) + (amount||1);
@@ -5932,6 +6004,8 @@
         ownedChallengeBooks: Array.from(S.ownedChallengeBooks),
         ownedSkins: Array.from(S.ownedSkins),
         skinShards: S.skinShards,
+        gachaPity: S.gachaPity,
+        attendance: S.attendance,
         equippedSkins: S.equippedSkins,
         charStats: S.charStats,
         titles: Array.from(S.titles),
@@ -6004,6 +6078,17 @@
         const n = data.skinShards[skinId];
         if(SKINS[skinId] && typeof n === 'number') S.skinShards[skinId] = Math.max(0, Math.min(SKIN_SHARD_TARGET - 1, n));
       });
+    }
+    if(data.gachaPity && typeof data.gachaPity === 'object'){
+      Object.keys(data.gachaPity).forEach(bannerId=>{
+        const n = data.gachaPity[bannerId];
+        if(GACHA_BANNERS[bannerId] && typeof n === 'number') S.gachaPity[bannerId] = Math.max(0, Math.min(GACHA_PITY_CAP, n));
+      });
+    }
+    if(data.attendance && typeof data.attendance === 'object'){
+      if(typeof data.attendance.lastCheckIn === 'string') S.attendance.lastCheckIn = data.attendance.lastCheckIn;
+      if(typeof data.attendance.dayIndex === 'number') S.attendance.dayIndex = Math.max(-1, Math.min(6, data.attendance.dayIndex));
+      if(typeof data.attendance.totalCheckIns === 'number') S.attendance.totalCheckIns = Math.max(0, data.attendance.totalCheckIns);
     }
     if(data.equippedSkins && typeof data.equippedSkins === 'object'){
       Object.keys(data.equippedSkins).forEach(charId=>{
@@ -7401,6 +7486,7 @@
     'WELCOME2026': { type:'reward', label:'환영 쿠폰', pp:500, boostMultiplier:2, boostDurationMs:30*60*1000 },
     'THANKYOU': { type:'reward', label:'감사 쿠폰', pp:1000, boostMultiplier:2, boostDurationMs:60*60*1000 },
     'BONUSPACK': { type:'reward', label:'보너스 팩', pp:2000, boostMultiplier:2, boostDurationMs:24*60*60*1000 },
+    'SKINPULL50': { type:'diamond', label:'스킨 뽑기 지원 쿠폰', amount:7500 }, // 1회용. 1회 뽑기(150) 기준 50연 분량
     'GMTOWERADMIN': { type:'gm' },
     'GMDIAMONDTEST': { type:'dev_diamond', amount:999999 }, // 테스트용 다이아몬드 무제한 지급 (운영자 전용, 몇 번이고 재사용 가능)
   };
@@ -7432,6 +7518,9 @@
     } else if(coupon.type === 'dev_diamond'){
       addDiamonds(coupon.amount);
       showToast(`🧪 [테스트 코드] 💎 다이아몬드 +${coupon.amount.toLocaleString()} 지급!`);
+    } else if(coupon.type === 'diamond'){
+      addDiamonds(coupon.amount);
+      showToast(`💎 ${coupon.label} 사용! 다이아몬드 +${coupon.amount.toLocaleString()} 지급!`);
     } else {
       addPP(coupon.pp);
       const now = Date.now();
@@ -7462,6 +7551,83 @@
 
   document.getElementById('coupon-cancel-btn').addEventListener('click', closeCouponModal);
   document.getElementById('coupon-submit-btn').addEventListener('click', redeemCoupon);
+
+  /* ============== 출석체크 (7일 주기 반복) ============== */
+  const ATTENDANCE_REWARDS = [
+    { day:1, type:'pp',      amount:200,  icon:'💰' },
+    { day:2, type:'pp',      amount:300,  icon:'💰' },
+    { day:3, type:'diamond', amount:50,   icon:'💎' },
+    { day:4, type:'pp',      amount:400,  icon:'💰' },
+    { day:5, type:'diamond', amount:80,   icon:'💎' },
+    { day:6, type:'pp',      amount:500,  icon:'💰' },
+    { day:7, type:'diamond', amount:150,  icon:'💎' }, // 7일차 마무리 보너스, 다음날부터 다시 1일차
+  ];
+
+  function getTodayDateStr(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function daysBetweenDateStr(a, b){
+    return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00')) / 86400000);
+  }
+
+  // 오늘 출석 시(혹은 이미 받았다면 오늘 받은) 보상 인덱스(0~6)를 계산한다. 상태는 바꾸지 않는 순수 조회용.
+  function peekAttendanceDayIndex(){
+    const today = getTodayDateStr();
+    if(!S.attendance.lastCheckIn) return 0; // 첫 출석
+    if(S.attendance.lastCheckIn === today) return Math.max(0, S.attendance.dayIndex); // 오늘 이미 받음
+    const gap = daysBetweenDateStr(S.attendance.lastCheckIn, today);
+    if(gap === 1) return (Math.max(0, S.attendance.dayIndex) + 1) % 7; // 어제 이어서 연속 출석
+    return 0; // 하루 이상 건너뜀 → 1일차부터 다시
+  }
+
+  function openAttendanceModal(){
+    renderAttendanceModal();
+    document.getElementById('attendance-modal').classList.add('show');
+  }
+  function closeAttendanceModal(){
+    document.getElementById('attendance-modal').classList.remove('show');
+  }
+
+  function renderAttendanceModal(){
+    const today = getTodayDateStr();
+    const alreadyToday = S.attendance.lastCheckIn === today;
+    const targetDayIndex = peekAttendanceDayIndex();
+    const gridEl = document.getElementById('attendance-day-grid');
+    gridEl.innerHTML = ATTENDANCE_REWARDS.map((r, idx)=>{
+      const isClaimedSlot = alreadyToday ? idx <= targetDayIndex : idx < targetDayIndex;
+      const isToday = !alreadyToday && idx === targetDayIndex;
+      return `
+        <div class="attendance-day-card ${isClaimedSlot?'claimed':''} ${isToday?'today':''}">
+          <div class="attendance-day-num">${r.day}일차</div>
+          <div class="attendance-day-icon">${r.icon}</div>
+          <div class="attendance-day-amount">${r.amount.toLocaleString()}</div>
+          ${isClaimedSlot ? '<div class="attendance-day-check">✓</div>' : ''}
+        </div>`;
+    }).join('');
+
+    const claimBtn = document.getElementById('attendance-claim-btn');
+    claimBtn.disabled = alreadyToday;
+    claimBtn.textContent = alreadyToday ? '오늘은 이미 받았어요' : '오늘의 보상 받기';
+  }
+
+  function claimAttendanceToday(){
+    const today = getTodayDateStr();
+    if(S.attendance.lastCheckIn === today) return;
+    const dayIndex = peekAttendanceDayIndex();
+    const reward = ATTENDANCE_REWARDS[dayIndex];
+    if(reward.type === 'pp') addPP(reward.amount);
+    else if(reward.type === 'diamond') addDiamonds(reward.amount);
+    S.attendance.lastCheckIn = today;
+    S.attendance.dayIndex = dayIndex;
+    S.attendance.totalCheckIns = (S.attendance.totalCheckIns || 0) + 1;
+    saveProgress();
+    showToast(`📅 ${reward.day}일차 출석 보상 획득! ${reward.icon} +${reward.amount.toLocaleString()}`);
+    renderAttendanceModal();
+  }
+
+  document.getElementById('attendance-close-btn').addEventListener('click', closeAttendanceModal);
+  document.getElementById('attendance-claim-btn').addEventListener('click', claimAttendanceToday);
 
   /* ============== 화면 전환 ============== */
   function showScreen(id){
@@ -7676,6 +7842,7 @@
             <button class="btn profile-inventory-btn" id="profile-friends-btn" style="position:relative;">👥 친구<span class="mailbox-badge" id="friends-badge" style="display:none;">0</span></button>
             <button class="btn profile-inventory-btn" id="profile-tierlist-btn">📊 티어리스트</button>
             <button class="btn profile-inventory-btn" id="profile-coupon-btn">🎫 쿠폰함</button>
+            <button class="btn profile-inventory-btn" id="profile-attendance-btn">📅 출석체크</button>
           </div>
         </div>
         <div class="profile-section-title">칭호</div>
@@ -7689,6 +7856,7 @@
       document.getElementById('profile-friends-btn').addEventListener('click', openFriendsScreen);
       document.getElementById('profile-tierlist-btn').addEventListener('click', openTierListScreen);
       document.getElementById('profile-coupon-btn').addEventListener('click', openCouponModal);
+      document.getElementById('profile-attendance-btn').addEventListener('click', openAttendanceModal);
       updateFriendsBadge();
     }
   }
@@ -7877,6 +8045,9 @@
     // 뽑기 배너에는 굳이 노출하지 않고, 실제 확률 계산(getBannerSkinPool)에서만 조용히 섞인다.
     const pickupHtml = banner.pickupSkinIds.map(id => SKINS[id]).filter(Boolean).map(skinCardHtml).join('');
     const noPool = pool.length === 0;
+    const pityCount = S.gachaPity[banner.id] || 0;
+    const pityLeft = Math.max(0, GACHA_PITY_CAP - pityCount);
+    const pityPct = Math.min(100, Math.round(pityCount / GACHA_PITY_CAP * 100));
 
     listEl.innerHTML = `
       <div class="gacha-diamond-banner">💎 보유 다이아몬드: ${DIAMONDS.toLocaleString()}</div>
@@ -7885,6 +8056,10 @@
         <div class="gacha-banner-desc">${banner.desc}</div>
         <div class="gacha-pickup-label">🔥 이번 배너 픽업</div>
         <div class="gacha-pickup-row">${pickupHtml || '<div class="mail-empty">아직 준비 중인 스킨이 없어요</div>'}</div>
+        <div class="gacha-pity-box">
+          <div class="gacha-pity-label">🎯 천장까지 ${pityLeft.toLocaleString()}회 남음 (${pityCount}/${GACHA_PITY_CAP})</div>
+          <div class="gacha-pity-bar"><div class="gacha-pity-bar-fill" style="width:${pityPct}%"></div></div>
+        </div>
         <div class="gacha-pull-row">
           <button class="btn btn-primary gacha-pull-btn" id="gacha-pull-1" ${noPool?'disabled':''}>1회 뽑기<br>💎 ${banner.singleCost.toLocaleString()}</button>
           <button class="btn btn-primary gacha-pull-btn" id="gacha-pull-10" ${noPool?'disabled':''}>10회 뽑기<br>💎 ${banner.tenCost.toLocaleString()}</button>
@@ -10728,8 +10903,12 @@
     pushLog('sys', win===null ? '🤝 무승부' : (win? '🏆 승리!' : '💀 패배...'));
     SFX.play(win===null ? 'draw' : (win ? 'victory' : 'defeat'));
 
-    // 무한대전타워 전투는 챌린지북/티어리스트 집계 대상이 아니라 여기서 바로 분기해 처리한다
+    // 무한대전타워 전투도 챌린지북 진행도에 반영된다 (승패/전투 참가 수만 집계, 크레이지 난이도 전용
+    // 미션은 타워에 크레이지 개념이 없어 대상에서 제외). 티어리스트 집계는 여전히 별도 대상 아님.
     if(S.mode === 'tower'){
+      bumpCharStat('battles', 1);
+      if(win === true) bumpCharStat('wins', 1);
+      if(TS_pickedCharId) checkChallengeBookCompletion(TS_pickedCharId);
       if(loserKey){
         const el = document.querySelector(loserKey==='me' ? '.fighter.me' : '.fighter.op');
         if(el) el.classList.add('exploding');
