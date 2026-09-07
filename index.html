@@ -414,6 +414,33 @@
   .skill-equip-desc{ font-size:11px; color:var(--text-dim); line-height:1.55; margin:0 0 8px; }
   .skill-equip-btn{ width:100%; padding:8px; border-radius:9px; font-size:11px; }
 
+  /* ---------- 스킨 선택 (캐릭터 팝업의 "스킨" 탭) — 풀일러 카드형 그리드 ---------- */
+  .skin-select-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .skin-select-card{
+    position:relative; border-radius:14px; overflow:hidden; border:2px solid var(--panel-line);
+    background:var(--panel-alt); cursor:pointer; aspect-ratio:3/4;
+  }
+  .skin-select-card.equipped{ border-color:var(--accent-ap); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent-ap) 45%, transparent); }
+  .skin-select-card.locked{ cursor:default; }
+  .skin-select-img{ width:100%; height:100%; object-fit:cover; object-position:top center; display:block; }
+  .skin-select-card.locked .skin-select-img{ filter:grayscale(1) brightness(.45); }
+  .skin-select-name{
+    position:absolute; left:0; right:0; bottom:0; padding:18px 8px 7px; font-size:11.5px; font-weight:800;
+    color:#fff; text-shadow:0 2px 6px rgba(0,0,0,.8); background:linear-gradient(to top, rgba(0,0,0,.8), transparent);
+  }
+  .skin-select-rarity{
+    position:absolute; top:6px; left:6px; font-size:9.5px; font-weight:900; padding:2px 8px;
+    border-radius:999px; background:#00000088;
+  }
+  .skin-select-badge{
+    position:absolute; top:6px; right:6px; font-size:9.5px; font-weight:900; padding:3px 8px;
+    border-radius:999px; background:var(--accent-ap); color:#08151A;
+  }
+  .skin-select-lock{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:11px; font-weight:800; color:#fff; line-height:1.5; background:rgba(0,0,0,.4);
+  }
+
   /* ---------- 상점 ---------- */
   .shop-subtabs{ display:flex; gap:8px; margin-bottom:14px; }
   .shop-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
@@ -11785,36 +11812,31 @@
       } else {
         const equippedId = myEquippedSkinId(ch.id);
         const defaultCard = `
-          <div class="skill-equip-card${equippedId===null?' equipped':''}">
-            <div class="skill-equip-head">
-              <span class="dot" style="background:var(--text-dim);"></span>
-              <span class="skill-equip-name">기본 모습</span>
-              ${equippedId===null ? '<span class="skill-equip-badge">장착중</span>' : ''}
-            </div>
-            <button class="btn ${equippedId===null?'':'btn-primary'} skin-equip-btn" data-skin="" ${equippedId===null?'disabled':''}>${equippedId===null?'장착중':'장착하기'}</button>
+          <div class="skin-select-card${equippedId===null?' equipped':''}" data-skin="">
+            <img src="${ch.fullImg}" class="skin-select-img" alt="기본 모습">
+            <div class="skin-select-name">기본 모습</div>
+            ${equippedId===null ? '<div class="skin-select-badge">장착중</div>' : ''}
           </div>`;
         const skinCards = skinsForChar.map(sk=>{
           const meta = SKIN_RARITY[sk.rarity] || { label:'', color:'#fff' };
           const isOwned = S.ownedSkins.has(sk.id);
           const isEq = equippedId === sk.id;
           return `
-            <div class="skill-equip-card${isEq?' equipped':''}">
-              <div class="skill-equip-head">
-                <span class="dot" style="background:${meta.color};"></span>
-                <span class="skill-equip-name">${sk.name}</span>
-                <span class="skill-equip-badge" style="${isEq?'':`background:${meta.color}22; color:${meta.color}; border:1px solid ${meta.color}66;`}">${isEq ? '장착중' : meta.label}</span>
-              </div>
-              ${isOwned
-                ? `<button class="btn ${isEq?'':'btn-primary'} skin-equip-btn" data-skin="${sk.id}" ${isEq?'disabled':''}>${isEq?'장착중':'장착하기'}</button>`
-                : `<div class="pass-status-badge locked">미보유 (뽑기로 획득)</div>`}
+            <div class="skin-select-card${isEq?' equipped':''}${!isOwned?' locked':''}" data-skin="${sk.id}" style="border-color:${meta.color}88;">
+              <img src="${sk.fullImg}" class="skin-select-img" alt="${sk.name}">
+              <div class="skin-select-rarity" style="color:${meta.color};">${meta.label}</div>
+              <div class="skin-select-name">${sk.name}</div>
+              ${isEq ? '<div class="skin-select-badge">장착중</div>' : ''}
+              ${!isOwned ? '<div class="skin-select-lock">🔒 미보유<br>(뽑기로 획득)</div>' : ''}
             </div>`;
         }).join('');
-        contentEl.innerHTML = `<div class="skill-equip-list">${defaultCard}${skinCards}</div>`;
+        contentEl.innerHTML = `<div class="skin-select-grid">${defaultCard}${skinCards}</div>`;
 
-        contentEl.querySelectorAll('.skin-equip-btn').forEach(btn=>{
-          if(btn.disabled) return;
-          btn.addEventListener('click', ()=>{
-            const skinId = btn.dataset.skin || null;
+        contentEl.querySelectorAll('.skin-select-card:not(.locked)').forEach(card=>{
+          card.addEventListener('click', ()=>{
+            const skinId = card.dataset.skin || null;
+            if(skinId && equippedId === skinId) return; // 이미 장착중이면 무시
+            if(!skinId && equippedId === null) return;
             equipSkin(ch.id, skinId);
             showToast(skinId ? `${SKINS[skinId].name} 장착!` : '기본 모습으로 되돌렸습니다');
             renderCharPopup();
