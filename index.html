@@ -10232,7 +10232,7 @@
     // 1. 회복 최우선 처리
     g.me.lastHealApplied = 0; // [도발]이 이번 턴 회복을 되돌릴 때 참조하기 위해 매 턴 초기화
     g.op.lastHealApplied = 0;
-    if(meAct==='heal'){
+    if(meAct==='heal' && !g.me.renyStunning){
       if(g.me.actionSealTurns > 0){
         // [도발] 효과로 이번 턴 회복이 완전히 봉인됨 (AP도 얻지 못함)
         spawnPopup('me','봉인!','block');
@@ -10257,7 +10257,7 @@
       }
       }
     }
-    if(opAct==='heal'){
+    if(opAct==='heal' && !g.op.renyStunning){
       if(g.op.actionSealTurns > 0){
         spawnPopup('op','봉인!','block');
         pushLog('op-act','ㄴ 상대 <b>회복</b> 시도, 그러나 [도발] 효과로 봉인되어 완전히 무효화됐다');
@@ -10276,8 +10276,10 @@
       }
     }
 
-    // 2. 방어 선언 (AP 즉시 획득, 판정용 플래그) — [도발]로 봉인된 경우 방어 자체가 무효
-    if(meAct==='defend'){
+    // 2. 방어 선언 (AP 즉시 획득, 판정용 플래그) — [도발]로 봉인된 경우 방어 자체가 무효.
+    // [레니] 전용: 행동불능 상태에서 "보류"로 방어 버튼을 눌러도(renyStunning) 이 효과는 절대 발동하지 않는다
+    // (보류는 그냥 아무 일도 안 일어나야 하는데, 방어 판정/행동력까지 얻으면 사실상 무적 방어라 너무 강해짐).
+    if(meAct==='defend' && !g.me.renyStunning){
       if(g.me.actionSealTurns > 0){
         spawnPopup('me','봉인!','block');
         pushLog('me-act','ㄴ 내가 <b>방어</b> 시도, 그러나 [도발] 효과로 봉인되어 완전히 무효화됐다');
@@ -10285,7 +10287,7 @@
         g.me.defended = true; g.me.ap = Math.min(AP_MAX, g.me.ap+1);
       }
     }
-    if(opAct==='defend'){
+    if(opAct==='defend' && !g.op.renyStunning){
       if(g.op.actionSealTurns > 0){
         spawnPopup('op','봉인!','block');
         pushLog('op-act','ㄴ 상대 <b>방어</b> 시도, 그러나 [도발] 효과로 봉인되어 완전히 무효화됐다');
