@@ -4069,6 +4069,16 @@
       { id:'hachi_instant', name:'즉석 요리', grade:'legendary', desc:'조리 완성까지 필요한 턴수가 2로 줄어들고, 요리를 시작할 때 3스택부터 시작한다', effects:{cookingTurnsReduce:3, cookingStartStacks:3} },
       { id:'hachi_banquet', name:'만찬의 축복', grade:'mythic', desc:'요리를 먹을 때 동시에 상대에게도 화상 효과를 걸고, 요리 효과가 200% 증가한다 (총 3배)', effects:{cookingMythicBoth:true, cookingMythicPowerPct:2.0} },
     ],
+    jonghyeon: [
+      { id:'jong_quick_prep', name:'재빠른 손질', grade:'common', desc:'[즉석 포장] 발동에 필요한 누적치가 3에서 2로 줄어든다', effects:{packagingThresholdSub:1} },
+      { id:'jong_prep_ahead', name:'밑준비', grade:'common', desc:'전투 시작 시 [즉석 포장] 누적치가 1 채워진 상태로 시작한다', effects:{packagingStartCount:1} },
+      { id:'jong_double_cut', name:'두 번 썰기', grade:'rare', desc:'[즉석 포장] 발동 시 회복량이 1 더 늘어난다', effects:{packagingHealPerTrigger:1} },
+      { id:'jong_seasoning', name:'양념 배합', grade:'rare', desc:'초과 회복으로 입히는 피해가 100%에서 150%로 늘어난다', effects:{packagingOverhealPct:0.5} },
+      { id:'jong_pain_to_dish', name:'고통을 요리로', grade:'epic', desc:'자신이 받는 피해의 50%도 [즉석 포장] 누적치에 함께 쌓인다', effects:{packagingSelfDamagePct:0.5} },
+      { id:'jong_filet', name:'저며내기', grade:'epic', desc:'초과 회복으로 입히는 피해가 상대의 보호막을 무시한다', effects:{packagingOverhealIgnoreShield:true} },
+      { id:'jong_butcher_blessing', name:'도살업의 축복', grade:'legendary', desc:'초과 회복량이 아닌, 상시 회복한 양의 100%의 피해를 적에게 입힌다. 해당 피해로는 [즉석 포장] 카운트에 들어가지 않는다', effects:{packagingAlwaysDmgPct:1.0} },
+      { id:'jong_human_meat_march', name:'인육행진', grade:'mythic', desc:'해당 대전에서 종현이 [즉석 포장]으로 회복한 체력 1당 가하는 피해가 0.1%씩 상승한다 (증강마다 중첩 가능)', effects:{packagingHealDmgStackPct:0.001} },
+    ],
   };
 
   function towerGetAugmentPool(charId){
@@ -4623,6 +4633,8 @@
       usagiRouletteOnWin:false, usagiRouletteEveryBattle:false,
       cookingGainAdd:0, cookingTurnsReduce:0, cookingPowerPct:0, cookingMythicBoth:false,
       cookingStartStacks:0, cookingMythicPowerPct:0,
+      packagingThresholdSub:0, packagingStartCount:0, packagingHealPerTrigger:0, packagingOverhealPct:0,
+      packagingSelfDamagePct:0, packagingOverhealIgnoreShield:false, packagingAlwaysDmgPct:0, packagingHealDmgStackPct:0,
       skillCountsAsAttack:false, // [환영 무기] 전설 증강 - 컴뱃스킬도 [공격] 판정을 받게 함
       turnScalingDmgPct:0, goldDmgScalePct:0, shopPriceFixed1:false, bypassTurnLimit:false,
       overkillChainDmg:false,
@@ -4761,6 +4773,14 @@
       if(e.cookingMythicBoth) b.cookingMythicBoth = true;
       if(e.cookingStartStacks) b.cookingStartStacks = Math.max(b.cookingStartStacks, e.cookingStartStacks);
       if(e.cookingMythicPowerPct) b.cookingMythicPowerPct += e.cookingMythicPowerPct;
+      if(e.packagingThresholdSub) b.packagingThresholdSub += e.packagingThresholdSub * stack;
+      if(e.packagingStartCount) b.packagingStartCount += e.packagingStartCount * stack;
+      if(e.packagingHealPerTrigger) b.packagingHealPerTrigger += e.packagingHealPerTrigger * stack;
+      if(e.packagingOverhealPct) b.packagingOverhealPct += e.packagingOverhealPct * stack;
+      if(e.packagingSelfDamagePct) b.packagingSelfDamagePct += e.packagingSelfDamagePct * stack;
+      if(e.packagingOverhealIgnoreShield) b.packagingOverhealIgnoreShield = true;
+      if(e.packagingAlwaysDmgPct) b.packagingAlwaysDmgPct = Math.max(b.packagingAlwaysDmgPct, e.packagingAlwaysDmgPct);
+      if(e.packagingHealDmgStackPct) b.packagingHealDmgStackPct += e.packagingHealDmgStackPct * stack;
     });
     return b;
   }
@@ -4857,6 +4877,15 @@
     fighter.tw_cookingStartStacks = b.cookingStartStacks;
     fighter.tw_cookingMythicPowerPct = b.cookingMythicPowerPct;
     fighter.tw_skillCountsAsAttack = b.skillCountsAsAttack; // [환영 무기] 전설 증강
+    fighter.tw_packagingThresholdSub = b.packagingThresholdSub;
+    fighter.tw_packagingHealPerTrigger = b.packagingHealPerTrigger;
+    fighter.tw_packagingOverhealPct = b.packagingOverhealPct;
+    fighter.tw_packagingSelfDamagePct = b.packagingSelfDamagePct;
+    fighter.tw_packagingOverhealIgnoreShield = b.packagingOverhealIgnoreShield;
+    fighter.tw_packagingAlwaysDmgPct = b.packagingAlwaysDmgPct;
+    fighter.tw_packagingHealDmgStackPct = b.packagingHealDmgStackPct;
+    // [밑준비] 증강 - 전투 시작 시 [즉석 포장] 누적치를 미리 채워준다
+    if(b.packagingStartCount) fighter.instantPackagingCounter = (fighter.instantPackagingCounter||0) + b.packagingStartCount;
     // 전투 시작 시 즉시 보호막 지급 (수호의 맹세 / 낡은 갑주의 잔재 등)
     const startShieldAmt = Math.round(fighter.maxHp * (b.startShieldPct||0)) + (b.startShieldFlat||0);
     if(startShieldAmt > 0){
@@ -8746,6 +8775,7 @@
       cookingStacks:0, cookingTurnsLeft:5, // [조리 시간] 전용 — 하치미가 아니면 그냥 안 쓰임
       hachimiBurnTurns:0, hachimiBurnDamage:0, hachimiBurnJustApplied:false, hachimiBurnDebuffApplied:0, // [조리 시간] 화상 전용
       instantPackagingCounter:0, // [즉석 포장] 종현 전용 — 상대가 잃은 체력 누적치 (3당 1회 회복 트리거, 나머지는 이월)
+      instantPackagingTotalHealed:0, // [인육행진] 신화 증강 전용 — 이번 전투에서 [즉석 포장]으로 회복한 누적 체력량
       alive:true, // 2VS2 벤치 인원 전용 필드 (1v1에서는 그냥 안 쓰임)
       benchCooldown:0, // 2VS2 벤치 지원(응원/엄호/독려) 전용 쿨타임 — 사용하면 3턴간 재사용 불가
     };
@@ -10449,28 +10479,47 @@
   let towerDamageSourceKey = null;
   let towerOverkillChainDepth = 0; // [무한대전타워] "얽힌 생명줄의 무도회" 아티팩트 - 무한부활+오버킬 조합의 무한루프 방지용 안전장치
 
-  // [즉석 포장] 종현 전용 패시브 로직. lostHp(방금 상대가 실제로 잃은 체력)을 카운터에 누적하고,
-  // 3이 모일 때마다 1씩 회복시킨다. 예: 5의 피해를 한 번에 입히면 1회 회복 + 카운터엔 2가 남아 다음 타격에 이월.
-  // 회복이 최대체력을 넘기면 그 초과분만큼 상대에게 고정 피해를 입힌다.
-  function applyInstantPackagingHeal(attacker, attackerKey, targetKey, lostHp, g){
-    attacker.instantPackagingCounter = (attacker.instantPackagingCounter || 0) + lostHp;
-    const triggers = Math.floor(attacker.instantPackagingCounter / 3);
-    attacker.instantPackagingCounter -= triggers * 3;
+  // [즉석 포장] 종현 전용 패시브 로직. lostHp만큼을 누적치에 쌓고, 임계값(기본 3, [재빠른 손질]로 2)이
+  // 모일 때마다 회복시킨다. 예: 5의 피해를 한 번에 입히면 1회 회복 + 누적치엔 2가 남아 다음 타격에 이월.
+  // 회복이 최대체력을 넘기면 그 초과분만큼 상대에게 피해 (증강으로 배율/보호막 무시 등이 붙을 수 있음).
+  // entity/entityKey는 "체력을 회복하는 쪽"(대부분 공격한 종현 자신), opponentKey는 그 반대쪽이다.
+  function applyInstantPackagingHeal(entity, entityKey, opponentKey, lostHp){
+    const threshold = Math.max(1, 3 - (entity.tw_packagingThresholdSub||0));
+    entity.instantPackagingCounter = (entity.instantPackagingCounter || 0) + lostHp;
+    const triggers = Math.floor(entity.instantPackagingCounter / threshold);
+    entity.instantPackagingCounter -= triggers * threshold;
     if(triggers <= 0) return;
 
-    const label = attackerKey==='me' ? '내' : '상대';
-    const healAmount = triggers;
-    const actualHeal = Math.min(healAmount, Math.max(0, attacker.maxHp - attacker.hp));
+    const label = entityKey==='me' ? '내' : '상대';
+    const healPerTrigger = 1 + (entity.tw_packagingHealPerTrigger||0); // [두 번 썰기]
+    const healAmount = triggers * healPerTrigger;
+    const actualHeal = Math.min(healAmount, Math.max(0, entity.maxHp - entity.hp));
     const overheal = healAmount - actualHeal;
 
     if(actualHeal > 0){
-      attacker.hp += actualHeal;
+      entity.hp += actualHeal;
+      entity.instantPackagingTotalHealed = (entity.instantPackagingTotalHealed||0) + actualHeal;
       pushLog('sys', `🍱 ${label} [즉석 포장] 발동! 체력 ${actualHeal} 회복`);
-      spawnPopup(attackerKey, '+'+actualHeal, 'heal');
+      spawnPopup(entityKey, '+'+actualHeal, 'heal');
+
+      // [도살업의 축복] 전설 증강 - 초과 여부와 무관하게 항상 회복량의 일정 비율만큼 추가 피해 (별도 카운트 안 됨)
+      if(entity.tw_packagingAlwaysDmgPct){
+        const alwaysDmg = Math.round(actualHeal * entity.tw_packagingAlwaysDmgPct);
+        if(alwaysDmg > 0){
+          pushLog('sys', `🔪 [도살업의 축복] 회복량의 ${Math.round(entity.tw_packagingAlwaysDmgPct*100)}%(${alwaysDmg})만큼 상대에게 피해!`);
+          dealDamage(opponentKey, alwaysDmg, { skipInstantPackaging:true });
+        }
+      }
+      // [인육행진] 신화 증강 - 이번 전투에서 [즉석 포장]으로 회복한 체력만큼 가하는 피해가 영구적으로 증가
+      if(entity.tw_packagingHealDmgStackPct){
+        entity.tw_allDmgMultPct = (entity.tw_allDmgMultPct||0) + actualHeal * entity.tw_packagingHealDmgStackPct;
+      }
     }
     if(overheal > 0){
-      pushLog('sys', `🍱 [즉석 포장] 초과 회복 ${overheal}만큼 상대에게 피해!`);
-      dealDamage(targetKey, overheal, { skipInstantPackaging:true });
+      const overhealMult = 1 + (entity.tw_packagingOverhealPct||0); // [양념 배합]
+      const overhealDmg = Math.round(overheal * overhealMult);
+      pushLog('sys', `🍱 [즉석 포장] 초과 회복 ${overhealDmg}만큼 상대에게 피해!`);
+      dealDamage(opponentKey, overhealDmg, { skipInstantPackaging:true, ignoreShield: !!entity.tw_packagingOverhealIgnoreShield }); // [저며내기]
     }
   }
 
@@ -10505,7 +10554,7 @@
     }
 
     // 1. 컴뱃스킬(에너지 쉴드)로 얻은 임시 보호막을 먼저 소모
-    if(remaining > 0 && target.shieldHp > 0){
+    if(remaining > 0 && target.shieldHp > 0 && !opts.ignoreShield){
       const absorbed = Math.min(target.shieldHp, remaining);
       target.shieldHp -= absorbed;
       remaining -= absorbed;
@@ -10514,7 +10563,7 @@
     }
 
     // 2. [요정날개] 등 패시브로 얻은 보호막 소모
-    if(remaining > 0 && target.passiveShield > 0){
+    if(remaining > 0 && target.passiveShield > 0 && !opts.ignoreShield){
       const absorbed = Math.min(target.passiveShield, remaining);
       target.passiveShield -= absorbed;
       remaining -= absorbed;
@@ -10537,14 +10586,20 @@
       shakeScreen();
       if(targetKey === 'me') flashHit(); // 내가 맞을 때만 붉은 피격 플래시
 
-      // [즉석 포장] 종현 패시브: 상대가 잃은 체력을 누적해서 3당 1씩 회복(나머지는 다음 타격으로 이월),
-      // 회복이 최대체력을 넘기면 그 초과분만큼 상대에게 피해. opts.skipInstantPackaging는 그 초과피해
-      // 자체가 이 함수를 재귀 호출할 때 무한루프(과잉회복→피해→또 누적→또 과잉회복...)를 막기 위함.
+      // [즉석 포장] 종현 패시브: 상대가 잃은 체력을 누적해서 임계값(기본 3)당 1씩 회복(나머지는 다음
+      // 타격으로 이월), 회복이 최대체력을 넘기면 그 초과분만큼 상대에게 피해. opts.skipInstantPackaging는
+      // 그 초과피해 자체가 이 함수를 재귀 호출할 때 무한루프(과잉회복→피해→또 누적→또 과잉회복...)를 막기 위함.
       if(!opts.skipInstantPackaging){
-        const attackerKey = targetKey === 'me' ? 'op' : 'me';
-        const attacker = g[attackerKey];
-        if(attacker && attacker.charKey === 'jonghyeon' && attacker.hp > 0){
-          applyInstantPackagingHeal(attacker, attackerKey, targetKey, remaining, g);
+        const otherKey = targetKey === 'me' ? 'op' : 'me';
+        const other = g[otherKey];
+        // 종현이 공격해서 상대(target) 체력이 깎인 경우 — 공격자인 종현이 회복한다
+        if(other && other.charKey === 'jonghyeon' && other.hp > 0){
+          applyInstantPackagingHeal(other, otherKey, targetKey, remaining);
+        }
+        // [고통을 요리로] 증강: 종현 자신(target)이 맞아서 체력이 깎인 경우, 그 피해의 일부도 누적치에 들어간다
+        if(target.charKey === 'jonghyeon' && target.tw_packagingSelfDamagePct && target.hp > 0){
+          const selfPortion = Math.floor(remaining * target.tw_packagingSelfDamagePct);
+          if(selfPortion > 0) applyInstantPackagingHeal(target, targetKey, otherKey, selfPortion);
         }
       }
     }
