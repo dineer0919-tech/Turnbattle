@@ -3074,7 +3074,7 @@
     shining_blossom_repulse: {
       id:'shining_blossom_repulse',
       name:'샤이닝블라섬러브앤피스리펄스',
-      desc:'사용 시 즉시 행동불능 상태에 빠집니다. 이후 매 턴 리펄스를 발사할지 보류할지 선택할 수 있으며, 보류하면 한 번 더 행동불능이 됩니다. 발사하면 그 턴에 (9 × 행동불능에 빠진 턴 수) + 자신의 잃은 체력만큼 피해를 입히고 행동불능이 해제됩니다. [레니] 전용 컴뱃스킬로 다른 캐릭터는 장착할 수 없으며, 사용 횟수 제한이 없습니다.',
+      desc:'사용 시 즉시 행동불능 상태에 빠집니다. 이후 매 턴 리펄스를 발사할지 보류할지 선택할 수 있으며, 보류하면 한 번 더 행동불능이 됩니다. 발사하면 그 턴에 (6 × 행동불능에 빠진 턴 수) + 자신의 잃은 체력만큼 피해를 입히고 행동불능이 해제됩니다. [레니] 전용 컴뱃스킬로 다른 캐릭터는 장착할 수 없으며, 사용 횟수 제한이 없습니다.',
       color:'#FF6FCF',
       price:0,
       type:'shining_repulse',
@@ -10042,7 +10042,12 @@
       const act = btn.dataset.act;
       const icEl = btn.querySelector('.ic');
       const lblEl = btn.querySelector('.lbl');
-      if(lblEl && lblEl.dataset.origText === undefined) lblEl.dataset.origText = lblEl.textContent;
+      // 'skill' 버튼의 라벨은 장착된 스킬 이름에 따라 매번 달라지는 동적 텍스트라서(renderSkillButton()가
+      // 관리) 여기서 "원래 텍스트"로 캐싱해두면 안 된다 — 캐싱해버리면 세션 중 최초로 캡처된 스킬 이름이
+      // 영원히 고정돼서, 나중에 완전히 다른 캐릭터/스킬로 바꿔도 그 캐시된 옛 이름이 계속 덮어써버리는
+      // 버그가 생긴다 (실제로 레니 전용 스킬 이름이 다른 캐릭터 스킬에도 계속 나오던 원인이 이것이었음).
+      // 'defend'를 포함한 나머지 버튼은 라벨이 항상 고정 문구라 캐싱해도 안전하다.
+      if(lblEl && act !== 'skill' && lblEl.dataset.origText === undefined) lblEl.dataset.origText = lblEl.textContent;
 
       // [레니] 전용: [샤이닝블라섬러브앤피스리펄스]로 행동불능 상태에 빠진 동안에는
       // "발사(스킬 버튼 재활용)"와 "보류(방어 버튼 재활용)" 두 가지 선택지만 남는다.
@@ -10062,7 +10067,10 @@
         btn.classList.toggle('selected', g.pendingMeAct === act);
         return;
       }
-      if(lblEl && (act === 'skill' || act === 'defend')) lblEl.textContent = lblEl.dataset.origText;
+      // 행동불능이 아니게 되면 'skill'은 renderSkillButton()이 알아서 실제 장착 스킬 이름으로 다시
+      // 채워주므로 여기서 손대지 않는다. 'defend'만 원래의 고정 문구로 되돌린다.
+      if(lblEl && act === 'defend') lblEl.textContent = lblEl.dataset.origText;
+      if(act === 'skill') renderSkillButton();
 
       // [도발]에 걸려 방어/회복이 봉인된 상태라면, 눌러봤자 무효화된다는 걸 미리 알 수 있도록
       // 아이콘을 자물쇠로 바꿔서 보여주지만, 클릭 자체는 그대로 허용한다 (골라도 헛턴이 되는 걸
@@ -10166,7 +10174,7 @@
 
   // [레니] 전용 — [샤이닝블라섬러브앤피스리펄스] 상태머신.
   // 최초 시전(액션으로 'skill' 선택 & 아직 행동불능 아님) → 즉시 행동불능 상태 진입, 이번 턴은 아무 효과 없음.
-  // 행동불능 상태에서 'skill'을 다시 고르면 발사(누적 행동불능 턴수 × 9 + 자신의 잃은 체력만큼 피해, 상태 해제).
+  // 행동불능 상태에서 'skill'을 다시 고르면 발사(누적 행동불능 턴수 × 6 + 자신의 잃은 체력만큼 피해, 상태 해제).
   // 행동불능 상태에서 그 외의 행동을 고르면 보류(행동불능 턴수만 +1, 아무 효과도 없음).
   // 두 경우 모두 원래 골랐던 행동의 실제 효과(공격/방어/회복 등)는 완전히 무시되며, 이를 위해
   // entity.renyStunning 플래그를 세워 applyCombat 진입 시 그쪽만 조용히 건너뛰게 한다.
@@ -10182,7 +10190,7 @@
       if((entity.renyStunTurns||0) > 0){
         entity.renyStunning = true;
         if(act === 'skill'){
-          const dmg = 9 * entity.renyStunTurns + Math.max(0, entity.maxHp - entity.hp);
+          const dmg = 6 * entity.renyStunTurns + Math.max(0, entity.maxHp - entity.hp);
           pushLog('sys', `💖 ${label} [샤이닝블라섬러브앤피스리펄스] 발사! ${dmg}의 피해!`);
           entity.renyStunTurns = 0;
           dealDamage(opponentKey, dmg);
@@ -11816,11 +11824,24 @@
   function decideAI(diff, g){
     // [레니] 전용 — AI가 조종하는 레니가 행동불능 상태라면, 판단 없이 곧바로 리펄스를 발사한다
     // (지연할수록 피해량은 늘지만, AI에게 그 도박을 굳이 판단시키지 않고 안전하게 즉시 발사시킨다).
-    if(g.me.charKey === 'reny' && (g.me.renyStunTurns||0) > 0) return 'skill';
-    if(diff==='easy') return aiEasy(g);
-    if(diff==='normal') return aiNormal(g);
-    if(diff==='hard') return aiHard(g);
-    return aiCrazy(g); // crazy, crazy_v2 모두 동일한 사고 알고리즘 사용 (장비만 다름)
+    // 주의: 이 함수 내부의 AI 사고 로직(aiEasy~aiCrazy)은 전부 "g.op가 곧 나(AI) 자신"이라는
+    // 전제로 짜여 있다(decideAIForOwnSide 참고 — 2VS2 벤치용으로 부를 때도 g.op 자리에 미러링해서 넘김).
+    // 그런데 여기 처음 추가했을 때 실수로 g.me를 체크했었다 — 싱글대전 같은 미러링 없는 직접 호출에서는
+    // g.me가 "플레이어 본인"이라서, 플레이어가 레니를 쓰다 행동불능에 빠지면 그와 무관한 AI 상대의
+    // 행동을 여기서 강제로 'skill'로 덮어써버렸다. 그 결과 AI가 자기 스킬의 사용횟수 제한과 무관하게
+    // 'skill'을 계속 선택하게 됐고(아래로 내려가는 legalActionsFor 체크를 거치지 않고 직접 반환하니까),
+    // 일회용 스킬을 매턴 난사하는 것처럼 보이는 버그로 이어졌다. g.op로 바로잡는다.
+    if(g.op.charKey === 'reny' && (g.op.renyStunTurns||0) > 0) return 'skill';
+    let act;
+    if(diff==='easy') act = aiEasy(g);
+    else if(diff==='normal') act = aiNormal(g);
+    else if(diff==='hard') act = aiHard(g);
+    else act = aiCrazy(g); // crazy, crazy_v2 모두 동일한 사고 알고리즘 사용 (장비만 다름)
+    // 안전장치: 위 사고 로직이 무슨 이유로든(버그 등) 실제로는 불가능한 행동을 반환하면
+    // (예: 사용 횟수 다 쓴 스킬, AP 부족한 행동) 그대로 내보내지 않고 방어로 대체한다.
+    // 이게 없으면 이런 종류의 버그가 "일회용 스킬을 매턴 난사"하는 것처럼 겉으로 드러난다.
+    if(!legalActionsFor(g.op).includes(act)) act = 'defend';
+    return act;
   }
 
   function weightedPick(weights){
