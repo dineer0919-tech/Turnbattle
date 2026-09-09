@@ -4108,6 +4108,16 @@
       { id:'jong_butcher_blessing', name:'도살업의 축복', grade:'legendary', desc:'초과 회복량이 아닌, 상시 회복한 양의 100%의 피해를 적에게 입힌다. 해당 피해로는 [즉석 포장] 카운트에 들어가지 않는다', effects:{packagingAlwaysDmgPct:1.0} },
       { id:'jong_human_meat_march', name:'인육행진', grade:'mythic', desc:'해당 대전에서 종현이 [즉석 포장]으로 회복한 체력 1당 가하는 피해가 0.1%씩 상승한다 (증강마다 중첩 가능)', effects:{packagingHealDmgStackPct:0.001} },
     ],
+    reny: [
+      { id:'reny_quick_charge', name:'가속 장전', grade:'common', desc:'최초로 리펄스를 시전할 때, 행동불능 누적치가 1이 아닌 2에서 시작한다', effects:{renyCastBonusTurns:1} },
+      { id:'reny_light_frame', name:'경량 프레임', grade:'common', desc:'행동불능 상태에서 받는 피해가 15% 감소한다', effects:{renyStunDamageReducePct:0.15} },
+      { id:'reny_amplifier_lens', name:'증폭 렌즈', grade:'rare', desc:'리펄스 발사 피해 계산식의 턴당 배율이 6에서 8로 증가한다', effects:{renyPerTurnDmgBonus:2} },
+      { id:'reny_lifedrain_beam', name:'생명 흡수 빔', grade:'rare', desc:'리펄스로 입힌 피해의 20%만큼 자신의 체력을 회복한다', effects:{renyFireLifestealPct:0.2} },
+      { id:'reny_guardian_barrier', name:'수호의 결계', grade:'epic', desc:'리펄스를 보류할 때마다(행동불능 유지) 보호막 4를 얻는다', effects:{renyHoldShieldGain:4} },
+      { id:'reny_overcharge', name:'과충전', grade:'epic', desc:'리펄스 발사 피해 계산에서 자신의 잃은 체력 부분이 50% 더 강하게 반영된다', effects:{renyLostHpDmgBonusPct:0.5} },
+      { id:'reny_love_and_justice', name:'사랑과 정의의 이름으로!', grade:'legendary', desc:'잃은 체력 1%당 가하는 피해가 2% 증가한다. 대신 매 턴 최대 체력의 10%를 잃는다', effects:{renyLoveJusticeActive:true} },
+      { id:'reny_ultimate_bullet', name:'궁극의 마탄', grade:'mythic', desc:'더 이상 [샤이닝블라섬러브앤피스리펄스]를 사용할 때 행동불능 상태에 빠지지 않고, 평소와 같이 공격/방어/회복/일격/카운터를 쓸 수 있다. 또한 그 판정에서는 체력이 1 미만으로 감소하지 않는다 (전투 당 1회, 증강마다 중첩 가능)', effects:{renyUltimateBulletCharges:1} },
+    ],
   };
 
   function towerGetAugmentPool(charId){
@@ -4666,6 +4676,8 @@
       cookingStartStacks:0, cookingMythicPowerPct:0,
       packagingThresholdSub:0, packagingStartCount:0, packagingHealPerTrigger:0, packagingOverhealPct:0,
       packagingSelfDamagePct:0, packagingOverhealIgnoreShield:false, packagingAlwaysDmgPct:0, packagingHealDmgStackPct:0,
+      renyCastBonusTurns:0, renyStunDamageReducePct:0, renyPerTurnDmgBonus:0, renyFireLifestealPct:0,
+      renyHoldShieldGain:0, renyLostHpDmgBonusPct:0, renyLoveJusticeActive:false, renyUltimateBulletCharges:0,
       skillCountsAsAttack:false, // [환영 무기] 전설 증강 - 컴뱃스킬도 [공격] 판정을 받게 함
       turnScalingDmgPct:0, goldDmgScalePct:0, shopPriceFixed1:false, bypassTurnLimit:false,
       overkillChainDmg:false,
@@ -4812,6 +4824,14 @@
       if(e.packagingOverhealIgnoreShield) b.packagingOverhealIgnoreShield = true;
       if(e.packagingAlwaysDmgPct) b.packagingAlwaysDmgPct = Math.max(b.packagingAlwaysDmgPct, e.packagingAlwaysDmgPct);
       if(e.packagingHealDmgStackPct) b.packagingHealDmgStackPct += e.packagingHealDmgStackPct * stack;
+      if(e.renyCastBonusTurns) b.renyCastBonusTurns += e.renyCastBonusTurns * stack;
+      if(e.renyStunDamageReducePct) b.renyStunDamageReducePct += e.renyStunDamageReducePct * stack;
+      if(e.renyPerTurnDmgBonus) b.renyPerTurnDmgBonus += e.renyPerTurnDmgBonus * stack;
+      if(e.renyFireLifestealPct) b.renyFireLifestealPct += e.renyFireLifestealPct * stack;
+      if(e.renyHoldShieldGain) b.renyHoldShieldGain += e.renyHoldShieldGain * stack;
+      if(e.renyLostHpDmgBonusPct) b.renyLostHpDmgBonusPct += e.renyLostHpDmgBonusPct * stack;
+      if(e.renyLoveJusticeActive) b.renyLoveJusticeActive = true;
+      if(e.renyUltimateBulletCharges) b.renyUltimateBulletCharges += e.renyUltimateBulletCharges * stack;
     });
     return b;
   }
@@ -4915,6 +4935,14 @@
     fighter.tw_packagingOverhealIgnoreShield = b.packagingOverhealIgnoreShield;
     fighter.tw_packagingAlwaysDmgPct = b.packagingAlwaysDmgPct;
     fighter.tw_packagingHealDmgStackPct = b.packagingHealDmgStackPct;
+    fighter.tw_renyCastBonusTurns = b.renyCastBonusTurns;
+    fighter.tw_renyStunDamageReducePct = b.renyStunDamageReducePct;
+    fighter.tw_renyPerTurnDmgBonus = b.renyPerTurnDmgBonus;
+    fighter.tw_renyFireLifestealPct = b.renyFireLifestealPct;
+    fighter.tw_renyHoldShieldGain = b.renyHoldShieldGain;
+    fighter.tw_renyLostHpDmgBonusPct = b.renyLostHpDmgBonusPct;
+    fighter.tw_renyLoveJusticeActive = b.renyLoveJusticeActive;
+    fighter.tw_renyUltimateBulletCharges = b.renyUltimateBulletCharges;
     // [밑준비] 증강 - 전투 시작 시 [즉석 포장] 누적치를 미리 채워준다
     if(b.packagingStartCount) fighter.instantPackagingCounter = (fighter.instantPackagingCounter||0) + b.packagingStartCount;
     // 전투 시작 시 즉시 보호막 지급 (수호의 맹세 / 낡은 갑주의 잔재 등)
@@ -8818,6 +8846,7 @@
       instantPackagingCounter:0, // [즉석 포장] 종현 전용 — 상대가 잃은 체력 누적치 (3당 1회 회복 트리거, 나머지는 이월)
       instantPackagingTotalHealed:0, // [인육행진] 신화 증강 전용 — 이번 전투에서 [즉석 포장]으로 회복한 누적 체력량
       renyStunTurns:0, renyStunning:false, // [레니] 전용 — [샤이닝블라섬러브앤피스리펄스] 행동불능 상태머신
+      renyHpFloorTurns:0, renyUltimateBulletUsed:0, // [레니] 신화 증강 [궁극의 마탄] 전용 상태
       alive:true, // 2VS2 벤치 인원 전용 필드 (1v1에서는 그냥 안 쓰임)
       benchCooldown:0, // 2VS2 벤치 지원(응원/엄호/독려) 전용 쿨타임 — 사용하면 3턴간 재사용 불가
     };
@@ -10185,23 +10214,52 @@
       const opponentKey = key === 'me' ? 'op' : 'me';
       const act = key === 'me' ? meAct : opAct;
       const label = key === 'me' ? '내' : '상대';
+      const cls = key === 'me' ? 'me-act' : 'op-act';
       entity.renyStunning = false;
 
       if((entity.renyStunTurns||0) > 0){
         entity.renyStunning = true;
         if(act === 'skill'){
-          const dmg = 6 * entity.renyStunTurns + Math.max(0, entity.maxHp - entity.hp);
+          const perTurn = 6 + (entity.tw_renyPerTurnDmgBonus||0); // [증폭 렌즈] 희귀 증강
+          const lostHp = Math.max(0, entity.maxHp - entity.hp);
+          const lostHpFactor = 1 + (entity.tw_renyLostHpDmgBonusPct||0); // [과충전] 영웅 증강
+          let dmg = Math.round(perTurn * entity.renyStunTurns + lostHp * lostHpFactor);
+          dmg = applyOnHitPassive(key, dmg, g, cls); // [사랑과 정의의 이름으로!] 등 일반 피해 버프 통과
           pushLog('sys', `💖 ${label} [샤이닝블라섬러브앤피스리펄스] 발사! ${dmg}의 피해!`);
           entity.renyStunTurns = 0;
           dealDamage(opponentKey, dmg);
+          // [생명 흡수 빔] 희귀 증강
+          if(entity.tw_renyFireLifestealPct && entity.hp > 0){
+            const healAmt = Math.round(dmg * entity.tw_renyFireLifestealPct);
+            if(healAmt > 0){
+              entity.hp = Math.min(entity.maxHp, entity.hp + healAmt);
+              pushLog('sys', `💖 ${label} [생명 흡수 빔] 효과로 ${healAmt} 회복`);
+              spawnPopup(key, '+'+healAmt, 'heal');
+            }
+          }
         } else {
           entity.renyStunTurns += 1;
           pushLog('sys', `💫 ${label}가 리펄스를 보류하고 행동불능 상태를 유지했다 (누적 ${entity.renyStunTurns}턴)`);
+          // [수호의 결계] 영웅 증강 - 보류할 때마다 보호막 획득
+          if(entity.tw_renyHoldShieldGain){
+            entity.passiveShield = (entity.passiveShield||0) + entity.tw_renyHoldShieldGain;
+            pushLog('sys', `🛡️ ${label} [수호의 결계] 효과로 보호막 ${entity.tw_renyHoldShieldGain} 획득`);
+          }
         }
       } else if(act === 'skill'){
-        entity.renyStunning = true;
-        entity.renyStunTurns = 1;
-        pushLog('sys', `💖 ${label}가 [샤이닝블라섬러브앤피스리펄스]를 시전하며 행동불능 상태에 빠졌다!`);
+        // [궁극의 마탄] 신화 증강 — 남은 충전이 있으면 행동불능 없이 스킬 사용을 넘긴다
+        const charges = entity.tw_renyUltimateBulletCharges||0;
+        const used = entity.renyUltimateBulletUsed||0;
+        if(charges > used){
+          entity.renyUltimateBulletUsed = used + 1;
+          entity.renyHpFloorTurns = 1; // 이번 턴 한정 체력 1 미만으로 떨어지지 않음
+          entity.defended = true; entity.ap = Math.min(AP_MAX, entity.ap + 1); // "평소처럼" 행동할 수 있는 것의 대체 처리
+          pushLog('sys', `✨ ${label} [궁극의 마탄] 효과로 행동불능에 빠지지 않고 스킬을 사용했다! (잔여 ${charges-used-1}회)`);
+        } else {
+          entity.renyStunning = true;
+          entity.renyStunTurns = 1 + (entity.tw_renyCastBonusTurns||0); // [가속 장전] 일반 증강
+          pushLog('sys', `💖 ${label}가 [샤이닝블라섬러브앤피스리펄스]를 시전하며 행동불능 상태에 빠졌다!`);
+        }
       }
     });
   }
@@ -10400,6 +10458,15 @@
         g[k].hp = Math.min(g[k].maxHp, g[k].hp + regenAmt);
         pushLog('sys', `💚 ${k==='me'?'내':'상대'} [재생의 인장] 효과로 ${regenAmt} 회복`);
       }
+      // [레니] 전설 증강 [사랑과 정의의 이름으로!] - 매 턴 종료 시 최대체력의 10%를 잃는다.
+      // [궁극의 마탄]으로 이번 턴 체력 1 미만 방지 워드가 걸려있다면 이 소모로는 죽지 않는다.
+      if(g[k].tw_renyLoveJusticeActive && g[k].hp > 0){
+        const selfDmg = Math.max(1, Math.round(g[k].maxHp * 0.10));
+        g[k].hp = (g[k].renyHpFloorTurns||0) > 0 ? Math.max(1, g[k].hp - selfDmg) : Math.max(0, g[k].hp - selfDmg);
+        pushLog('sys', `💔 ${k==='me'?'내':'상대'} [사랑과 정의의 이름으로!] 효과로 최대체력의 10%(${selfDmg}) 상실`);
+      }
+      // [레니] 신화 증강 [궁극의 마탄] - "이번 턴 한정" 체력 1 미만 방지 워드는 턴이 끝나면 해제된다
+      if(g[k].renyHpFloorTurns > 0) g[k].renyHpFloorTurns--;
       // [무한대전타워] "어느 날 갑자기" 아티팩트 - 매 턴 종료 시 행동력을 고정값으로 되돌림
       if(g[k].tw_apFixedValue && g[k].hp > 0 && g[k].ap !== g[k].tw_apFixedValue){
         g[k].ap = g[k].tw_apFixedValue;
@@ -10646,10 +10713,14 @@
     const sourceKey = towerDamageSourceKey;
     towerDamageSourceKey = null; // 즉시 소비 — 이 dealDamage 실행 도중 재귀 호출되는 다른 dealDamage에 잘못 물려쓰이지 않도록
 
+    // [레니] 일반 증강 [경량 프레임] - 행동불능 상태에서 받는 피해 감소
+    if(remaining > 0 && target.charKey === 'reny' && (target.renyStunTurns||0) > 0 && target.tw_renyStunDamageReducePct){
+      remaining = Math.round(remaining * (1 - target.tw_renyStunDamageReducePct));
+    }
+
     // [무한대전타워] 장비 "침묵의 비석" 등 - 받는 피해 고정 감소 (플레이어에게만 적용)
     if(remaining > 0 && target.tw_dmgReduce){
-      remaining = Math.max(0, remaining - target.tw_dmgReduce);
-    }
+      remaining = Math.max(0, remaining - target.tw_dmgReduce);    }
     // [무한대전타워] "은빛날개" 아티팩트 - 받는 모든 피해 비율 감소 (조건 없이 상시 적용)
     if(remaining > 0 && target.tw_dmgReducePct){
       remaining = Math.ceil(remaining * (1 - target.tw_dmgReducePct));
@@ -10694,6 +10765,10 @@
     }
 
     target.hp -= remaining;
+    // [레니] 신화 증강 [궁극의 마탄] - 발동된 턴에는 체력이 1 미만으로 떨어지지 않는다
+    if(target.charKey === 'reny' && (target.renyHpFloorTurns||0) > 0 && target.hp < 1){
+      target.hp = 1;
+    }
     if(remaining > 0){
       spawnPopup(targetKey, '-'+remaining, null);
       // 때리든 맞든 동일하게 화면이 흔들린다 (매번 랜덤 방향)
@@ -11189,6 +11264,11 @@
     // [무한대전타워] "파괴신의 인장" 신화 증강 - 가하는 모든 피해 배율 증가
     if(actor.tw_allDmgMultPct && amount > 0){
       amount = Math.round(amount * (1 + actor.tw_allDmgMultPct));
+    }
+    // [레니] 전설 증강 [사랑과 정의의 이름으로!] - 잃은 체력 1%당 가하는 피해 2% 증가 (매 타격마다 실시간 계산)
+    if(actor.tw_renyLoveJusticeActive && amount > 0 && actor.maxHp > 0){
+      const lostPct = Math.max(0, (actor.maxHp - actor.hp) / actor.maxHp * 100);
+      amount = Math.round(amount * (1 + lostPct * 0.02));
     }
     // [무한대전타워] "요정의 반란" 신화 증강 - 자신의 최대체력, 보유 보호막 수치에 비례해 가하는 피해 증가
     if(actor.tw_fairyRebellion && amount > 0){
