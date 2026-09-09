@@ -1511,6 +1511,103 @@
     50%{ filter:brightness(1.25); }
     100%{ filter:brightness(0.55); }
   }
+
+  /* ---------- AI 승부예측 ---------- */
+  .predict-streak-badge{
+    margin-left:auto; background:linear-gradient(135deg,#FF6FCF,#B14CF2); color:#fff; font-weight:700;
+    font-size:13px; padding:6px 12px; border-radius:999px; white-space:nowrap;
+  }
+  .predict-stage{
+    position:relative; height:380px; margin:14px 0 6px; border-radius:18px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .predict-bg{
+    position:absolute; inset:0; z-index:0;
+    background:linear-gradient(120deg,#2B1055,#7597DE,#B14CF2,#FF6FCF);
+    background-size:300% 300%;
+    animation:predictBgShift 6s ease-in-out infinite;
+  }
+  @keyframes predictBgShift{
+    0%{ background-position:0% 50%; }
+    50%{ background-position:100% 50%; }
+    100%{ background-position:0% 50%; }
+  }
+  .predict-fighter{
+    position:relative; z-index:1; width:44%; height:100%; display:flex; flex-direction:column;
+    align-items:center; justify-content:flex-end; cursor:pointer; opacity:0; transform:scale(0.5);
+    padding-bottom:10px;
+  }
+  .predict-fighter.enter{ animation:predictFighterEnter .55s cubic-bezier(.2,.9,.3,1.3) forwards; }
+  .predict-fighter img{
+    max-width:100%; max-height:56%; object-fit:contain; filter:drop-shadow(0 6px 14px rgba(0,0,0,.45));
+    animation:predictFighterFloat 2.4s ease-in-out infinite;
+  }
+  @keyframes predictFighterEnter{
+    0%{ opacity:0; transform:scale(0.4) rotate(-6deg); }
+    60%{ opacity:1; transform:scale(1.12) rotate(2deg); }
+    100%{ opacity:1; transform:scale(1) rotate(0); }
+  }
+  @keyframes predictFighterFloat{
+    0%,100%{ transform:translateY(0) scale(1); }
+    50%{ transform:translateY(-6px) scale(1.035); }
+  }
+  .predict-fighter[data-side="B"] img{ animation-delay:.3s; }
+  .predict-fname{ color:#fff; font-weight:800; font-size:15px; text-shadow:0 2px 6px rgba(0,0,0,.6); margin-top:4px; }
+  .predict-fskill{
+    color:#FFE58A; font-size:11px; font-weight:600; text-shadow:0 2px 6px rgba(0,0,0,.6);
+    opacity:0; transition:opacity .3s ease; min-height:14px;
+  }
+  .predict-fskill.show{ opacity:1; }
+  .predict-hpbar-wrap{
+    width:88%; height:10px; background:rgba(0,0,0,.45); border-radius:999px; overflow:hidden;
+    margin-top:6px; border:1px solid rgba(255,255,255,.25);
+  }
+  .predict-hpbar-fill{ height:100%; background:#4BE0A1; transition:width .35s ease, background .35s ease; }
+  .predict-hptext{ color:#fff; font-size:10px; font-weight:700; margin-top:2px; text-shadow:0 1px 4px rgba(0,0,0,.6); }
+  .predict-action-icons{ display:flex; gap:5px; margin-top:6px; }
+  .predict-action-icons span{
+    font-size:13px; opacity:.35; filter:grayscale(.6); transform:scale(0.9);
+    transition:opacity .15s ease, transform .15s ease, filter .15s ease;
+  }
+  .predict-action-icons span.active{ opacity:1; filter:none; transform:scale(1.35); }
+  .predict-fighter.picked{ outline:3px solid #FFE066; outline-offset:-3px; border-radius:14px; background:rgba(255,224,102,0.12); }
+  .predict-fighter.locked{ cursor:default; filter:grayscale(.25); }
+  .predict-vs{
+    position:relative; z-index:1; color:#fff; font-weight:900; font-size:20px; text-shadow:0 2px 8px rgba(0,0,0,.6);
+    animation:predictVsPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes predictVsPulse{
+    0%,100%{ transform:scale(1); opacity:.85; }
+    50%{ transform:scale(1.2); opacity:1; }
+  }
+  .predict-tick-log{
+    min-height:120px; max-height:160px; overflow-y:auto; padding:10px 14px; margin:0 0 10px;
+    background:var(--panel); border:1px solid var(--panel-line); border-radius:12px;
+    font-size:13px; color:var(--text-dim); display:flex; flex-direction:column-reverse; gap:6px;
+  }
+  .predict-tick-line{ animation:predictTickIn .25s ease-out; }
+  .predict-tick-line.result{ color:#FFD166; font-weight:800; font-size:15px; }
+  @keyframes predictTickIn{
+    0%{ opacity:0; transform:translateY(-6px); }
+    100%{ opacity:1; transform:translateY(0); }
+  }
+  .predict-reward-preview{
+    text-align:center; font-size:13px; color:#fff; font-weight:700; margin:0 0 10px;
+    background:linear-gradient(135deg,#2B1055aa,#B14CF2aa); border:1px solid #FFE066aa;
+    border-radius:12px; padding:8px 10px;
+  }
+  .predict-reward-label{ color:#FFE066; font-weight:800; margin-right:4px; }
+  .predict-actions{ display:flex; gap:10px; }
+  .predict-actions .btn{ flex:1; }
+  #predict-flash-overlay{
+    position:absolute; inset:0; z-index:98; pointer-events:none; opacity:0; background:#fff;
+  }
+  #predict-flash-overlay.tick{ animation:predictFlashTick .18s ease-out; }
+  @keyframes predictFlashTick{
+    0%{ opacity:.55; }
+    100%{ opacity:0; }
+  }
+
   @keyframes towerEventTalkBounce{
     0%{ transform:translateY(0) scale(1); }
     40%{ transform:translateY(-8px) scale(1.015); }
@@ -1752,6 +1849,16 @@
       <div class="name">크레이지 AI V2</div>
       <div class="desc">더욱 더 강화되었습니다. 이겨낼 수 있겠나요?</div>
     </button>
+  </div>
+
+  <!-- AI 승부예측 -->
+  <div class="screen" id="screen-predict">
+    <div class="back-row">
+      <button class="back-btn" id="predict-back">←</button>
+      <div class="disp" style="font-size:20px;">AI 승부예측</div>
+      <div class="predict-streak-badge" id="predict-streak">🔥 연승 0</div>
+    </div>
+    <div id="predict-content"></div>
   </div>
 
   <!-- 무한대전타워: 홈 (시작/이어하기) -->
@@ -2149,6 +2256,9 @@
        역시 #app 바로 아래(전역)에 새로 만든다. -->
   <div id="tower-event-flash-overlay"></div>
 
+  <!-- [AI 승부예측] 전용 - 1초 간격 "빡-" 판정 연출용 전역 플래시 -->
+  <div id="predict-flash-overlay"></div>
+
   <!-- 룰북 -->
   <div id="rulebook-overlay">
     <div class="rulebook-panel">
@@ -2477,6 +2587,9 @@
     hasUsedFreeNicknameChange: false,                  // 무료 닉네임 변경권 사용 여부
     redeemedCoupons: new Set(),                        // 이미 사용한 쿠폰 코드 (중복 사용 방지)
     isGM: false,                                        // GM 전용 코드로 권한을 받았는지 여부
+    predictTickets: 0,                                  // 상점에서 구매한 [AI 승부예측] 진행권 개수
+    predictActive: false,                               // 현재 승부예측 연승 세션이 진행 중인지
+    predictStreak: 0,                                   // 이번 세션의 현재 연승 스택
   };
 
   const AI_NAMES = { easy:'초급 AI', normal:'중급 AI', hard:'고급 AI', crazy:'크레이지 AI', crazy_v2:'크레이지 AI V2' };
@@ -6589,6 +6702,9 @@
         hasUsedFreeNicknameChange: S.hasUsedFreeNicknameChange,
         redeemedCoupons: Array.from(S.redeemedCoupons),
         isGM: S.isGM,
+        predictTickets: S.predictTickets,
+        predictActive: S.predictActive,
+        predictStreak: S.predictStreak,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     }catch(e){
@@ -6708,6 +6824,9 @@
     if(typeof data.isGM === 'boolean'){
       S.isGM = data.isGM;
     }
+    if(typeof data.predictTickets === 'number') S.predictTickets = Math.max(0, data.predictTickets);
+    if(typeof data.predictActive === 'boolean') S.predictActive = data.predictActive;
+    if(typeof data.predictStreak === 'number') S.predictStreak = Math.max(0, data.predictStreak);
   }
 
   // 서버 이전 공지 우편. "이 우편을 아직 못 받았으면" 지급한다 — localStorage가
@@ -8421,6 +8540,10 @@
           <div class="ic">🗼</div>
           <div class="txt"><div class="t1">무한대전타워</div><div class="t2">끝없이 오르는 로그라이크 등반 콘텐츠</div></div>
         </button>
+        <button class="mode-btn" id="btn-predict">
+          <div class="ic">🔮</div>
+          <div class="txt"><div class="t1">AI 승부예측</div><div class="t2">두 AI 중 승자를 맞혀 연승을 쌓는 콘텐츠</div></div>
+        </button>
       `;
       document.getElementById('btn-single').onclick = ()=> showScreen('screen-difficulty');
       document.getElementById('btn-multi').onclick = ()=>{
@@ -8432,6 +8555,7 @@
       };
       document.getElementById('btn-2v2').onclick = ()=> showScreen('screen-2v2-menu');
       document.getElementById('btn-tower').onclick = ()=> openTowerHome();
+      document.getElementById('btn-predict').onclick = ()=> openPredictHome();
     } else if(S.tab==='shop'){
       desc.textContent = '캐릭터와 컴뱃스킬을 구매할 수 있는 공간';
       c.innerHTML = `
@@ -8609,7 +8733,7 @@
       { key:'character', label:'캐릭터' },
       { key:'skill', label:'컴뱃스킬' },
       { key:'book', label:'챌린지북' },
-      { key:'boost', label:'부스트' },
+      { key:'etc', label:'기타' },
     ];
     subtabsEl.innerHTML = '';
     defs.forEach(d=>{
@@ -8647,7 +8771,7 @@
       }));
       renderShopGrid(listEl, items);
     } else {
-      renderBoostShop(listEl);
+      renderEtcShop(listEl);
     }
   }
 
@@ -8734,26 +8858,395 @@
   }
 
   // 부스트는 소모품(중첩 구매 가능)이라 '보유중' 개념이 없는 별도 그리드로 렌더링
-  function renderBoostShop(listEl){
+  // "기타" 탭: XP 부스트(기존) + PP로 사는 스킨 뽑기권 + AI 승부예측 진행권.
+  // 전부 소모품(중첩 구매 가능)이라 '보유중' 개념 없이 매번 그냥 구매 버튼만 있는 그리드로 렌더링한다.
+  function renderEtcShop(listEl){
     const boostText = formatBoostRemaining();
     const banner = boostText
       ? `<div class="boost-active-banner" style="margin:0 0 16px;">${boostText}</div>`
       : '';
-    listEl.innerHTML = banner + `<div class="shop-grid">` + Object.values(BOOSTS).map(b=>`
-      <div class="shop-card" data-id="${b.id}">
-        <div class="shop-card-icon" style="background:#4D8CFF22; border-color:#4D8CFF66;">${b.icon}</div>
-        <div class="shop-card-name">${b.name}</div>
-        <button class="btn btn-primary shop-card-btn" data-id="${b.id}">${b.price.toLocaleString()} PP</button>
+    const activeBanner = Object.values(GACHA_BANNERS).find(b => b.active);
+    const singlePrice = 3500;
+    const tenPrice = 30000; // 3500×10=35000보다 저렴하게 (약 14% 할인)
+
+    listEl.innerHTML = banner + `
+      <div class="shop-section-title" style="margin:0 0 10px; font-size:13px; color:var(--text-dim);">⚡ XP 부스트</div>
+      <div class="shop-grid">` + Object.values(BOOSTS).map(b=>`
+        <div class="shop-card" data-id="${b.id}">
+          <div class="shop-card-icon" style="background:#4D8CFF22; border-color:#4D8CFF66;">${b.icon}</div>
+          <div class="shop-card-name">${b.name}</div>
+          <button class="btn btn-primary shop-card-btn" data-id="${b.id}">${b.price.toLocaleString()} PP</button>
+        </div>
+      `).join('') + `</div>
+
+      <div class="shop-section-title" style="margin:20px 0 10px; font-size:13px; color:var(--text-dim);">🎟️ 기타 이용권</div>
+      <div class="shop-grid">
+        <div class="shop-card" data-id="skin_ticket_1">
+          <div class="shop-card-icon" style="background:#B14CF222; border-color:#B14CF266;">🎫</div>
+          <div class="shop-card-name">스킨 뽑기 1회권</div>
+          <button class="btn btn-primary shop-card-btn" data-id="skin_ticket_1">${singlePrice.toLocaleString()} PP</button>
+        </div>
+        <div class="shop-card" data-id="skin_ticket_10">
+          <div class="shop-card-icon" style="background:#B14CF222; border-color:#B14CF266;">🎟️</div>
+          <div class="shop-card-name">스킨 뽑기 10회권</div>
+          <button class="btn btn-primary shop-card-btn" data-id="skin_ticket_10">${tenPrice.toLocaleString()} PP</button>
+        </div>
+        <div class="shop-card" data-id="predict_ticket">
+          <div class="shop-card-icon" style="background:#4BE0A122; border-color:#4BE0A166;">🔮</div>
+          <div class="shop-card-name">AI 승부예측 진행권${S.predictTickets>0 ? ` (보유 ${S.predictTickets})` : ''}</div>
+          <button class="btn btn-primary shop-card-btn" data-id="predict_ticket">600 PP</button>
+        </div>
       </div>
-    `).join('') + `</div>`;
+    `;
 
     listEl.querySelectorAll('.shop-card-btn').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.stopPropagation();
-        buyBoost(btn.dataset.id);
+        const id = btn.dataset.id;
+        if(id === 'skin_ticket_1'){
+          buySkinGachaTicketWithPP(1, singlePrice, activeBanner);
+        } else if(id === 'skin_ticket_10'){
+          buySkinGachaTicketWithPP(10, tenPrice, activeBanner);
+        } else if(id === 'predict_ticket'){
+          buyPredictTicket();
+        } else {
+          buyBoost(id);
+        }
       });
     });
   }
+
+  // PP로 스킨 뽑기권을 사서 즉시 사용 — 기존 뽑기 로직(다이아몬드 소모 + 연출)을 그대로 재사용하기 위해,
+  // 딱 필요한 만큼만 다이아몬드로 환전해준 뒤 곧바로 pullSkinGacha를 호출한다.
+  function buySkinGachaTicketWithPP(times, price, banner){
+    if(!banner){ showToast('아직 준비 중인 배너예요'); return; }
+    if(PP < price){ showToast('PP가 부족해요'); return; }
+    PP -= price;
+    DIAMONDS += (times === 10 ? banner.tenCost : banner.singleCost);
+    updatePPDisplay();
+    pullSkinGacha(banner.id, times);
+  }
+
+  function buyPredictTicket(){
+    const price = 600;
+    if(PP < price){ showToast('PP가 부족해요'); return; }
+    PP -= price;
+    S.predictTickets = (S.predictTickets||0) + 1;
+    updatePPDisplay();
+    showToast('🔮 AI 승부예측 진행권을 구매했습니다');
+    renderShop();
+  }
+
+  /* ============== AI 승부예측 ==============
+     두 명의 랜덤 캐릭터(+랜덤 컴뱃스킬 +비공개 랜덤 AI 난이도)를 붙여놓고, 유저가 승자를 예측한다.
+     실제 전투 엔진을 그대로 헤드리스로 통째로 재사용하기엔 UI/애니메이션과 너무 강하게 얽혀있어서,
+     대신 "스탯+스킬+난이도로 계산한 승률 → 그 확률로 승자를 가중 추첨" 하는 방식으로 빠르게 판정하고,
+     그 위에 그럴듯한 연출(1초 간격 히트 로그, 화면 플래시)만 얹는다. 실제 세부 전투 로그가 아니라
+     연출용 텍스트라는 점만 참고해주면 된다.
+  */
+  let PS = null; // 이번 매치의 임시 상태
+
+  // [AI 승부예측] 화면 전환용 암전 헬퍼 — 무한대전타워의 암전 전환과 같은 패턴(650ms 유지 후 페이드아웃)
+  function predictBlackoutThen(cb){
+    const blackout = document.getElementById('blackout');
+    blackout.classList.add('show');
+    setTimeout(()=>{
+      cb();
+      setTimeout(()=> blackout.classList.remove('show'), 100);
+    }, 650);
+  }
+
+  function openPredictHome(){
+    if(!S.predictActive){
+      if((S.predictTickets||0) <= 0){
+        showToast('AI 승부예측 진행권이 없어요! 상점 "기타" 탭에서 구매해주세요');
+        return;
+      }
+      S.predictTickets -= 1;
+      S.predictActive = true;
+      S.predictStreak = 0;
+      saveProgress();
+    }
+    // 처음 시작할 때도 암전 후 등장하도록 (무한대전타워 층 진입과 같은 무게감)
+    predictBlackoutThen(()=>{
+      showScreen('screen-predict');
+      predictStartNewMatch();
+    });
+  }
+
+  function predictStartNewMatch(){
+    const pool = Object.keys(CHARACTERS).filter(id => !CHARACTERS[id].aiOnly);
+    const shuffled = [...pool].sort(()=> Math.random()-0.5);
+    const charA = shuffled[0], charB = shuffled[1];
+    const skillA = AI_SKILL_POOL[Math.floor(Math.random()*AI_SKILL_POOL.length)];
+    const skillB = AI_SKILL_POOL[Math.floor(Math.random()*AI_SKILL_POOL.length)];
+    const diffPool = ['easy','normal','hard','crazy','crazy_v2']; // 유저에게는 절대 안 보여줌 — 내부 승률 계산에만 씀
+    const diffA = diffPool[Math.floor(Math.random()*diffPool.length)];
+    const diffB = diffPool[Math.floor(Math.random()*diffPool.length)];
+    PS = { charA, charB, skillA, skillB, diffA, diffB, picked:null, resolved:false };
+    renderPredictStage();
+  }
+
+  function renderPredictStage(){
+    document.getElementById('predict-streak').textContent = `🔥 연승 ${S.predictStreak}`;
+    const content = document.getElementById('predict-content');
+    const iconsHtml = `
+      <div class="predict-action-icons">
+        <span data-act="attack">⚔️</span><span data-act="defend">🛡️</span><span data-act="heal">✚</span><span data-act="ultimate">💥</span><span data-act="skill">⚡</span>
+      </div>`;
+    content.innerHTML = `
+      <div class="predict-stage">
+        <div class="predict-bg"></div>
+        <div class="predict-fighter enter" data-side="A" id="predict-fighter-a">
+          <img src="${myCharImg(PS.charA,'full')}" alt="">
+          <div class="predict-fname">${CHARACTERS[PS.charA].name}</div>
+          <div class="predict-fskill" id="predict-skill-a"></div>
+          <div class="predict-hpbar-wrap"><div class="predict-hpbar-fill" id="predict-hp-a" style="width:100%"></div></div>
+          <div class="predict-hptext" id="predict-hptext-a"></div>
+          <div id="predict-icons-a">${iconsHtml}</div>
+        </div>
+        <div class="predict-vs">VS</div>
+        <div class="predict-fighter enter" data-side="B" id="predict-fighter-b">
+          <img src="${myCharImg(PS.charB,'full')}" alt="">
+          <div class="predict-fname">${CHARACTERS[PS.charB].name}</div>
+          <div class="predict-fskill" id="predict-skill-b"></div>
+          <div class="predict-hpbar-wrap"><div class="predict-hpbar-fill" id="predict-hp-b" style="width:100%"></div></div>
+          <div class="predict-hptext" id="predict-hptext-b"></div>
+          <div id="predict-icons-b">${iconsHtml}</div>
+        </div>
+      </div>
+      <div class="predict-tick-log" id="predict-tick-log"><div class="predict-tick-line">누가 이길지 캐릭터를 눌러 골라보세요!</div></div>
+      <div class="predict-reward-preview" id="predict-reward-preview"></div>
+      <div class="predict-actions">
+        <button class="btn btn-primary" id="predict-start-btn" disabled>승부개시</button>
+        <button class="btn" id="predict-cashout-btn">정산하기 (연승 ${S.predictStreak})</button>
+      </div>
+    `;
+    // 스킬 이름은 초상화가 확 등장한 직후에 빠르게 따라붙듯 표시 (요청하신 "빠르게 장착한 스킬도 뜨는" 연출)
+    setTimeout(()=>{
+      const skA = document.getElementById('predict-skill-a');
+      const skB = document.getElementById('predict-skill-b');
+      if(skA){ skA.textContent = `⚔️ ${SKILLS[PS.skillA].name}`; skA.classList.add('show'); }
+      if(skB){ skB.textContent = `⚔️ ${SKILLS[PS.skillB].name}`; skB.classList.add('show'); }
+    }, 500);
+    updatePredictHpBar('a', 1); updatePredictHpBar('b', 1);
+    updatePredictRewardPreview();
+
+    document.getElementById('predict-fighter-a').addEventListener('click', ()=> predictPick('A'));
+    document.getElementById('predict-fighter-b').addEventListener('click', ()=> predictPick('B'));
+    document.getElementById('predict-start-btn').addEventListener('click', ()=> predictRunMatch());
+    document.getElementById('predict-cashout-btn').addEventListener('click', ()=> predictCashOut());
+  }
+
+  function updatePredictHpBar(side, pct){
+    const fill = document.getElementById(`predict-hp-${side}`);
+    const text = document.getElementById(`predict-hptext-${side}`);
+    if(!fill) return;
+    const clamped = Math.max(0, Math.min(1, pct));
+    fill.style.width = `${Math.round(clamped*100)}%`;
+    fill.style.background = clamped > 0.5 ? '#4BE0A1' : clamped > 0.25 ? '#FFD166' : '#FF5A5A';
+    if(text) text.textContent = `${Math.round(clamped*100)}%`;
+  }
+
+  function predictPick(side){
+    if(!PS || PS.resolved) return;
+    PS.picked = side;
+    document.getElementById('predict-fighter-a').classList.toggle('picked', side==='A');
+    document.getElementById('predict-fighter-b').classList.toggle('picked', side==='B');
+    document.getElementById('predict-start-btn').disabled = false;
+  }
+
+  // 실제 게임과 같은 행동력 경제(공격 -1, 방어/회복은 0코스트에 각각 +1/+2 획득, 필살기 -5)로 굴리는
+  // 축약형 미니 시뮬레이터. 진짜 전투 엔진(엄청나게 큰 리팩토링 없이는 UI/애니메이션과 뗄 수 없이
+  // 얽혀있어 그대로 헤드리스로 옮기기 어려움)을 그대로 재사용하는 대신, 같은 스탯/코스트/규칙을
+  // 새로 가볍게 복제해서 실제 캐릭터 스탯이 그대로 반영되는 진짜 같은 승부를 빠르게 굴린다.
+  function predictSimDecide(self, opp, diffWeight){
+    const opts = [];
+    if(self.ap >= 1) opts.push({ act:'attack', w: 1.0 + (opp.hp/opp.maxHp < 0.3 ? 1.6 : 0) });
+    opts.push({ act:'defend', w: 0.5 + (self.hp/self.maxHp < 0.4 ? 1.0 : 0) });
+    opts.push({ act:'heal',   w: 0.4 + (self.hp/self.maxHp < 0.5 ? 1.3 : 0) });
+    if(self.ap >= 5) opts.push({ act:'ultimate', w: 0.9 + (opp.hp/opp.maxHp < 0.5 ? 1.2 : 0) });
+    if(!self.skillUsed) opts.push({ act:'skill', w: 0.9 });
+    // 난이도가 높을수록(diffWeight 0~1) 최선의 선택지 쪽으로 더 강하게 쏠리고, 낮을수록 거의 무작위에 가까워진다
+    const maxW = Math.max(...opts.map(o=>o.w));
+    const sharpness = 1 + diffWeight * 3.5;
+    opts.forEach(o=> o.w = Math.pow(o.w / maxW, sharpness));
+    const total = opts.reduce((s,o)=>s+o.w, 0);
+    let r = Math.random() * total;
+    for(const o of opts){ r -= o.w; if(r <= 0) return o.act; }
+    return 'attack';
+  }
+
+  function predictSimulateBattle(){
+    const diffWeightOf = { easy:0.1, normal:0.35, hard:0.6, crazy:0.85, crazy_v2:1.0 };
+    const a = { hp: CHARACTERS[PS.charA].stats.hp, maxHp: CHARACTERS[PS.charA].stats.hp, ap:3, defended:false, skillUsed:false };
+    const b = { hp: CHARACTERS[PS.charB].stats.hp, maxHp: CHARACTERS[PS.charB].stats.hp, ap:3, defended:false, skillUsed:false };
+    const statsA = CHARACTERS[PS.charA].stats, statsB = CHARACTERS[PS.charB].stats;
+    const rounds = [];
+    for(let round=1; round<=12; round++){
+      a.defended = false; b.defended = false;
+      const actA = predictSimDecide(a, b, diffWeightOf[PS.diffA]);
+      const actB = predictSimDecide(b, a, diffWeightOf[PS.diffB]);
+      if(actA === 'attack') a.ap -= 1; else if(actA === 'ultimate') a.ap -= 5;
+      if(actB === 'attack') b.ap -= 1; else if(actB === 'ultimate') b.ap -= 5;
+      if(actA === 'defend'){ a.defended = true; a.ap = Math.min(8, a.ap+1); }
+      if(actB === 'defend'){ b.defended = true; b.ap = Math.min(8, b.ap+1); }
+      let healA = 0, healB = 0;
+      if(actA === 'heal'){ if(actB !== 'attack' && actB !== 'ultimate'){ healA = statsA.heal; a.hp = Math.min(a.maxHp, a.hp+healA); } a.ap = Math.min(8, a.ap+2); }
+      if(actB === 'heal'){ if(actA !== 'attack' && actA !== 'ultimate'){ healB = statsB.heal; b.hp = Math.min(b.maxHp, b.hp+healB); } b.ap = Math.min(8, b.ap+2); }
+      let dmgToA = 0, dmgToB = 0;
+      if(actA === 'attack' && !b.defended) dmgToB += statsA.atk;
+      if(actB === 'attack' && !a.defended) dmgToA += statsB.atk;
+      if(actA === 'ultimate' && !b.defended) dmgToB += statsA.ultimateBreak;
+      if(actB === 'ultimate' && !a.defended) dmgToA += statsB.ultimateBreak;
+      if(actA === 'skill' && !a.skillUsed){ a.skillUsed = true; if(!b.defended) dmgToB += Math.round((SKILLS[PS.skillA].price||100)/12); }
+      if(actB === 'skill' && !b.skillUsed){ b.skillUsed = true; if(!a.defended) dmgToA += Math.round((SKILLS[PS.skillB].price||100)/12); }
+      a.hp = Math.max(0, a.hp - dmgToA);
+      b.hp = Math.max(0, b.hp - dmgToB);
+      rounds.push({ actA, actB, dmgToA, dmgToB, healA, healB, hpA: a.hp, hpB: b.hp, maxA: a.maxHp, maxB: b.maxHp });
+      if(a.hp <= 0 || b.hp <= 0) break;
+    }
+    const last = rounds[rounds.length-1];
+    let winner;
+    if(last.hpA <= 0 && last.hpB <= 0) winner = Math.random() < 0.5 ? 'A' : 'B'; // 동시에 쓰러지면 동전던지기
+    else if(last.hpB <= 0) winner = 'A';
+    else if(last.hpA <= 0) winner = 'B';
+    else winner = (last.hpA/last.maxA) >= (last.hpB/last.maxB) ? 'A' : 'B'; // 라운드 제한까지 갔으면 남은 체력 비율로
+    return { rounds, winner };
+  }
+
+  const PREDICT_ACT_LABEL = { attack:'공격', defend:'방어', heal:'회복', ultimate:'필살기', skill:'컴뱃스킬' };
+
+  function predictRunMatch(){
+    if(!PS || PS.resolved || !PS.picked) return;
+    PS.resolved = true;
+    document.getElementById('predict-start-btn').disabled = true;
+    document.getElementById('predict-fighter-a').classList.add('locked');
+    document.getElementById('predict-fighter-b').classList.add('locked');
+
+    const { rounds, winner } = predictSimulateBattle();
+    const nameA = CHARACTERS[PS.charA].name, nameB = CHARACTERS[PS.charB].name;
+    const logEl = document.getElementById('predict-tick-log');
+    logEl.innerHTML = '';
+    const overlay = document.getElementById('predict-flash-overlay');
+    const iconsA = document.getElementById('predict-icons-a');
+    const iconsB = document.getElementById('predict-icons-b');
+    let i = 0;
+    const step = ()=>{
+      if(i < rounds.length){
+        const r = rounds[i];
+        overlay.classList.remove('tick'); void overlay.offsetWidth; overlay.classList.add('tick');
+        // 이번 라운드에 고른 행동 아이콘을 반짝 강조 (실제 액션 버튼이 착착 눌리는 느낌)
+        [iconsA, iconsB].forEach(el=> el.querySelectorAll('span').forEach(s=> s.classList.remove('active')));
+        const iconA = iconsA.querySelector(`[data-act="${r.actA}"]`); if(iconA) iconA.classList.add('active');
+        const iconB = iconsB.querySelector(`[data-act="${r.actB}"]`); if(iconB) iconB.classList.add('active');
+        updatePredictHpBar('a', r.hpA / r.maxA);
+        updatePredictHpBar('b', r.hpB / r.maxB);
+        let line = `${i+1}턴 · ${nameA} [${PREDICT_ACT_LABEL[r.actA]}]`;
+        if(r.dmgToB > 0) line += ` → ${r.dmgToB} 피해!`;
+        line += ` / ${nameB} [${PREDICT_ACT_LABEL[r.actB]}]`;
+        if(r.dmgToA > 0) line += ` → ${r.dmgToA} 피해!`;
+        logEl.insertAdjacentHTML('afterbegin', `<div class="predict-tick-line">${line}</div>`);
+        i++;
+        setTimeout(step, 700); // 요청하신 "진짜 빠르게 스피디하게" 속도
+      } else {
+        predictShowResult(winner);
+      }
+    };
+    step();
+  }
+
+  function predictShowResult(winner){
+    const win = (winner === PS.picked);
+    const winnerName = CHARACTERS[winner==='A' ? PS.charA : PS.charB].name;
+    const logEl = document.getElementById('predict-tick-log');
+    logEl.insertAdjacentHTML('afterbegin', `<div class="predict-tick-line result">🏆 ${winnerName} 승리!</div>`);
+
+    if(win){
+      S.predictStreak = (S.predictStreak||0) + 1;
+      showToast(`🔥 적중! 연승 ${S.predictStreak}`);
+      saveProgress();
+      document.getElementById('predict-cashout-btn').textContent = `정산하기 (연승 ${S.predictStreak})`;
+      document.getElementById('predict-streak').textContent = `🔥 연승 ${S.predictStreak}`;
+      updatePredictRewardPreview();
+      // 이겼을 때는 세션이 계속 이어진다 — 암전 후 같은 화면에서 새 캐릭터로 다음 판이 이어진다
+      setTimeout(()=>{
+        predictBlackoutThen(()=> predictStartNewMatch());
+      }, 1200);
+    } else {
+      showToast('💥 예측 실패... 연승이 끊겼습니다');
+      // 졌을 때는 그대로 세션 종료 — 암전 후 로비로 사출된다 (다시 하려면 진행권을 새로 사야 함)
+      setTimeout(()=>{
+        predictBlackoutThen(()=>{
+          S.predictActive = false;
+          S.predictStreak = 0;
+          saveProgress();
+          showScreen('screen-home');
+        });
+      }, 1200);
+    }
+  }
+
+  // 연승 보상 테이블. "1/2 찍기랑 비슷하니 후하게, 대신 초반엔 짜게"라는 요청대로,
+  // 저연승 구간은 일부러 박하게 주고 5연승쯤부터 체감이 확 커지도록 설계했다.
+  // 9연승 이후로는 상한 없이 지수적으로 계속 불어나서, 어디까지 욕심낼지는 유저 몫으로 남겨둔다.
+  function predictRewardForStreak(streak){
+    const table = [
+      {pp:0,     xp:0,   dia:0},
+      {pp:50,    xp:0,   dia:0},
+      {pp:250,   xp:30,  dia:0},   // 2연승부터 체감이 좀 더 나게 상향 (기존 150/20)
+      {pp:600,   xp:60,  dia:5},   // 3연승도 상향 (기존 400/40/0)
+      {pp:1100,  xp:100, dia:20},  // 4연승도 살짝 더 (기존 800/70/10)
+      {pp:1800,  xp:150, dia:35},
+      {pp:2800,  xp:220, dia:60},
+      {pp:4200,  xp:320, dia:100},
+      {pp:6500,  xp:450, dia:150},
+      {pp:10000, xp:650, dia:250},
+    ];
+    if(streak <= 0) return {pp:0, xp:0, dia:0};
+    if(streak < table.length) return table[streak];
+    const base = table[table.length-1];
+    const extra = streak - (table.length-1);
+    const mult = Math.pow(1.35, extra);
+    return { pp: Math.round(base.pp*mult), xp: Math.round(base.xp*mult), dia: Math.round(base.dia*mult) };
+  }
+
+  // 지금 당장 [정산하기]를 누르면 얼마를 받는지 실시간으로 보여주는 미리보기 패널.
+  // 연승이 바뀔 때마다(이겼을 때, 새 판이 시작될 때) 매번 다시 호출해서 최신 값을 반영한다.
+  function updatePredictRewardPreview(){
+    const el = document.getElementById('predict-reward-preview');
+    if(!el) return;
+    const streak = S.predictStreak||0;
+    const r = predictRewardForStreak(streak);
+    if(streak <= 0){
+      el.innerHTML = `<span class="predict-reward-label">지금 정산하면:</span> 아직 쌓인 보상이 없어요`;
+    } else {
+      el.innerHTML = `<span class="predict-reward-label">지금 정산하면:</span> 💰 ${r.pp.toLocaleString()} PP · ✨ ${r.xp} XP${r.dia>0 ? ` · 💎 ${r.dia}` : ''}`;
+    }
+  }
+
+  function predictCashOut(){
+    const streak = S.predictStreak||0;
+    if(streak <= 0){
+      showToast('연승이 없어서 정산할 보상이 없어요. 먼저 승부를 맞혀보세요!');
+      return;
+    }
+    const reward = predictRewardForStreak(streak);
+    PP += reward.pp;
+    addDiamonds(reward.dia);
+    addXP(reward.xp);
+    S.predictActive = false;
+    S.predictStreak = 0;
+    updatePPDisplay();
+    saveProgress();
+    showToast(`💰 연승 ${streak} 정산! PP +${reward.pp.toLocaleString()} · XP +${reward.xp} · 💎+${reward.dia}`);
+    predictBlackoutThen(()=> showScreen('screen-home'));
+  }
+
+  document.getElementById('predict-back').addEventListener('click', ()=>{
+    // 나가더라도 세션/연승은 그대로 저장돼있어 이어할 수 있다 (정산하기를 눌러야만 끝난다)
+    showScreen('screen-home');
+  });
 
   function renderShopGrid(listEl, items){
     const allOwned = items.length > 0 && items.every(it=>it.owned);
