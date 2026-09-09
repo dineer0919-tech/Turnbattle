@@ -530,8 +530,14 @@
   .friend-card .dot.online{ background:#3EE6C9; box-shadow:0 0 6px #3EE6C9; }
   .friend-card .dot.battling{ background:#FF4D5E; box-shadow:0 0 6px #FF4D5E; }
   .friend-card .friend-status-tag{ font-size:11px; color:#FF4D5E; font-weight:700; flex:0 0 auto; }
-  .friend-card .friend-name{ flex:1; min-width:0; }
+  .friend-card .friend-name{ min-width:0; }
   .friend-card .btn{ flex:0 0 auto; padding:8px 12px; border-radius:10px; font-size:11px; }
+  .presence-avatar{
+    width:34px; height:34px; border-radius:50%; object-fit:cover; object-position:top center;
+    flex:0 0 auto; background:var(--panel); border:1px solid var(--panel-line);
+  }
+  .friend-name-col{ flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+  .presence-title{ font-size:10px; font-weight:800; color:#FFD54F; } /* 티어리스트 배지처럼 이름 밑에 작은 노란 글씨로 */
 
   /* ---------- 티어리스트 ---------- */
   .tier-legend{
@@ -3757,6 +3763,8 @@
     if(skinId !== null && !(SKINS[skinId] && SKINS[skinId].charId === charId && S.ownedSkins.has(skinId))) return;
     S.equippedSkins[charId] = skinId;
     saveProgress();
+    // 지금 프로필 사진으로 쓰고 있는 캐릭터의 스킨이 바뀐 거라면, 온라인 목록에도 바로 반영한다
+    if(charId === (S.profileChar || S.selectedCharacter)) syncPresenceProfile();
   }
 
   function getCharStat(charId, field){
@@ -6906,13 +6914,33 @@
   function fbDb(){ return firebase.database(); }
   function myUid(){ return (firebase.auth().currentUser && firebase.auth().currentUser.uid) || null; }
 
+  // 온라인 목록/멀티대전에서 상대에게 보여줄 "명함" 정보 — 프로필로 지정한 캐릭터, 그 캐릭터에
+  // 장착 중인 스킨(있다면), 장착 칭호. myEquippedSkinId/getCharImg가 이미 스킨 오버라이드를
+  // 지원하도록 만들어져 있어서(주석에 "향후 멀티대전/랭킹 등에서" 라고 미리 적어뒀던 부분), 그대로 활용한다.
+  function presenceProfileFields(){
+    return {
+      profileChar: S.profileChar || S.selectedCharacter || 'spear',
+      skinId: myEquippedSkinId(S.profileChar || S.selectedCharacter || 'spear') || null,
+      title: S.equippedTitle || null,
+    };
+  }
+  // 프로필 캐릭터/스킨/칭호가 바뀔 때마다 호출해서 presence에도 실시간 반영한다.
+  function syncPresenceProfile(){
+    const uid = myUid();
+    if(!uid || !FIREBASE_READY) return;
+    fbDb().ref('presence/' + uid).update(presenceProfileFields()).catch(()=>{});
+  }
+
   // 로그인 직후 한 번 호출: 내 온라인 상태를 전역에 기록하고(친구/온라인유저 목록용),
   // 누군가 나에게 보낸 대전 신청을 앱을 쓰는 내내(화면과 무관하게) 실시간으로 감시한다.
   function initPresenceAndInvites(){
     const uid = myUid();
     if(!uid) return;
     const presenceRef = fbDb().ref('presence/' + uid);
-    presenceRef.set({ nickname: S.nickname || '노련한 전투원', online: true, inBattle: false, updatedAt: firebase.database.ServerValue.TIMESTAMP });
+    presenceRef.set(Object.assign(
+      { nickname: S.nickname || '노련한 전투원', online: true, inBattle: false, updatedAt: firebase.database.ServerValue.TIMESTAMP },
+      presenceProfileFields()
+    ));
     presenceRef.onDisconnect().update({ online: false, inBattle: false });
 
     // [버그 수정] 예전에는 "닉네임 변경" 화면을 한 번도 거치지 않은 유저는 usernames/{닉네임}에
@@ -7271,6 +7299,23 @@
   }
 
   // 6자리 방 코드 생성 (헷갈리기 쉬운 0/O, 1/I 는 제외)
+  // 방(1v1 멀티 / 2VS2 온라인)에 들어갈 때마다 매번 반복해서 만들던 "내 플레이어 정보" 객체를
+  // 한 곳에 모았다. profileChar/skinId/title은 온라인 목록·대기실 등에서 상반신 일러스트와
+  // 칭호를 보여주기 위한 필드로, 실제 대전 진행에는 charKey/skillId/nickname만 쓰인다.
+  function myPlayerRoomInfo(){
+    const charId = S.selectedCharacter || 'spear';
+    const profileChar = S.profileChar || charId;
+    return {
+      charKey: charId,
+      skillId: getEquippedSkillId(charId),
+      nickname: S.nickname || '노련한 전투원',
+      connected: true,
+      profileChar,
+      skinId: myEquippedSkinId(profileChar) || null,
+      title: S.equippedTitle || null,
+    };
+  }
+
   function generateRoomCode(){
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -7318,7 +7363,7 @@
     roomRef.set({
       status: 'lobby',
       createdAt: firebase.database.ServerValue.TIMESTAMP,
-      players: { p1: { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true } },
+      players: { p1: myPlayerRoomInfo() },
     }).then(()=>{
       resetV2OnlineState();
       S.v2online.code = code;
@@ -7356,7 +7401,7 @@
       const mySlot = V2_SLOTS.find(s => !room.players[s]);
       if(!mySlot) return;                          // 이미 4명 꽉 참
       capturedSlot = mySlot;
-      room.players[mySlot] = { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true };
+      room.players[mySlot] = myPlayerRoomInfo();
       // 이 참가로 4명이 다 찼다면, 이 자리에서 바로 팀을 무작위로 섞고 시작 상태로 전환한다
       // (트랜잭션 안에서 처리해야 여러 명이 동시에 마지막 자리를 다투는 경쟁 상태가 안전하게 해결된다)
       const filledSlots = V2_SLOTS.filter(s => room.players[s]);
@@ -7412,7 +7457,11 @@
       const p = players[s];
       if(!p) return `<div class="v2lobby-slot empty"><span class="dot"></span>비어있음</div>`;
       const me = s === S.v2online.mySlot ? ' (나)' : '';
-      return `<div class="v2lobby-slot filled"><span class="dot"></span>${p.nickname}${me}</div>`;
+      return `<div class="v2lobby-slot filled">
+        <img class="presence-avatar" src="${presenceAvatarImg(p)}" alt="">
+        <span class="dot"></span>
+        <div class="friend-name-col"><span>${p.nickname}${me}</span>${presenceTitleHtml(p)}</div>
+      </div>`;
     }).join('');
     document.getElementById('v2lobby-text').textContent = filled < 4 ? '인원을 기다리는 중...' : '팀 배정 중...';
     // 빈자리를 AI로 채우는 버튼은 방장에게만, 그리고 아직 자리가 남아있을 때만 보여준다
@@ -7768,7 +7817,7 @@
       Promise.all(entries.map(([friendUid, info])=>
         fbDb().ref(`presence/${friendUid}`).once('value').then(s=>{
           const p = s.val() || {};
-          return { friendUid, nickname: info.nickname, online: !!p.online, inBattle: !!p.inBattle };
+          return { friendUid, nickname: info.nickname, online: !!p.online, inBattle: !!p.inBattle, profileChar: p.profileChar, skinId: p.skinId, title: p.title };
         })
       )).then(list=>{
         listEl.innerHTML = list.map(f=>{
@@ -7777,8 +7826,12 @@
           const statusText = busy ? '' : (f.online ? '' : ' (오프라인)');
           return `
           <div class="friend-card">
+            <img class="presence-avatar" src="${presenceAvatarImg(f)}" alt="">
             <span class="dot${dotClass ? ' ' + dotClass : ''}"></span>
-            <span class="friend-name">${f.nickname}${statusText}</span>
+            <div class="friend-name-col">
+              <span class="friend-name">${f.nickname}${statusText}</span>
+              ${presenceTitleHtml(f)}
+            </div>
             ${busy ? `<span class="friend-status-tag">전투 중</span>` : ''}
             <button class="btn btn-primary" data-invite="${f.friendUid}" data-nick="${f.nickname}" ${(f.online && !busy) ? '' : 'disabled'}>대전 신청</button>
           </div>
@@ -7885,6 +7938,7 @@
       btn.addEventListener('click', ()=>{
         S.equippedTitle = btn.dataset.title || null;
         saveProgress();
+        syncPresenceProfile();
         renderTitleSelectRow();
       });
     });
@@ -8242,7 +8296,7 @@
     renderProfile();
   }
 
-  // GM 전용 코드 효과: [GM] 칭호 장착 + 모든 캐릭터 챌린지북을 100%로 고정 지급 + 재화 대량 지급
+  // GM 전용 코드 효과: [GM] 칭호 장착 + 모든 칭호(챌린지북 전부) 지급 + 재화 대량 지급
   function grantGmPrivileges(){
     S.titles.add('GM');
     S.equippedTitle = 'GM';
@@ -8255,6 +8309,7 @@
       S.titles.add(CHALLENGE_BOOKS[charId].title);
     });
     addPP(999999);
+    addDiamonds(999999);
     S.isGM = true;
   }
 
@@ -8718,6 +8773,7 @@
       card.addEventListener('click', ()=>{
         S.profileChar = ch.id;
         saveProgress();
+        syncPresenceProfile();
         renderProfile();
       });
       picGrid.appendChild(card);
@@ -13149,6 +13205,20 @@
     renderOnlineUsersList();
   }
 
+  // 온라인 유저 목록/멀티대전 등에서 상대의 "명함"을 그릴 때 공용으로 쓰는 헬퍼.
+  // 프로필로 지정한 캐릭터의 상반신(portrait) 일러스트를 보여주되, 그 캐릭터에 장착 중인 스킨이
+  // 있으면 스킨 그대로 반영한다(getCharImg의 skinIdOverride 인자를 그대로 활용). 예전 버전에서
+  // 접속한 유저처럼 profileChar 정보가 아직 없는 경우를 대비해 기본값(spear)으로 안전하게 대체한다.
+  function presenceAvatarImg(info){
+    const charId = (info && info.profileChar && CHARACTERS[info.profileChar]) ? info.profileChar : 'spear';
+    const skinId = (info && info.skinId && SKINS[info.skinId] && SKINS[info.skinId].charId === charId) ? info.skinId : null;
+    return getCharImg(charId, 'portrait', skinId);
+  }
+  // 티어리스트 UI처럼, 이름 위/옆에 작은 노란 글씨로 칭호를 얹는다.
+  function presenceTitleHtml(info){
+    return (info && info.title) ? `<div class="presence-title">${info.title}</div>` : '';
+  }
+
   function renderOnlineUsersList(){
     const listEl = document.getElementById('online-users-list');
     const uid = myUid();
@@ -13165,8 +13235,12 @@
         const busy = !!info.inBattle;
         return `
         <div class="friend-card">
+          <img class="presence-avatar" src="${presenceAvatarImg(info)}" alt="">
           <span class="dot ${busy ? 'battling' : 'online'}"></span>
-          <span class="friend-name">${info.nickname || '이름없음'}</span>
+          <div class="friend-name-col">
+            <span class="friend-name">${info.nickname || '이름없음'}</span>
+            ${presenceTitleHtml(info)}
+          </div>
           ${busy ? `<span class="friend-status-tag">전투 중</span>` : ''}
           <button class="btn btn-primary" data-invite="${otherUid}" data-nick="${info.nickname||'상대'}" ${busy ? 'disabled' : ''}>대전 신청</button>
         </div>
@@ -13198,7 +13272,7 @@
     roomRef.set({
       status: 'waiting',
       createdAt: firebase.database.ServerValue.TIMESTAMP,
-      players: { p1: { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true } },
+      players: { p1: myPlayerRoomInfo() },
     }).then(()=>{
       resetMultiState();
       S.multi.code = code;
@@ -13232,7 +13306,7 @@
     roomRef.set({
       status: 'waiting',
       createdAt: firebase.database.ServerValue.TIMESTAMP,
-      players: { p1: { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true } },
+      players: { p1: myPlayerRoomInfo() },
     }).then(()=>{
       resetMultiState();
       S.multi.code = code;
@@ -13285,7 +13359,7 @@
       if(room.status !== 'waiting') return;      // 이미 시작됐거나 종료된 방
       if(room.players && room.players.p2) return; // 이미 다른 사람이 참가함
       room.players = room.players || {};
-      room.players.p2 = { charKey: S.selectedCharacter || 'spear', skillId: getEquippedSkillId(S.selectedCharacter || 'spear'), nickname: S.nickname || '노련한 전투원', connected:true };
+      room.players.p2 = myPlayerRoomInfo();
       room.status = 'active';
       return room;
     }).then(result=>{
