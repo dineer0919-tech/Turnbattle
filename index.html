@@ -10803,10 +10803,17 @@
           const lostHp = Math.max(0, entity.maxHp - entity.hp);
           const lostHpFactor = 1 + (entity.tw_renyLostHpDmgBonusPct||0); // [과충전] 영웅 증강
           let dmg = Math.round(perTurn * entity.renyStunTurns + lostHp * lostHpFactor);
+          dmg = towerSkillPower(entity, dmg); // 컴뱃스킬 피해량/효과 증가 계열 증강(장비 등급, 숙련된 손놀림, 절대 숙련 등)이 안 먹던 버그 수정
           dmg = applyOnHitPassive(key, dmg, g, cls); // [사랑과 정의의 이름으로!] 등 일반 피해 버프 통과
           pushLog('sys', `💖 ${label} [샤이닝블라섬러브앤피스리펄스] 발사! ${dmg}의 피해!`);
           entity.renyStunTurns = 0;
           dealDamage(opponentKey, dmg);
+          // [환영 무기] 전설 증강이 있어야만 이 컴뱃스킬(발사)도 [공격] 판정을 받아
+          // 죽을 사/신경독 같은 "공격 적중" 트리거가 발동한다 (다른 스킬들과 동일한 처리)
+          if(entity.tw_skillCountsAsAttack){
+            applyDeathMarkOnAttackHit(key, opponentKey, g, cls);
+            applyNeurotoxinOnHit(key, opponentKey, g, cls);
+          }
           // [생명 흡수 빔] 희귀 증강
           if(entity.tw_renyFireLifestealPct && entity.hp > 0){
             const healAmt = Math.round(dmg * entity.tw_renyFireLifestealPct);
