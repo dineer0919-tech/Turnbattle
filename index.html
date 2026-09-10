@@ -5092,7 +5092,7 @@
       opSkillId = buildCrazyV2ComboSkill();
     } else {
       opChar = pickRandomCharacter();
-      opSkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+      opSkillId = pickAiSkillFor(opChar);
     }
     enterBattleUI(meChar, opChar, meSkillId, opSkillId);
 
@@ -7480,9 +7480,10 @@
       room.players = room.players || {};
       V2_SLOTS.forEach(s=>{
         if(!room.players[s]){
+          const botChar = pickRandomCharacter();
           room.players[s] = {
-            charKey: pickRandomCharacter(),
-            skillId: AI_SKILL_POOL[Math.floor(Math.random()*AI_SKILL_POOL.length)],
+            charKey: botChar,
+            skillId: pickAiSkillFor(botChar),
             nickname: 'AI 봇',
             connected: true,
             isBot: true,
@@ -7520,6 +7521,15 @@
   function pickRandomCharacter(){
     const keys = Object.keys(CHARACTERS).filter(id => !CHARACTERS[id].aiOnly); // 크레이지 V2 전용 강화 변종은 일반 랜덤 매칭 풀에서 제외
     return keys[Math.floor(Math.random() * keys.length)];
+  }
+
+  // AI(상대/봇/2VS2 아군 등)에게 컴뱃스킬을 배정할 때 공용으로 쓰는 함수.
+  // [매지컬샤인] 패시브 때문에 레니는 항상 [샤이닝블라섬러브앤피스리펄스]로 고정이라, AI가 레니로
+  // 배정됐을 때도 무작위 AI_SKILL_POOL에서 뽑으면 안 된다 — 예전엔 이 체크가 빠져있어서
+  // 크레이지든 아니든 레니 AI가 엉뚱한 스킬을 들고 나오는 버그가 있었다.
+  function pickAiSkillFor(charId){
+    if(charId === 'reny') return 'shining_blossom_repulse';
+    return AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
   }
 
   function updatePPDisplay(){
@@ -9034,8 +9044,8 @@
     const pool = Object.keys(CHARACTERS).filter(id => !CHARACTERS[id].aiOnly);
     const shuffled = [...pool].sort(()=> Math.random()-0.5);
     const charA = shuffled[0], charB = shuffled[1];
-    const skillA = AI_SKILL_POOL[Math.floor(Math.random()*AI_SKILL_POOL.length)];
-    const skillB = AI_SKILL_POOL[Math.floor(Math.random()*AI_SKILL_POOL.length)];
+    const skillA = pickAiSkillFor(charA);
+    const skillB = pickAiSkillFor(charB);
     const diffPool = ['easy','normal','hard','crazy','crazy_v2']; // 유저에게는 절대 안 보여줌 — 내부 승률 계산에만 씀
     const diffA = diffPool[Math.floor(Math.random()*diffPool.length)];
     const diffB = diffPool[Math.floor(Math.random()*diffPool.length)];
@@ -9451,7 +9461,7 @@
       opSkillId = buildCrazyV2ComboSkill(); // 컴뱃스킬 2개를 하나의 강화 콤보로 묶어서 장착
     } else {
       opChar = pickRandomCharacter();
-      opSkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)]; // AI는 구매 여부와 무관하게 매 대전마다 랜덤 스킬 장착
+      opSkillId = pickAiSkillFor(opChar); // AI는 구매 여부와 무관하게 매 대전마다 랜덤 스킬 장착 (단, 레니는 항상 전용 스킬 고정)
     }
     enterBattleUI(meChar, opChar, meSkillId, opSkillId);
   }
@@ -9473,11 +9483,11 @@
     const meChar = S.selectedCharacter || 'spear';
     const meSkillId = getEquippedSkillId(meChar);
     const allyChar = pickRandomCharacter();
-    const allySkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+    const allySkillId = pickAiSkillFor(allyChar);
     const enemyActiveChar = pickRandomCharacter();
-    const enemyActiveSkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+    const enemyActiveSkillId = pickAiSkillFor(enemyActiveChar);
     const enemyBenchChar = pickRandomCharacter();
-    const enemyBenchSkillId = AI_SKILL_POOL[Math.floor(Math.random() * AI_SKILL_POOL.length)];
+    const enemyBenchSkillId = pickAiSkillFor(enemyBenchChar);
 
     S.team2v2HpMult = TEAM2V2_HP_MULT;
     enterBattleUI(meChar, enemyActiveChar, meSkillId, enemyActiveSkillId, null, null, CHARACTERS[allyChar].name, CHARACTERS[enemyBenchChar].name);
