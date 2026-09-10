@@ -4237,7 +4237,7 @@
       { id:'reny_guardian_barrier', name:'수호의 결계', grade:'epic', desc:'리펄스를 보류할 때마다(행동불능 유지) 보호막 4를 얻는다', effects:{renyHoldShieldGain:4} },
       { id:'reny_overcharge', name:'과충전', grade:'epic', desc:'리펄스 발사 피해 계산에서 자신의 잃은 체력 부분이 50% 더 강하게 반영된다', effects:{renyLostHpDmgBonusPct:0.5} },
       { id:'reny_love_and_justice', name:'사랑과 정의의 이름으로!', grade:'legendary', desc:'잃은 체력 1%당 가하는 피해가 2% 증가한다. 대신 매 턴 최대 체력의 10%를 잃는다', effects:{renyLoveJusticeActive:true} },
-      { id:'reny_ultimate_bullet', name:'궁극의 마탄', grade:'mythic', desc:'더 이상 [샤이닝블라섬러브앤피스리펄스]를 사용할 때 행동불능 상태에 빠지지 않고, 평소와 같이 공격/방어/회복/일격/카운터를 쓸 수 있다. 또한 그 판정에서는 체력이 1 미만으로 감소하지 않는다 (전투 당 1회, 증강마다 중첩 가능)', effects:{renyUltimateBulletCharges:1} },
+      { id:'reny_ultimate_bullet', name:'궁극의 마탄', grade:'mythic', desc:'더 이상 [샤이닝블라섬러브앤피스리펄스] 충전 중에 행동불능 상태에 빠지지 않는다 — 충전은 배경에서 그대로 계속 쌓이면서, 평소와 같이 공격/방어/회복/일격/카운터를 쓸 수 있다 (영구 지속). 또한 충전이 진행되는 동안에는 전투당 (증강 스택 수)번, 체력이 1 미만으로 떨어지는 걸 막아준다 (증강마다 중첩 가능)', effects:{renyUltimateBulletCharges:1} },
     ],
   };
 
@@ -5063,7 +5063,8 @@
     fighter.tw_renyHoldShieldGain = b.renyHoldShieldGain;
     fighter.tw_renyLostHpDmgBonusPct = b.renyLostHpDmgBonusPct;
     fighter.tw_renyLoveJusticeActive = b.renyLoveJusticeActive;
-    fighter.tw_renyUltimateBulletCharges = b.renyUltimateBulletCharges;
+    fighter.tw_renyUltimateBulletActive = b.renyUltimateBulletCharges > 0; // 스택 1개만 있어도 충전 중 기절 면역은 영구 활성
+    fighter.tw_renyUltimateBulletWards = b.renyUltimateBulletCharges; // "체력 1로 버팀" 목숨 보험은 스택 수만큼
     // [밑준비] 증강 - 전투 시작 시 [즉석 포장] 누적치를 미리 채워준다
     if(b.packagingStartCount) fighter.instantPackagingCounter = (fighter.instantPackagingCounter||0) + b.packagingStartCount;
     // 전투 시작 시 즉시 보호막 지급 (수호의 맹세 / 낡은 갑주의 잔재 등)
@@ -9405,7 +9406,7 @@
       instantPackagingCounter:0, // [즉석 포장] 종현 전용 — 상대가 잃은 체력 누적치 (3당 1회 회복 트리거, 나머지는 이월)
       instantPackagingTotalHealed:0, // [인육행진] 신화 증강 전용 — 이번 전투에서 [즉석 포장]으로 회복한 누적 체력량
       renyStunTurns:0, renyStunning:false, // [레니] 전용 — [샤이닝블라섬러브앤피스리펄스] 행동불능 상태머신
-      renyHpFloorTurns:0, renyUltimateBulletUsed:0, // [레니] 신화 증강 [궁극의 마탄] 전용 상태
+      renyHpFloorWardsUsed:0, // [레니] 신화 증강 [궁극의 마탄] 전용 — 이번 전투에서 "체력 1로 버팀" 목숨 보험을 몇 번 썼는지
       alive:true, // 2VS2 벤치 인원 전용 필드 (1v1에서는 그냥 안 쓰임)
       benchCooldown:0, // 2VS2 벤치 지원(응원/엄호/독려) 전용 쿨타임 — 사용하면 3턴간 재사용 불가
     };
@@ -10639,7 +10640,7 @@
 
       // [레니] 전용: [샤이닝블라섬러브앤피스리펄스]로 행동불능 상태에 빠진 동안에는
       // "발사(스킬 버튼 재활용)"와 "보류(방어 버튼 재활용)" 두 가지 선택지만 남는다.
-      const renyStunned = g.me.charKey === 'reny' && (g.me.renyStunTurns||0) > 0;
+      const renyStunned = g.me.charKey === 'reny' && (g.me.renyStunTurns||0) > 0 && !g.me.tw_renyUltimateBulletActive;
       if(renyStunned){
         if(act === 'skill'){
           btn.disabled = g.locked;
@@ -10666,8 +10667,11 @@
       const sealed = (g.me.actionSealTurns > 0) && (act === 'defend' || act === 'heal');
       if(act === 'skill'){
         btn.disabled = g.locked || !skillAvailable(g.me) || !g.me.skillId;
+        const skillDef = g.me.skillId ? SKILLS[g.me.skillId] : null;
         const usesLeft = g.me.skillId ? Math.max(0, (g.me.skillMaxUses||1) - (g.me.skillUseCount||0)) : 0;
-        document.getElementById('skill-cost').textContent = !g.me.skillId ? '장착 필요' : (usesLeft<=0 ? '사용완료' : ((g.me.skillMaxUses||1)>1 ? `잔여 ${usesLeft}회` : '1회용'));
+        document.getElementById('skill-cost').textContent = !g.me.skillId ? '장착 필요'
+          : (skillDef && skillDef.unlimited) ? '무제한' // [레니] 전용 - 사용 횟수 제한이 없어서 "사용완료"로 잘못 뜨는 걸 방지
+          : (usesLeft<=0 ? '사용완료' : ((g.me.skillMaxUses||1)>1 ? `잔여 ${usesLeft}회` : '1회용'));
       } else {
         const cost = COST[act];
         btn.disabled = g.locked || g.me.ap < cost;
@@ -10766,6 +10770,20 @@
   // 행동불능 상태에서 그 외의 행동을 고르면 보류(행동불능 턴수만 +1, 아무 효과도 없음).
   // 두 경우 모두 원래 골랐던 행동의 실제 효과(공격/방어/회복 등)는 완전히 무시되며, 이를 위해
   // entity.renyStunning 플래그를 세워 applyCombat 진입 시 그쪽만 조용히 건너뛰게 한다.
+  // [레니] 전용 — [샤이닝블라섬러브앤피스리펄스] 상태머신.
+  // 최초 시전(액션으로 'skill' 선택 & 아직 행동불능 아님) → 행동불능 상태 진입, 이번 턴은 아무 효과 없음.
+  // 행동불능 상태에서 'skill'을 다시 고르면 발사(누적 행동불능 턴수 × 9 + 자신의 잃은 체력만큼 피해, 상태 해제).
+  // 행동불능 상태에서 그 외의 행동을 고르면 보류(행동불능 턴수만 +1, 아무 효과도 없음).
+  // 두 경우 모두 원래 골랐던 행동의 실제 효과(공격/방어/회복 등)는 완전히 무시되며, 이를 위해
+  // entity.renyStunning 플래그를 세워 applyCombat 진입 시 그쪽만 조용히 건너뛰게 한다.
+  //
+  // [궁극의 마탄] 신화 증강을 보유하면(tw_renyUltimateBulletActive) 이 "행동불능" 자체가 전투 내내
+  // 완전히 사라진다 — 충전(누적 턴수)은 똑같이 배경에서 계속 쌓이지만, 매 턴 원래 고른 행동(공격/
+  // 방어/회복/일격/카운터)이 평소처럼 그대로 처리된다(entity.renyStunning을 false로 둬서 applyCombat이
+  // 정상 처리하게 놔둔다). 'skill'을 고르면 그 순간엔 여전히 발사로 취급된다.
+  // 별개로, [궁극의 마탄]은 충전이 진행 중인 동안(renyStunTurns > 0) 체력이 1 밑으로 떨어지는 걸
+  // 막아주는 "목숨 보험"을 전투당 (증강 스택 수)번 제공한다 — 이건 매 충전마다 자동 소모되는 게
+  // 아니라, 실제로 죽을 뻔한 순간에만 실제로 한 번 소모되는 별도의 자원이다 (dealDamage에서 처리).
   function resolveRenyStunCycle(g, meAct, opAct){
     ['me','op'].forEach(key=>{
       const entity = g[key];
@@ -10774,11 +10792,13 @@
       const act = key === 'me' ? meAct : opAct;
       const label = key === 'me' ? '내' : '상대';
       const cls = key === 'me' ? 'me-act' : 'op-act';
+      const bulletActive = !!entity.tw_renyUltimateBulletActive;
       entity.renyStunning = false;
 
       if((entity.renyStunTurns||0) > 0){
-        entity.renyStunning = true;
         if(act === 'skill'){
+          // 발사 — 충전 중이었다면 [궁극의 마탄] 여부와 무관하게 여기서 즉시 처리하고 이번 턴을 종료한다
+          entity.renyStunning = true;
           const perTurn = 6 + (entity.tw_renyPerTurnDmgBonus||0); // [증폭 렌즈] 희귀 증강
           const lostHp = Math.max(0, entity.maxHp - entity.hp);
           const lostHpFactor = 1 + (entity.tw_renyLostHpDmgBonusPct||0); // [과충전] 영웅 증강
@@ -10797,26 +10817,29 @@
             }
           }
         } else {
+          // 보류 — 충전 턴수는 항상 +1 (여기서부터가 이번에 고친 부분: [궁극의 마탄]이 있으면
+          // 행동불능에 빠뜨리지 않고 원래 고른 행동을 그대로 살려서 applyCombat이 처리하게 한다)
           entity.renyStunTurns += 1;
-          pushLog('sys', `💫 ${label}가 리펄스를 보류하고 행동불능 상태를 유지했다 (누적 ${entity.renyStunTurns}턴)`);
-          // [수호의 결계] 영웅 증강 - 보류할 때마다 보호막 획득
-          if(entity.tw_renyHoldShieldGain){
+          if(entity.tw_renyHoldShieldGain){ // [수호의 결계] 영웅 증강
             entity.passiveShield = (entity.passiveShield||0) + entity.tw_renyHoldShieldGain;
             pushLog('sys', `🛡️ ${label} [수호의 결계] 효과로 보호막 ${entity.tw_renyHoldShieldGain} 획득`);
           }
+          if(bulletActive){
+            entity.renyStunning = false; // 행동불능에 빠지지 않음 — 원래 고른 행동이 그대로 처리된다
+            pushLog('sys', `✨ ${label} [궁극의 마탄] 효과로 충전 중에도 기절하지 않고 평소처럼 행동한다 (충전 ${entity.renyStunTurns}턴째)`);
+          } else {
+            entity.renyStunning = true;
+            pushLog('sys', `💫 ${label}가 리펄스를 보류하고 행동불능 상태를 유지했다 (누적 ${entity.renyStunTurns}턴)`);
+          }
         }
       } else if(act === 'skill'){
-        // [궁극의 마탄] 신화 증강 — 남은 충전이 있으면 행동불능 없이 스킬 사용을 넘긴다
-        const charges = entity.tw_renyUltimateBulletCharges||0;
-        const used = entity.renyUltimateBulletUsed||0;
-        if(charges > used){
-          entity.renyUltimateBulletUsed = used + 1;
-          entity.renyHpFloorTurns = 1; // 이번 턴 한정 체력 1 미만으로 떨어지지 않음
-          entity.defended = true; entity.ap = Math.min(AP_MAX, entity.ap + 1); // "평소처럼" 행동할 수 있는 것의 대체 처리
-          pushLog('sys', `✨ ${label} [궁극의 마탄] 효과로 행동불능에 빠지지 않고 스킬을 사용했다! (잔여 ${charges-used-1}회)`);
+        // 최초 시전
+        entity.renyStunTurns = 1 + (entity.tw_renyCastBonusTurns||0); // [가속 장전] 일반 증강
+        if(bulletActive){
+          entity.renyStunning = false;
+          pushLog('sys', `✨ ${label} [궁극의 마탄] 효과로 기절 없이 [샤이닝블라섬러브앤피스리펄스] 충전을 시작했다!`);
         } else {
           entity.renyStunning = true;
-          entity.renyStunTurns = 1 + (entity.tw_renyCastBonusTurns||0); // [가속 장전] 일반 증강
           pushLog('sys', `💖 ${label}가 [샤이닝블라섬러브앤피스리펄스]를 시전하며 행동불능 상태에 빠졌다!`);
         }
       }
@@ -11018,14 +11041,19 @@
         pushLog('sys', `💚 ${k==='me'?'내':'상대'} [재생의 인장] 효과로 ${regenAmt} 회복`);
       }
       // [레니] 전설 증강 [사랑과 정의의 이름으로!] - 매 턴 종료 시 최대체력의 10%를 잃는다.
-      // [궁극의 마탄]으로 이번 턴 체력 1 미만 방지 워드가 걸려있다면 이 소모로는 죽지 않는다.
+      // 충전 중(renyStunTurns>0)이라 [궁극의 마탄]의 목숨 보험이 아직 남아있다면 이 소모로는 죽지 않는다.
       if(g[k].tw_renyLoveJusticeActive && g[k].hp > 0){
         const selfDmg = Math.max(1, Math.round(g[k].maxHp * 0.10));
-        g[k].hp = (g[k].renyHpFloorTurns||0) > 0 ? Math.max(1, g[k].hp - selfDmg) : Math.max(0, g[k].hp - selfDmg);
+        const chargingWithWard = (g[k].renyStunTurns||0) > 0 && ((g[k].tw_renyUltimateBulletWards||0) - (g[k].renyHpFloorWardsUsed||0)) > 0;
+        if(chargingWithWard && g[k].hp - selfDmg < 1){
+          g[k].renyHpFloorWardsUsed = (g[k].renyHpFloorWardsUsed||0) + 1;
+          g[k].hp = 1;
+          pushLog('sys', `✨ [궁극의 마탄] 효과로 [사랑과 정의의 이름으로!] 자해로부터 체력 1로 버텼다!`);
+        } else {
+          g[k].hp = Math.max(0, g[k].hp - selfDmg);
+        }
         pushLog('sys', `💔 ${k==='me'?'내':'상대'} [사랑과 정의의 이름으로!] 효과로 최대체력의 10%(${selfDmg}) 상실`);
       }
-      // [레니] 신화 증강 [궁극의 마탄] - "이번 턴 한정" 체력 1 미만 방지 워드는 턴이 끝나면 해제된다
-      if(g[k].renyHpFloorTurns > 0) g[k].renyHpFloorTurns--;
       // [무한대전타워] "어느 날 갑자기" 아티팩트 - 매 턴 종료 시 행동력을 고정값으로 되돌림
       if(g[k].tw_apFixedValue && g[k].hp > 0 && g[k].ap !== g[k].tw_apFixedValue){
         g[k].ap = g[k].tw_apFixedValue;
@@ -11324,9 +11352,16 @@
     }
 
     target.hp -= remaining;
-    // [레니] 신화 증강 [궁극의 마탄] - 발동된 턴에는 체력이 1 미만으로 떨어지지 않는다
-    if(target.charKey === 'reny' && (target.renyHpFloorTurns||0) > 0 && target.hp < 1){
-      target.hp = 1;
+    // [레니] 신화 증강 [궁극의 마탄] - 충전이 진행 중인 동안(renyStunTurns > 0)은, 전투당 증강
+    // 스택 수만큼의 "목숨 보험"으로 체력 1 미만을 막아준다. 매 충전마다 자동 소모되는 게 아니라
+    // 실제로 죽을 뻔한 순간에만 실제로 한 번 소모된다.
+    if(target.charKey === 'reny' && (target.renyStunTurns||0) > 0 && target.hp < 1){
+      const wardsLeft = (target.tw_renyUltimateBulletWards||0) - (target.renyHpFloorWardsUsed||0);
+      if(wardsLeft > 0){
+        target.renyHpFloorWardsUsed = (target.renyHpFloorWardsUsed||0) + 1;
+        target.hp = 1;
+        pushLog('sys', `✨ [궁극의 마탄] 효과로 체력 1로 버텼다! (전투 내 잔여 ${wardsLeft-1}회)`);
+      }
     }
     if(remaining > 0){
       spawnPopup(targetKey, '-'+remaining, null);
@@ -12463,6 +12498,8 @@
   function decideAI(diff, g){
     // [레니] 전용 — AI가 조종하는 레니가 행동불능 상태라면, 판단 없이 곧바로 리펄스를 발사한다
     // (지연할수록 피해량은 늘지만, AI에게 그 도박을 굳이 판단시키지 않고 안전하게 즉시 발사시킨다).
+    // 단, [궁극의 마탄]으로 충전 중에도 기절하지 않는 상태라면 굳이 서둘러 쏠 필요가 없으니 이 강제
+    // 발사를 건너뛰고 평소처럼(아래 난이도별 사고 로직으로) 판단하게 둔다.
     // 주의: 이 함수 내부의 AI 사고 로직(aiEasy~aiCrazy)은 전부 "g.op가 곧 나(AI) 자신"이라는
     // 전제로 짜여 있다(decideAIForOwnSide 참고 — 2VS2 벤치용으로 부를 때도 g.op 자리에 미러링해서 넘김).
     // 그런데 여기 처음 추가했을 때 실수로 g.me를 체크했었다 — 싱글대전 같은 미러링 없는 직접 호출에서는
@@ -12470,7 +12507,7 @@
     // 행동을 여기서 강제로 'skill'로 덮어써버렸다. 그 결과 AI가 자기 스킬의 사용횟수 제한과 무관하게
     // 'skill'을 계속 선택하게 됐고(아래로 내려가는 legalActionsFor 체크를 거치지 않고 직접 반환하니까),
     // 일회용 스킬을 매턴 난사하는 것처럼 보이는 버그로 이어졌다. g.op로 바로잡는다.
-    if(g.op.charKey === 'reny' && (g.op.renyStunTurns||0) > 0) return 'skill';
+    if(g.op.charKey === 'reny' && (g.op.renyStunTurns||0) > 0 && !g.op.tw_renyUltimateBulletActive) return 'skill';
     let act;
     if(diff==='easy') act = aiEasy(g);
     else if(diff==='normal') act = aiNormal(g);
